@@ -236,7 +236,7 @@ new Vue({
         for (const bp of returnBreakpoints) {
           if (item.totalReturnRatio >= bp && !brokenReturns.has(bp)) {
             brokenReturns.add(bp);
-            const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，年龄 ${item.age} 岁）第 ${item.quarter} 季度，收益倍数突破 ${bp} 倍，累计收益约 ${this.formatCurrency(item.profit)}（${(item.profit/10000).toFixed(0)}万）元，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+            const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益倍数突破 ${bp} 倍，累计收益约 ${this.formatCurrency(item.profit)}（${(item.profit/10000).toFixed(0)}万）元，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
             this.reports.push({ id, text });
             break; // 每季度只报告一个倍数突破，避免重复
           }
@@ -258,7 +258,7 @@ new Vue({
               if (item.profit >= 10000 && !brokenMoney.profit.has(10000)) {
                 brokenMoney.profit.add(10000);
                 const wanStr = (item.profit/10000).toFixed(0);
-                const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，年龄 ${item.age} 岁）第 ${item.quarter} 季度，收益部分首次突破 1 万元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+                const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益部分首次突破 1 万元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
                 this.reports.push({ id, text });
                 break;
               }
@@ -267,7 +267,7 @@ new Vue({
             if (item[field] >= bp && !brokenMoney[field].has(bp)) {
               brokenMoney[field].add(bp);
               const wanStr = (item[field]/10000).toFixed(0);
-              const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，年龄 ${item.age} 岁）第 ${item.quarter} 季度，${fieldNames[field]}突破 ${bp.toLocaleString()} 元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+              const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，${fieldNames[field]}突破 ${bp.toLocaleString()} 元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
               this.reports.push({ id, text });
               break; // 每季度每字段只报告一个阈值突破
             }
