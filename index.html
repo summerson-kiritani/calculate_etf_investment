@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>复利定投计算器（含初始投入）</title>
+<title>复利定投计算器（含初始投入，季度收益修正版）</title>
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
 <style>
   body { font-family: Arial, sans-serif; max-width: 720px; margin: auto; padding: 1rem; }
@@ -27,7 +27,7 @@
 </head>
 <body>
 <div id="app">
-  <h2>复利定投计算器（含初始投入资金）</h2>
+  <h2>复利定投计算器（含初始投入，季度收益修正版）</h2>
   <label>
     初始投入资金（元）:
     <input type="number" v-model.number="initialInvestment" min="0" step="0.01" />
@@ -58,6 +58,7 @@
     <thead>
       <tr>
         <th>年份</th>
+        <th>季度</th>
         <th>年龄</th>
         <th>累计本金（元）</th>
         <th>未来价值（元）</th>
@@ -67,8 +68,9 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="item in results" :key="item.year" :class="'year-color-' + ((item.year - startYear) % 4)">
+      <tr v-for="item in results" :key="item.year + '-' + item.quarter" :class="'year-color-' + ((item.year - startYear) % 4)">
         <td>{{ item.year }}</td>
+        <td>Q{{ item.quarter }}</td>
         <td>{{ item.age }}</td>
         <td>{{ formatCurrency(item.principal) }}</td>
         <td>{{ formatCurrency(item.futureValue) }}</td>
@@ -99,7 +101,6 @@ new Vue({
       return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
     },
     calculate() {
-      // 校验输入
       if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 || this.years <= 0 || this.currentAge < 0 || this.startYear < 1900) {
         alert('请输入合理的正数！');
         return;
@@ -107,24 +108,49 @@ new Vue({
 
       this.results = [];
 
-      const r = this.annualRate / 100;
-      const monthlyPrincipal = this.monthlyInvestment * 12;
-      let futureValue = this.initialInvestment; // 第0年末未来价值 = 初始投入
-      for(let i = 1; i <= this.years; i++) {
-        // 本金累计 = 初始投入 + 每年投入 * 年数
-        const principal = this.initialInvestment + monthlyPrincipal * i;
+      const r = this.annualRate / 100;          // 年利率
+      const quarterlyRate = Math.pow(1 + r, 1/4) - 1; // 季度复利率
+      const monthsPerQuarter = 3;
+      const monthlyInvestment = this.monthlyInvestment;
+      const initialInvestment = this.initialInvestment;
+      const totalQuarters = this.years * 4;
+      const currentAge = this.currentAge;
+      const startYear = this.startYear;
 
-        // 第i年，先加当年本金，再增长收益
-        futureValue = (futureValue + monthlyPrincipal) * (1 + r);
+      // 初始化未来价值为初始投入（第0季度末）
+      let futureValue = initialInvestment;
+
+      for(let q = 1; q <= totalQuarters; q++) {
+        const year = startYear + Math.floor((q - 1) / 4);
+        const quarter = ((q - 1) % 4) + 1;
+        const age = currentAge + Math.floor((q - 1) / 4);
+
+        const totalMonthsInvested = q * monthsPerQuarter;
+        const principal = initialInvestment + monthlyInvestment * totalMonthsInvested;
+
+        const principalAddedThisQuarter = monthlyInvestment * monthsPerQuarter;
+
+        if (q === 1) {
+          // 第1季度刚投入本金，收益为0，未来价值=初始投入+本金
+          futureValue = initialInvestment + principalAddedThisQuarter;
+        } else {
+          // 从第2季度开始，先让上季度本金产生收益，再加本季度本金
+          futureValue = futureValue * (1 + quarterlyRate) + principalAddedThisQuarter;
+        }
 
         const profit = futureValue - principal;
         const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
-        const cagr = principal > 0 ? Math.pow(totalReturnRatio, 1 / i) - 1 : 0;
-        const year = this.startYear + i - 1;
-        const age = this.currentAge + i - 1;
+
+        // 年化收益率仍按完整年数计算，季度内同一年份显示相同值
+        let cagr = 0;
+        const fullYearsElapsed = Math.floor(q / 4);
+        if (principal > 0 && fullYearsElapsed > 0) {
+          cagr = Math.pow(totalReturnRatio, 1 / fullYearsElapsed) - 1;
+        }
 
         this.results.push({
           year,
+          quarter,
           age,
           principal,
           futureValue,
