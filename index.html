@@ -10,8 +10,12 @@
   label { display: block; margin-top: 1rem; }
   input { width: 100%; padding: 0.4rem 0.6rem; font-size: 1rem; }
   button { margin-top: 1rem; padding: 0.6rem 1.2rem; font-size: 1rem; cursor: pointer; }
-  table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: right; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 0.5rem;
+    text-align: center; /* 全部居中 */
+  }
   th { background-color: #f0f0f0; }
   th:first-child, td:first-child,
   th:nth-child(2), td:nth-child(2),
@@ -19,10 +23,28 @@
   th:nth-child(4), td:nth-child(4) {
     text-align: center;
   }
+  /* 表格隔年两色交替 */
   tbody tr.year-color-0 { background-color: #ffffff; }
-  tbody tr.year-color-1 { background-color: #f9f9f9; }
-  tbody tr.year-color-2 { background-color: #e9f7ff; }
-  tbody tr.year-color-3 { background-color: #fff9e6; }
+  tbody tr.year-color-1 { background-color: #e8f0fe; }
+
+  /* 高亮样式 */
+  .highlight-report {
+    background-color: #fffae6;
+    border-left: 4px solid #f39c12;
+    padding: 0.3rem 0.5rem;
+    margin: 0.5rem 0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  .highlight-report.active {
+    background-color: #f39c12;
+    color: white;
+    font-weight: bold;
+  }
+  tbody tr.highlight-row {
+    background-color: #ffeaa7 !important;
+    transition: background-color 0.3s;
+  }
 </style>
 </head>
 <body>
@@ -54,7 +76,25 @@
   </label>
   <button @click="calculate">确定</button>
 
-  <table v-if="results.length">
+  <!-- 报告文本 -->
+  <div v-if="results.length && reports.length" style="margin-top:1.5rem;">
+    <h3>收益突破报告：</h3>
+    <div>
+      <div
+        v-for="(report, index) in reports"
+        :key="report.id"
+        :class="['highlight-report', selectedReportId === report.id ? 'active' : '']"
+        @click="scrollToRow(report.id)"
+        tabindex="0"
+        @keyup.enter="scrollToRow(report.id)"
+        role="button"
+        :aria-pressed="selectedReportId === report.id">
+        {{ report.text }}
+      </div>
+    </div>
+  </div>
+
+  <table v-if="results.length" style="margin-top:0.5rem;">
     <thead>
       <tr>
         <th>年份</th>
@@ -68,13 +108,21 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="item in results" :key="item.year + '-' + item.quarter" :class="'year-color-' + ((item.year - startYear) % 4)">
+      <tr
+        v-for="item in results"
+        :key="item.year + '-' + item.quarter"
+        :id="'row-' + item.year + '-' + item.quarter"
+        :class="[
+          'year-color-' + ((item.year - startYear) % 2),
+          selectedReportId === ('row-' + item.year + '-' + item.quarter) ? 'highlight-row' : ''
+        ]"
+      >
         <td>{{ item.year }}</td>
         <td>Q{{ item.quarter }}</td>
         <td>{{ item.age }}</td>
-        <td>{{ formatCurrency(item.principal) }}</td>
-        <td>{{ formatCurrency(item.futureValue) }}</td>
-        <td>{{ formatCurrency(item.profit) }}</td>
+        <td v-html="formatCurrencyWithWan(item.principal)"></td>
+        <td v-html="formatCurrencyWithWan(item.futureValue)"></td>
+        <td v-html="formatCurrencyWithWan(item.profit)"></td>
         <td>{{ item.totalReturnRatio.toFixed(2) }}倍</td>
         <td>{{ (item.cagr * 100).toFixed(2) }}</td>
       </tr>
@@ -87,16 +135,25 @@ new Vue({
   el: '#app',
   data() {
     return {
-      initialInvestment: 5000,
-      monthlyInvestment: 800,
-      annualRate: 20,
+      initialInvestment: 0,
+      monthlyInvestment: 1000,
+      annualRate: 18,
       years: 30,
       currentAge: 29,
       startYear: 2025,
-      results: []
+      results: [],
+      reports: [],         // 突破报告数组
+      selectedReportId: null // 当前高亮报告id
     }
   },
   methods: {
+    // 格式化数字为带“万”单位的括号简写
+    formatCurrencyWithWan(num) {
+      const formatted = num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+      // 转换成万，保留两位小数
+      const wan = (num / 10000).toFixed(2);
+      return `${formatted}<br>（约${wan}万）`;
+    },
     formatCurrency(num) {
       return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
     },
@@ -107,6 +164,8 @@ new Vue({
       }
 
       this.results = [];
+      this.reports = [];
+      this.selectedReportId = null;
 
       const r = this.annualRate / 100;          // 年利率
       const quarterlyRate = Math.pow(1 + r, 1/4) - 1; // 季度复利率
@@ -116,9 +175,6 @@ new Vue({
       const totalQuarters = this.years * 4;
       const currentAge = this.currentAge;
       const startYear = this.startYear;
-
-      // 初始化未来价值为初始投入（第0季度末）
-      let futureValue = initialInvestment;
 
       for(let q = 1; q <= totalQuarters; q++) {
         const year = startYear + Math.floor((q - 1) / 4);
@@ -130,18 +186,17 @@ new Vue({
 
         const principalAddedThisQuarter = monthlyInvestment * monthsPerQuarter;
 
+        let futureValue = 0;
         if (q === 1) {
-          // 第1季度刚投入本金，收益为0，未来价值=初始投入+本金
           futureValue = initialInvestment + principalAddedThisQuarter;
         } else {
-          // 从第2季度开始，先让上季度本金产生收益，再加本季度本金
-          futureValue = futureValue * (1 + quarterlyRate) + principalAddedThisQuarter;
+          const lastFV = this.results[q - 2] ? this.results[q - 2].futureValue : initialInvestment;
+          futureValue = lastFV * (1 + quarterlyRate) + principalAddedThisQuarter;
         }
 
         const profit = futureValue - principal;
         const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
 
-        // 年化收益率仍按完整年数计算，季度内同一年份显示相同值
         let cagr = 0;
         const fullYearsElapsed = Math.floor(q / 4);
         if (principal > 0 && fullYearsElapsed > 0) {
@@ -156,9 +211,107 @@ new Vue({
           futureValue,
           profit,
           totalReturnRatio,
-          cagr
+          cagr,
+          investYear: Math.floor((q - 1) / 4) + 1 // 计算“开始投资第x年”
         });
       }
+
+      // 生成报告文本 - 多维度突破检测
+
+      // 收益倍数突破阈值（2倍、10倍、50倍、100倍、500倍、1000倍、5000倍、10000倍...）
+      const returnBreakpoints = this.generateReturnBreakpoints();
+
+      // 收益金额突破阈值（10万、50万、100万、500万、1000万、5000万、1亿...）
+      const moneyBreakpoints = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
+
+      // 三个金额字段，均检测突破金额阈值
+      // 记录已突破的倍数和金额，避免重复报告
+      let brokenReturns = new Set();
+      let brokenMoney = { principal: new Set(), futureValue: new Set(), profit: new Set() };
+
+      this.results.forEach(item => {
+        const id = `row-${item.year}-${item.quarter}`;
+
+        // 1. 收益倍数突破报告
+        for (const bp of returnBreakpoints) {
+          if (item.totalReturnRatio >= bp && !brokenReturns.has(bp)) {
+            brokenReturns.add(bp);
+            const text = `在你开始投资的第 ${item.investYear} 年（${item.year}）第 ${item.quarter} 季度，收益倍数突破 ${bp} 倍，累计收益约 ${this.formatCurrency(item.profit)}（${(item.profit/10000).toFixed(0)}万）元，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+            this.reports.push({ id, text });
+            break; // 每季度只报告一个倍数突破，避免重复
+          }
+        }
+
+        // 2. 三列金额突破报告（累计本金、未来价值、收益部分）
+        // 额外处理收益部分首次超过1万的要求
+        const moneyFields = ['principal', 'futureValue', 'profit'];
+        const fieldNames = {
+          principal: '累计本金',
+          futureValue: '未来价值',
+          profit: '收益部分',
+        };
+        moneyFields.forEach(field => {
+          for (const bp of moneyBreakpoints) {
+            // 对收益部分增加1万的特别判断（即1万也是突破）
+            if (field === 'profit' && bp === 100000) {
+              // 当收益部分超过1万（10000）且没报过10000这个阈值，要报告
+              if (item.profit >= 10000 && !brokenMoney.profit.has(10000)) {
+                brokenMoney.profit.add(10000);
+                const wanStr = (item.profit/10000).toFixed(0);
+                const text = `在你开始投资的第 ${item.investYear} 年（${item.year}）第 ${item.quarter} 季度，收益部分首次突破 1 万元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+                this.reports.push({ id, text });
+                break;
+              }
+            }
+            // 对其它阈值正常判断
+            if (item[field] >= bp && !brokenMoney[field].has(bp)) {
+              brokenMoney[field].add(bp);
+              const wanStr = (item[field]/10000).toFixed(0);
+              const text = `在你开始投资的第 ${item.investYear} 年（${item.year}）第 ${item.quarter} 季度，${fieldNames[field]}突破 ${bp.toLocaleString()} 元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+              this.reports.push({ id, text });
+              break; // 每季度每字段只报告一个阈值突破
+            }
+          }
+        });
+      });
+
+      // 按年份季度顺序排序报告，方便阅读
+      this.reports.sort((a,b) => {
+        const [aYear, aQuarter] = a.id.replace('row-', '').split('-').map(Number);
+        const [bYear, bQuarter] = b.id.replace('row-', '').split('-').map(Number);
+        return aYear !== bYear ? aYear - bYear : aQuarter - bQuarter;
+      });
+
+      // 默认选中第一个报告并高亮
+      if (this.reports.length > 0) {
+        this.selectedReportId = this.reports[0].id;
+        this.$nextTick(() => {
+          this.scrollToRow(this.selectedReportId);
+        });
+      }
+    },
+    // 生成收益倍数突破阈值（2倍、10倍、50倍、100倍、500倍、1000倍、5000倍、10000倍...）
+    generateReturnBreakpoints() {
+      const basePoints = [2,10,50,100,500,1000];
+      const extendedPoints = [];
+      let val = 5000;
+      while(val <= 100000) {
+        extendedPoints.push(val);
+        val = val < 10000 ? 10000 : val * 2;
+      }
+      return basePoints.concat(extendedPoints);
+    },
+    scrollToRow(id) {
+      this.selectedReportId = id;
+      this.$nextTick(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          const offset = el.getBoundingClientRect().top + window.pageYOffset - 80;
+          window.scrollTo({ top: offset, behavior: 'smooth' });
+          el.setAttribute('tabindex', '-1');
+          el.focus();
+        }
+      });
     }
   }
 });
