@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>复利定投计算器（含初始投入）</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 720px; margin: auto; padding: 1rem; }
+  label { display: block; margin-top: 1rem; }
+  input { width: 100%; padding: 0.4rem 0.6rem; font-size: 1rem; }
+  button { margin-top: 1rem; padding: 0.6rem 1.2rem; font-size: 1rem; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: right; }
+  th { background-color: #f0f0f0; }
+  th:first-child, td:first-child,
+  th:nth-child(2), td:nth-child(2),
+  th:nth-child(3), td:nth-child(3),
+  th:nth-child(4), td:nth-child(4) {
+    text-align: center;
+  }
+  tbody tr.year-color-0 { background-color: #ffffff; }
+  tbody tr.year-color-1 { background-color: #f9f9f9; }
+  tbody tr.year-color-2 { background-color: #e9f7ff; }
+  tbody tr.year-color-3 { background-color: #fff9e6; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h2>复利定投计算器（含初始投入资金）</h2>
+  <label>
+    初始投入资金（元）:
+    <input type="number" v-model.number="initialInvestment" min="0" step="0.01" />
+  </label>
+  <label>
+    每月定投金额（元）:
+    <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" />
+  </label>
+  <label>
+    预估年化收益率（%）:
+    <input type="number" v-model.number="annualRate" min="0" step="0.01" />
+  </label>
+  <label>
+    投资年限（年）:
+    <input type="number" v-model.number="years" min="1" step="1" />
+  </label>
+  <label>
+    当前年龄（岁）:
+    <input type="number" v-model.number="currentAge" min="0" step="1" />
+  </label>
+  <label>
+    开始投资年份:
+    <input type="number" v-model.number="startYear" min="1900" step="1" />
+  </label>
+  <button @click="calculate">确定</button>
+
+  <table v-if="results.length">
+    <thead>
+      <tr>
+        <th>年份</th>
+        <th>年龄</th>
+        <th>累计本金（元）</th>
+        <th>未来价值（元）</th>
+        <th>收益部分（元）</th>
+        <th>总收益倍数</th>
+        <th>年化收益率（%）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="item in results" :key="item.year" :class="'year-color-' + ((item.year - startYear) % 4)">
+        <td>{{ item.year }}</td>
+        <td>{{ item.age }}</td>
+        <td>{{ formatCurrency(item.principal) }}</td>
+        <td>{{ formatCurrency(item.futureValue) }}</td>
+        <td>{{ formatCurrency(item.profit) }}</td>
+        <td>{{ item.totalReturnRatio.toFixed(2) }}倍</td>
+        <td>{{ (item.cagr * 100).toFixed(2) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+new Vue({
+  el: '#app',
+  data() {
+    return {
+      initialInvestment: 5000,
+      monthlyInvestment: 800,
+      annualRate: 20,
+      years: 30,
+      currentAge: 29,
+      startYear: 2025,
+      results: []
+    }
+  },
+  methods: {
+    formatCurrency(num) {
+      return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    },
+    calculate() {
+      // 校验输入
+      if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 || this.years <= 0 || this.currentAge < 0 || this.startYear < 1900) {
+        alert('请输入合理的正数！');
+        return;
+      }
+
+      this.results = [];
+
+      const r = this.annualRate / 100;
+      const monthlyPrincipal = this.monthlyInvestment * 12;
+      let futureValue = this.initialInvestment; // 第0年末未来价值 = 初始投入
+      for(let i = 1; i <= this.years; i++) {
+        // 本金累计 = 初始投入 + 每年投入 * 年数
+        const principal = this.initialInvestment + monthlyPrincipal * i;
+
+        // 第i年，先加当年本金，再增长收益
+        futureValue = (futureValue + monthlyPrincipal) * (1 + r);
+
+        const profit = futureValue - principal;
+        const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
+        const cagr = principal > 0 ? Math.pow(totalReturnRatio, 1 / i) - 1 : 0;
+        const year = this.startYear + i - 1;
+        const age = this.currentAge + i - 1;
+
+        this.results.push({
+          year,
+          age,
+          principal,
+          futureValue,
+          profit,
+          totalReturnRatio,
+          cagr
+        });
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
