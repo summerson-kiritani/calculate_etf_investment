@@ -283,13 +283,13 @@ new Vue({
         return aYear !== bYear ? aYear - bYear : aQuarter - bQuarter;
       });
 
-      // 默认选中第一个报告并高亮
-      if (this.reports.length > 0) {
-        this.selectedReportId = this.reports[0].id;
-        this.$nextTick(() => {
-          this.scrollToRow(this.selectedReportId);
-        });
-      }
+      // // 默认选中第一个报告并高亮
+      // if (this.reports.length > 0) {
+      //   this.selectedReportId = this.reports[0].id;
+      //   this.$nextTick(() => {
+      //     this.scrollToRow(this.selectedReportId);
+      //   });
+      // }
     },
     // 生成收益倍数突破阈值（2倍、10倍、50倍、100倍、500倍、1000倍、5000倍、10000倍...）
     generateReturnBreakpoints() {
