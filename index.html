@@ -75,6 +75,7 @@
     <input type="number" v-model.number="startYear" min="1900" step="1" />
   </label>
   <button @click="calculate">确定</button>
+  <button v-if="results.length" @click="exportCSV" style="margin-left: 1rem;">导出CSV</button>
 
   <!-- 报告文本 -->
   <div v-if="results.length && reports.length" style="margin-top:1.5rem;">
@@ -312,6 +313,65 @@ new Vue({
           el.focus();
         }
       });
+    },
+    exportCSV() {
+      if (!this.results.length) {
+        alert('没有数据可导出！');
+        return;
+      }
+      // CSV标题行
+      const headers = [
+        '年份',
+        '季度',
+        '年龄',
+        '累计本金（元）',
+        '未来价值（元）',
+        '收益部分（元）',
+        '总收益倍数',
+        '年化收益率（%）'
+      ];
+
+      // 生成CSV数据行
+      const rows = this.results.map(item => {
+        return [
+          item.year,
+          'Q' + item.quarter,
+          item.age,
+          item.principal.toFixed(2),
+          item.futureValue.toFixed(2),
+          item.profit.toFixed(2),
+          item.totalReturnRatio.toFixed(2),
+          (item.cagr * 100).toFixed(2)
+        ];
+      });
+
+      // 拼接CSV字符串（逗号分隔，换行符）
+      // 处理字段中可能的逗号或换行符，使用双引号包裹
+      function safeCSVField(field) {
+        const fieldStr = String(field);
+        if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
+          return `"${fieldStr.replace(/"/g, '""')}"`;
+        }
+        return fieldStr;
+      }
+
+      let csvContent = headers.map(safeCSVField).join(',') + '\r\n';
+      rows.forEach(row => {
+        csvContent += row.map(safeCSVField).join(',') + '\r\n';
+      });
+
+      // 创建下载链接并自动点击
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      const fileName = `复利定投计算结果_${this.startYear}_${this.years}年.csv`;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     }
   }
 });
