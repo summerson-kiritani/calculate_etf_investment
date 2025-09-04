@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>复利定投模拟（含卖出对比及复利倍数）</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 720px;
+    margin: auto;
+    padding: 1rem;
+    word-break: break-word;
+  }
+
+  label {
+    display: block;
+    margin-top: 1rem;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+
+  button {
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #app > button {
+    margin-right: 1rem;
+    margin-left: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 0.3rem 0.4rem;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.9rem;
+  }
+
+  th {
+    background-color: #f0f0f0;
+  }
+
+  tbody tr.year-color-0 {
+    background-color: #ffffff;
+  }
+
+  tbody tr.year-color-1 {
+    background-color: #e8f0fe;
+  }
+
+  .highlight-report {
+    background-color: #fffae6;
+    border-left: 4px solid #f39c12;
+    padding: 0.3rem 0.5rem;
+    margin: 0.5rem 0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .highlight-report.active {
+    background-color: #f39c12;
+    color: white;
+    font-weight: bold;
+  }
+
+  tbody tr.highlight-row {
+    background-color: #ffeaa7 !important;
+    transition: background-color 0.3s;
+  }
+
+  @media (max-width: 480px) {
+    body {
+      padding: 0.5rem;
+    }
+    input {
+      font-size: 0.9rem;
+      padding: 0.3rem 0.5rem;
+    }
+    button {
+      width: 100%;
+      margin: 0.5rem 0 0 0;
+      font-size: 1rem;
+    }
+    #app > button {
+      margin-right: 0;
+      margin-left: 0;
+    }
+    table {
+      font-size: 0.85rem;
+    }
+    th, td {
+      padding: 0.2rem 0.3rem;
+      font-size: 0.8rem;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <h2>复利定投模拟（含卖出对比及复利倍数）</h2>
+
+  <label>
+    历史累计本金（万元）:
+    <input type="number" v-model.number="principalCumulative" min="0" step="0.01" />
+  </label>
+  <label>
+    历史累计收益（万元）:
+    <input type="number" v-model.number="profitCumulative" min="0" step="0.01" />
+  </label>
+  <label>
+    当前总资产（万元）:
+    <input type="number" v-model.number="totalValue" min="0" step="0.01" />
+  </label>
+  <label>
+    当前复利倍数:
+    <input type="number" v-model.number="currentCompoundMultiple" min="0" step="0.0001" />
+  </label>
+  <label>
+    已投资年限（年）:
+    <input type="number" v-model.number="investedYears" min="1" step="1" />
+  </label>
+  <label>
+    当前年龄（岁）:
+    <input type="number" v-model.number="currentAge" min="0" step="1" />
+  </label>
+  <label>
+    预估年化收益率（%）:
+    <input type="number" v-model.number="estimatedAnnualReturn" min="0" step="0.01" />
+  </label>
+  <label>
+    继续定投年限（年）:
+    <input type="number" v-model.number="continueYears" min="1" step="1" />
+  </label>
+  <label>
+    继续定投起始年份:
+    <input type="number" v-model.number="continueStartYear" min="1900" step="1" />
+  </label>
+  <label>
+    每月定投金额（元）:
+    <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" />
+  </label>
+  <label>
+    每年卖出金额（万元）:
+    <input type="number" v-model.number="annualWithdrawal" min="0" step="0.01" />
+  </label>
+
+  <button @click="calculate">计算</button>
+  <button v-if="results" @click="exportCSV">导出CSV</button>
+
+  <div v-if="results">
+    <h3>模拟结果对比</h3>
+
+    <h4>不卖出情况</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>年份</th>
+          <th>年龄</th>
+          <th>年初资产（万元）</th>
+          <th>卖出金额（万元）</th>
+          <th>当年定投本金（万元）</th>
+          <th>年末资产（万元）</th>
+          <th>累计年化收益率（%）</th>
+          <th>总收益倍数</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(item, idx) in results.noWithdrawal.history" :key="'no-wd-'+idx" :class="'year-color-' + (idx % 2)">
+          <td>{{ continueStartYear + item.year - 1 }}</td>
+          <td>{{ item.age }}</td>
+          <td>{{ item.startAsset.toFixed(4) }}</td>
+          <td>0.00</td>
+          <td>{{ item.investPrincipal.toFixed(4) }}</td>
+          <td>{{ item.endAsset.toFixed(4) }}</td>
+          <td>{{ item.impliedAnnualReturn.toFixed(2) }}</td>
+          <td>{{ item.compoundMultiple.toFixed(4) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4 style="margin-top:2rem;">每年卖出情况</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>年份</th>
+          <th>年龄</th>
+          <th>年初资产（万元）</th>
+          <th>卖出金额（万元）</th>
+          <th>当年定投本金（万元）</th>
+          <th>年末资产（万元）</th>
+          <th>累计年化收益率（%）</th>
+          <th>总收益倍数</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(item, idx) in results.withWithdrawal.history" :key="'wd-'+idx" :class="'year-color-' + (idx % 2)">
+          <td>{{ continueStartYear + item.year - 1 }}</td>
+          <td>{{ item.age }}</td>
+          <td>{{ item.startAsset.toFixed(4) }}</td>
+          <td>{{ item.withdrawal.toFixed(4) }}</td>
+          <td>{{ item.investPrincipal.toFixed(4) }}</td>
+          <td>{{ item.endAsset.toFixed(4) }}</td>
+          <td>{{ item.impliedAnnualReturn.toFixed(2) }}</td>
+          <td>{{ item.compoundMultiple.toFixed(4) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:1.5rem;">
+      <p><strong>累计本金（含未来定投本金）:</strong></p>
+      <p>不卖出: {{ results.noWithdrawal.totalPrincipal.toFixed(4) }} 万元</p>
+      <p>每年卖出: {{ results.withWithdrawal.totalPrincipal.toFixed(4) }} 万元</p>
+
+      <p><strong>期末资产:</strong></p>
+      <p>不卖出: {{ results.noWithdrawal.finalAsset.toFixed(4) }} 万元</p>
+      <p>每年卖出: {{ results.withWithdrawal.finalAsset.toFixed(4) }} 万元</p>
+
+      <p><strong>复利倍数:</strong></p>
+      <p>不卖出复利倍数: {{ results.noWithdrawal.compoundMultiple.toFixed(4) }}</p>
+      <p>每年卖出复利倍数: {{ results.withWithdrawal.compoundMultiple.toFixed(4) }}</p>
+
+      <p style="margin-top:1rem; font-weight: bold;" v-if="results.withWithdrawal.compoundMultiple < results.noWithdrawal.compoundMultiple">
+        卖出资金降低了复利倍数，因为卖出减少了资产规模。
+      </p>
+      <p style="margin-top:1rem; font-weight: bold;" v-else>
+        卖出没有降低复利倍数，属于极少见情况。
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+new Vue({
+  el: '#app',
+  data() {
+    return {
+      principalCumulative: 26.70,
+      profitCumulative: 248.49,
+      totalValue: 275.19,
+      currentCompoundMultiple: 10.31,
+      investedYears: 23,
+      currentAge: 51,
+      estimatedAnnualReturn: 18,
+      continueYears: 20,
+      continueStartYear: 2047,
+      monthlyInvestment: 1000,
+      annualWithdrawal: 10,
+      results: null
+    };
+  },
+  methods: {
+    calculate() {
+      if (this.principalCumulative < 0 || this.totalValue < 0 || this.currentCompoundMultiple <= 0 || this.investedYears < 1 ||
+          this.currentAge < 0 || this.estimatedAnnualReturn <= 0 || this.continueYears < 1 || this.monthlyInvestment < 0 || this.annualWithdrawal < 0 ||
+          this.continueStartYear < 1900) {
+        alert('请输入合理的正数！');
+        return;
+      }
+
+      const params = {
+        principalCumulative: this.principalCumulative,
+        profitCumulative: this.profitCumulative,
+        totalValue: this.totalValue,
+        currentCompoundMultiple: this.currentCompoundMultiple,
+        investedYears: this.investedYears,
+        currentAge: this.currentAge,
+        estimatedAnnualReturn: this.estimatedAnnualReturn,
+        continueYears: this.continueYears,
+        monthlyInvestment: this.monthlyInvestment,
+        annualWithdrawal: this.annualWithdrawal
+      };
+
+      const yearlySim = (params, withdrawalEachYear) => {
+        let asset = params.totalValue;
+        let age = params.currentAge;
+        let totalAdditionalPrincipal = 0;
+        const history = [];
+
+        for (let year = 1; year <= params.continueYears; year++) {
+          age++;
+          let startAsset = asset;
+
+          asset -= withdrawalEachYear;
+          if (asset < 0) {
+            asset = 0;
+            history.push({
+              year,
+              age,
+              startAsset,
+              withdrawal: withdrawalEachYear,
+              investPrincipal: 0,
+              endAsset: 0,
+              impliedAnnualReturn: 0,
+              compoundMultiple: 0
+            });
+            break;
+          }
+
+          let rMonth = params.estimatedAnnualReturn / 100 / 12;
+          let months = 12;
+          let investmentFutureValue = params.monthlyInvestment * (Math.pow(1 + rMonth, months) - 1) / rMonth / 10000;
+          let investmentPrincipal = params.monthlyInvestment * 12 / 10000;
+
+          asset += investmentFutureValue;
+          totalAdditionalPrincipal += investmentPrincipal;
+
+          asset = asset * (1 + params.estimatedAnnualReturn / 100);
+
+          let totalPrincipal = params.principalCumulative + totalAdditionalPrincipal;
+          let compoundMultiple = totalPrincipal > 0 ? asset / totalPrincipal : 0;
+
+          let totalYears = params.investedYears + year;
+          let impliedAnnualReturn = compoundMultiple > 0 ? Math.pow(compoundMultiple, 1 / totalYears) - 1 : 0;
+
+          history.push({
+            year,
+            age,
+            startAsset,
+            withdrawal: withdrawalEachYear,
+            investPrincipal: investmentPrincipal,
+            endAsset: asset,
+            impliedAnnualReturn: impliedAnnualReturn * 100,
+            compoundMultiple
+          });
+        }
+
+        return {
+          finalAsset: asset,
+          totalPrincipal: params.principalCumulative + totalAdditionalPrincipal,
+          compoundMultiple: asset / (params.principalCumulative + totalAdditionalPrincipal),
+          history
+        };
+      };
+
+      const noWithdrawal = yearlySim(params, 0);
+      const withWithdrawal = yearlySim(params, params.annualWithdrawal);
+
+      this.results = {
+        noWithdrawal,
+        withWithdrawal
+      };
+    },
+    exportCSV() {
+      if (!this.results || !this.results.noWithdrawal || !this.results.noWithdrawal.history.length) {
+        alert('没有数据可导出！');
+        return;
+      }
+      const headers = [
+        '年份',
+        '年龄',
+        '年初资产（万元）',
+        '卖出金额（万元）',
+        '当年定投本金（万元）',
+        '年末资产（万元）',
+        '累计年化收益率（%）',
+        '总收益倍数'
+      ];
+
+      function safeCSVField(field) {
+        const fieldStr = String(field);
+        if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
+          return `"${fieldStr.replace(/"/g, '""')}"`;
+        }
+        return fieldStr;
+      }
+
+      function buildRows(history, isWithWithdrawal, startYear) {
+        return history.map(item => {
+          return [
+            startYear + item.year - 1,
+            item.age,
+            item.startAsset.toFixed(4),
+            isWithWithdrawal ? item.withdrawal.toFixed(4) : '0.00',
+            item.investPrincipal.toFixed(4),
+            item.endAsset.toFixed(4),
+            item.impliedAnnualReturn.toFixed(2),
+            item.compoundMultiple.toFixed(4)
+          ];
+        });
+      }
+
+      let csvContent = '';
+      csvContent += '不卖出模拟结果\r\n';
+      csvContent += headers.map(safeCSVField).join(',') + '\r\n';
+      csvContent += buildRows(this.results.noWithdrawal.history, false, this.continueStartYear).map(row => row.map(safeCSVField).join(',')).join('\r\n');
+      csvContent += '\r\n';
+      csvContent += '每年卖出模拟结果\r\n';
+      csvContent += headers.map(safeCSVField).join(',') + '\r\n';
+      csvContent += buildRows(this.results.withWithdrawal.history, true, this.continueStartYear).map(row => row.map(safeCSVField).join(',')).join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `复利定投模拟_${new Date().toISOString().slice(0,10)}.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  }
+});
+</script>
+</body>
+</html>
