@@ -145,6 +145,15 @@
     开始投资年份:
     <input type="number" v-model.number="startYear" min="1900" step="1" />
   </label>
+  <!-- 新增字段 -->
+  <label>
+    开始退休年龄（岁）:
+    <input type="number" v-model.number="retirementAge" min="0" step="1" />
+  </label>
+  <label>
+    每年质押资产百分比（%）:
+    <input type="number" v-model.number="pledgePercent" min="0" max="100" step="0.01" />
+  </label>
   <button @click="calculate">确定</button>
   <button v-if="results.length" @click="exportCSV">导出CSV</button>
 
@@ -169,14 +178,15 @@
   <table v-if="results.length" style="margin-top:0.5rem;">
     <thead style="position: sticky; top: 0; background: white; z-index: 1;">
       <tr>
-        <th>年份</th>
+        <th width="35">年份</th>
         <th>季度</th>
         <th>年龄</th>
         <th>累计本金（元）</th>
         <th>未来价值（元）</th>
         <th>收益部分（元）</th>
         <th>总收益倍数</th>
-        <th>年化收益率（%）</th>
+        <th width="50">年化收益率（%）</th>
+        <th>质押资产金额（元）</th> <!-- 新增列 -->
       </tr>
     </thead>
     <tbody>
@@ -197,6 +207,7 @@
         <td v-html="formatCurrencyWithWan(item.profit)"></td>
         <td>{{ item.totalReturnRatio.toFixed(2) }}倍</td>
         <td>{{ (item.cagr * 100).toFixed(2) }}</td>
+        <td v-html="item.pledgedAmount > 0 ? formatCurrencyWithWan(item.pledgedAmount) : ''"></td> <!-- 仅退休年龄及以后显示 -->
       </tr>
     </tbody>
   </table>
@@ -213,6 +224,8 @@ new Vue({
       years: 30,
       currentAge: 29,
       startYear: 2025,
+      retirementAge: 50,   // 新增退休年龄默认值
+      pledgePercent: 2,   // 新增质押百分比默认值
       results: [],
       reports: [],         // 突破报告数组
       selectedReportId: null // 当前高亮报告id
@@ -230,8 +243,8 @@ new Vue({
       return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
     },
     calculate() {
-      if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 || this.years <= 0 || this.currentAge < 0 || this.startYear < 1900) {
-        alert('请输入合理的正数！');
+      if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 || this.years <= 0 || this.currentAge < 0 || this.startYear < 1900 || this.retirementAge < 0 || this.pledgePercent < 0 || this.pledgePercent > 100) {
+        alert('请输入合理的正数，且质押百分比在0-100之间！');
         return;
       }
 
@@ -247,6 +260,8 @@ new Vue({
       const totalQuarters = this.years * 4;
       const currentAge = this.currentAge;
       const startYear = this.startYear;
+      const retirementAge = this.retirementAge;
+      const pledgePercent = this.pledgePercent / 100;
 
       for(let q = 1; q <= totalQuarters; q++) {
         const year = startYear + Math.floor((q - 1) / 4);
@@ -275,6 +290,12 @@ new Vue({
           cagr = Math.pow(totalReturnRatio, 1 / fullYearsElapsed) - 1;
         }
 
+        // 计算退休后质押资产数额，只有退休年龄及以后才显示
+        let pledgedAmount = 0;
+        if (age >= retirementAge) {
+          pledgedAmount = futureValue * pledgePercent;
+        }
+
         this.results.push({
           year,
           quarter,
@@ -284,7 +305,8 @@ new Vue({
           profit,
           totalReturnRatio,
           cagr,
-          investYear: Math.floor((q - 1) / 4) + 1 // 计算“开始投资第x年”
+          investYear: Math.floor((q - 1) / 4) + 1, // 计算“开始投资第x年”
+          pledgedAmount
         });
       }
 
@@ -399,7 +421,8 @@ new Vue({
         '未来价值（元）',
         '收益部分（元）',
         '总收益倍数',
-        '年化收益率（%）'
+        '年化收益率（%）',
+        '质押资产金额（元）'  // 新增列
       ];
 
       // 生成CSV数据行
@@ -412,7 +435,8 @@ new Vue({
           item.futureValue.toFixed(2),
           item.profit.toFixed(2),
           item.totalReturnRatio.toFixed(2),
-          (item.cagr * 100).toFixed(2)
+          (item.cagr * 100).toFixed(2),
+          item.pledgedAmount > 0 ? item.pledgedAmount.toFixed(2) : ''
         ];
       });
 
