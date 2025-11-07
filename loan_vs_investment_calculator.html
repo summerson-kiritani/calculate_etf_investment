@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>信贷与定投收益计算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    form {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 1em;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2em;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .formula {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      line-height: 1.5em;
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>信贷与定投收益计算器</h1>
+    <form @submit.prevent="calculate">
+      <label for="loanRate">贷款年利率（%）</label>
+      <input id="loanRate" type="number" v-model.number="loanRate" min="0" step="0.01" required />
+
+      <label for="monthlyCashFlow">每月可用还款金额（元）</label>
+      <input id="monthlyCashFlow" type="number" v-model.number="monthlyCashFlow" min="1" step="1" required />
+
+      <label for="loanTerm">贷款期限（年）</label>
+      <input id="loanTerm" type="number" v-model.number="loanTerm" min="1" step="1" required />
+
+      <label for="fundRate">基金年化收益率（%）</label>
+      <input id="fundRate" type="number" v-model.number="fundRate" min="0" step="0.01" required />
+
+      <button type="submit">计算</button>
+    </form>
+
+    <div v-if="calculated">
+      <table>
+        <thead>
+          <tr>
+            <th>方案</th>
+            <th>投入现金流（元）</th>
+            <th>{{loanTerm}}年后基金价值（元）</th>
+            <th>净收益（元）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>借贷一次性投入</td>
+            <td>{{ formatNumber(totalLoanRepayment) }} (还款总额)</td>
+            <td>{{ formatNumber(fundValueLumpSum) }}</td>
+            <td>{{ formatNumber(netProfitLumpSum) }}</td>
+          </tr>
+          <tr>
+            <td>每月定投</td>
+            <td>{{ formatNumber(totalMonthlyInvestment) }} (累计投入)</td>
+            <td>{{ formatNumber(fundValueMonthly) }}</td>
+            <td>{{ formatNumber(netProfitMonthly) }}</td>
+          </tr>
+          <tr style="font-weight: bold; background: #f0f9ff;">
+            <td>净收益差额</td>
+            <td colspan="2">—</td>
+            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-if="calculated" class="formula">
+贷款本金计算（等额本息）：
+P = M ÷ [ r(1+r)^n / ((1+r)^n - 1) ]
+
+其中：
+- M = 每月还款额 = {{ monthlyCashFlow }}
+- r = 月利率 = 年利率 / 12 = {{ loanRate }}% ÷ 12 = {{ monthlyLoanRate.toFixed(6) }}
+- n = 期数（月）= {{ loanTerm }} × 12 = {{ totalMonths }}
+
+计算：
+(1+r)^n = {{ pow1rN.toFixed(6) }}
+还款系数 = r × (1+r)^n / [ (1+r)^n - 1 ] = {{ repaymentFactor.toFixed(8) }}
+
+贷款本金 P = M ÷ 还款系数 = {{ monthlyCashFlow }} ÷ {{ repaymentFactor.toFixed(8) }} = {{ loanPrincipal.toFixed(2) }} 元
+
+---
+
+借款一次性投入基金后的7年后基金价值：
+FV = P × (1 + 基金年化收益率)^年数 = {{ loanPrincipal.toFixed(2) }} × (1 + {{ fundRate }}%)^{{ loanTerm }} = {{ fundValueLumpSum.toFixed(2) }} 元
+
+贷款总还款：
+{{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalLoanRepayment }} 元
+
+借贷方案真实净收益：
+基金价值 - 贷款总还款 = {{ fundValueLumpSum.toFixed(2) }} - {{ totalLoanRepayment }} = {{ netProfitLumpSum.toFixed(2) }} 元
+
+---
+
+每月定投基金价值计算：
+FV = P × [ (1 + r)^n - 1 ] ÷ r × (1 + r)
+
+其中：
+- P = 每月定投 = {{ monthlyCashFlow }}
+- r = 月基金收益率 = {{ monthlyFundRate.toFixed(6) }}
+- n = {{ totalMonths }}
+
+计算：
+(1 + r)^n = {{ pow1rN_Fund.toFixed(6) }}
+
+FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthlyFundRate.toFixed(6) }} × (1 + {{ monthlyFundRate.toFixed(6) }})
+= {{ fundValueMonthly.toFixed(2) }} 元
+
+累计投入本金：
+{{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalMonthlyInvestment }} 元
+
+定投方案净收益：
+基金价值 - 累计投入本金 = {{ fundValueMonthly.toFixed(2) }} - {{ totalMonthlyInvestment }} = {{ netProfitMonthly.toFixed(2) }} 元
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: "#app",
+      data: {
+        loanRate: 3,            // 年利率 %
+        monthlyCashFlow: 1500,  // 每月还款额 元
+        loanTerm: 7,            // 年
+        fundRate: 18,           // 年化收益率 %
+        calculated: false,
+        // 计算结果相关变量
+        loanPrincipal: 0,
+        totalMonths: 0,
+        monthlyLoanRate: 0,
+        pow1rN: 0,
+        repaymentFactor: 0,
+        totalLoanRepayment: 0,
+        fundValueLumpSum: 0,
+        netProfitLumpSum: 0,
+        monthlyFundRate: 0,
+        pow1rN_Fund: 0,
+        fundValueMonthly: 0,
+        totalMonthlyInvestment: 0,
+        netProfitMonthly: 0,
+      },
+      methods: {
+        calculate() {
+          // 基础数据
+          this.totalMonths = this.loanTerm * 12;
+          this.monthlyLoanRate = this.loanRate / 100 / 12;
+          this.monthlyFundRate = this.fundRate / 100 / 12;
+
+          // 计算 (1+r)^n
+          this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
+
+          // 还款系数
+          this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
+
+          // 贷款本金
+          this.loanPrincipal = this.monthlyCashFlow / this.repaymentFactor;
+
+          // 贷款总还款额
+          this.totalLoanRepayment = this.monthlyCashFlow * this.totalMonths;
+
+          // 一次性投入基金价值
+          this.fundValueLumpSum = this.loanPrincipal * Math.pow(1 + this.fundRate / 100, this.loanTerm);
+
+          // 净收益
+          this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
+
+          // 每月定投基金价值
+          this.pow1rN_Fund = Math.pow(1 + this.monthlyFundRate, this.totalMonths);
+          this.fundValueMonthly = this.monthlyCashFlow * ((this.pow1rN_Fund - 1) / this.monthlyFundRate) * (1 + this.monthlyFundRate);
+
+          // 累计投入本金
+          this.totalMonthlyInvestment = this.monthlyCashFlow * this.totalMonths;
+
+          // 定投净收益
+          this.netProfitMonthly = this.fundValueMonthly - this.totalMonthlyInvestment;
+
+          this.calculated = true;
+        },
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
+      },
+    });
+  </script>
+</body>
+</html>
