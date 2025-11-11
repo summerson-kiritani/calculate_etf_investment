@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>资产配置计算器（含年化收益与10年增长推演）</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 680px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    form {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+    input[type="number"], select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 1em;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button, .btn-remove {
+      margin-top: 15px;
+      padding: 8px 16px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    button:hover, .btn-remove:hover {
+      background: #66b1ff;
+    }
+    .btn-remove {
+      background: #e86c6c;
+      font-weight: 600;
+      font-size: 0.9em;
+      margin-left: 10px;
+      padding: 6px 12px;
+    }
+    .btn-remove:hover {
+      background: #f44336;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2em;
+      word-break: break-word;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .formula {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      line-height: 1.5em;
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre-wrap;
+      margin-bottom: 30px;
+      overflow-x: auto;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .note {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>资产配置计算器</h1>
+    <form @submit.prevent="onAddItem" class="section">
+      <label for="totalAmount">总资金（元）</label>
+      <input id="totalAmount" type="number" v-model.number="totalAmount" min="0" step="1" required />
+
+      <label for="assetSelect">选择资产类别</label>
+      <select id="assetSelect" v-model="selectedAssetKey" required>
+        <option disabled value="">请选择资产类别</option>
+        <option v-for="(asset, key) in availableAssets" :key="key" :value="key">
+          {{ asset.name }} （Beta: {{ asset.beta }}）
+        </option>
+      </select>
+
+      <label for="percentInput">配置比例（%）</label>
+      <input id="percentInput" type="number" v-model.number="inputPercent" min="0.01" max="100" step="0.01" required />
+
+      <label for="annualReturn">年化收益率（%）</label>
+      <input id="annualReturn" type="number" v-model.number="annualReturn" min="0" step="0.01" placeholder="请输入年化收益率" required />
+
+      <button type="submit">添加配置项</button>
+      <div class="note">* 请确保所有配置比例总和不超过100%</div>
+    </form>
+
+    <div v-if="allocationItems.length" class="section">
+      <table>
+        <thead>
+          <tr>
+            <th>资产类别</th>
+            <th>Beta</th>
+            <th>配置比例 (%)</th>
+            <th>配置金额（元）</th>
+            <th>年化收益率 (%)</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in allocationItems" :key="index">
+            <td>{{ item.name }}</td>
+            <td>{{ item.beta.toFixed(2) }}</td>
+            <td>{{ item.percent.toFixed(2) }}</td>
+            <td>{{ formatNumber(item.amount) }}</td>
+            <td>{{ item.annualReturn.toFixed(2) }}</td>
+            <td><button class="btn-remove" @click="removeItem(index)">删除</button></td>
+          </tr>
+          <tr style="font-weight: bold; background: #f0f9ff;">
+            <td>总计</td>
+            <td>{{ totalBeta.toFixed(3) }}</td>
+            <td>{{ totalPercent.toFixed(2) }}</td>
+            <td>{{ formatNumber(totalAmountAllocated) }}</td>
+            <td>组合加权年化收益率: {{ weightedAnnualReturn.toFixed(2) }}%</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      <button @click="calculate" style="width: 100%;">计算最终配置及10年推演</button>
+    </div>
+
+    <div v-if="calculated" class="section formula">
+计算公式：
+
+配置金额 = 总资金 × 配置比例
+
+资产组合整体 Beta = ∑ (各资产配置比例 × 资产 Beta)
+
+资产组合整体年化收益率 = ∑ (各资产配置比例 × 年化收益率)
+
+---
+
+具体计算：
+
+总资金 = {{ totalAmount.toLocaleString() }} 元
+
+配置明细：
+<template v-for="item in allocationItems">
+- {{ item.name }} 配置金额 = {{ totalAmount }} × {{ (item.percent/100).toFixed(4) }} = {{ item.amount.toFixed(2) }} 元，
+  Beta = {{ item.beta.toFixed(2) }}，年化收益率 = {{ item.annualReturn.toFixed(2) }}%
+</template>
+
+---
+
+总配置比例 = {{ totalPercent.toFixed(2) }} %
+
+组合整体 Beta = {{ totalBeta.toFixed(3) }}
+
+组合加权年化收益率 = {{ weightedAnnualReturn.toFixed(2) }} %
+    </div>
+
+    <div v-if="calculated && growthData.length" class="section">
+      <h2 style="text-align:center; margin-bottom: 12px;">10年资产配置价值推演</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>年份</th>
+            <th v-for="item in allocationItems" :key="item.key">{{ item.name }}（元）</th>
+            <th>组合总值（元）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(yearData, idx) in growthData" :key="idx">
+            <td>{{ yearData.year }}</td>
+            <td v-for="item in allocationItems" :key="item.key">{{ formatNumber(yearData.values[item.key]) }}</td>
+            <td>{{ formatNumber(yearData.total) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    new Vue({
+      el: "#app",
+      data: {
+        totalAmount: 300000,
+        selectedAssetKey: "",
+        inputPercent: null,
+        annualReturn: 18,
+        allocationItems: [],
+        calculated: false,
+        availableAssets: {
+          QQQ: { name: "QQQ", beta: 1.0 },
+          QLD: { name: "QLD", beta: 2.0 },
+          TQQQ: { name: "TQQQ", beta: 3.0 },
+          SPY: { name: "SPY", beta: 0.8 },
+          CASH: { name: "货币市场基金（现金）", beta: 0.0 }
+        },
+        growthData: []
+      },
+      computed: {
+        totalPercent() {
+          return this.allocationItems.reduce((acc, item) => acc + item.percent, 0);
+        },
+        totalAmountAllocated() {
+          return this.allocationItems.reduce((acc, item) => acc + item.amount, 0);
+        },
+        totalBeta() {
+          // weighted beta = sum (percent * beta) / 100
+          return this.allocationItems.reduce((acc, item) => acc + (item.percent * item.beta), 0) / 100;
+        },
+        weightedAnnualReturn() {
+          // weighted return = sum (percent * annualReturn) / 100
+          return this.allocationItems.reduce((acc, item) => acc + (item.percent * item.annualReturn), 0) / 100;
+        }
+      },
+      methods: {
+        onAddItem() {
+          if (!this.selectedAssetKey) {
+            alert("请选择资产类别");
+            return;
+          }
+          if (this.inputPercent === null || this.inputPercent <= 0) {
+            alert("请输入有效的配置比例");
+            return;
+          }
+          if (this.annualReturn === null || this.annualReturn < 0) {
+            alert("请输入有效的年化收益率");
+            return;
+          }
+          const newTotalPercent = this.totalPercent + this.inputPercent;
+          if (newTotalPercent > 100) {
+            alert("配置比例总和不能超过100%");
+            return;
+          }
+          // 判断是否已经添加过该资产类别，合并比例和加权年化收益率（加权平均）
+          const existingIndex = this.allocationItems.findIndex(i => i.key === this.selectedAssetKey);
+          if (existingIndex !== -1) {
+            // 合并比例
+            const oldItem = this.allocationItems[existingIndex];
+            const updatedPercent = oldItem.percent + this.inputPercent;
+            if (this.totalPercent - oldItem.percent + updatedPercent > 100) {
+              alert("合并后的配置比例总和超过100%，请调整比例");
+              return;
+            }
+            // 加权平均年化收益率
+            const updatedAnnualReturn = (
+              oldItem.annualReturn * oldItem.percent + this.annualReturn * this.inputPercent
+            ) / updatedPercent;
+            this.$set(this.allocationItems, existingIndex, {
+              ...oldItem,
+              percent: updatedPercent,
+              annualReturn: updatedAnnualReturn,
+              amount: this.totalAmount * (updatedPercent / 100),
+            });
+          } else {
+            // 添加新资产项
+            const asset = this.availableAssets[this.selectedAssetKey];
+            this.allocationItems.push({
+              key: this.selectedAssetKey,
+              name: asset.name,
+              beta: asset.beta,
+              percent: this.inputPercent,
+              amount: this.totalAmount * (this.inputPercent / 100),
+              annualReturn: this.annualReturn,
+            });
+          }
+          // 清空选择
+          this.selectedAssetKey = "";
+          this.inputPercent = null;
+          this.annualReturn = 18;
+          this.calculated = false;
+          this.growthData = [];
+        },
+        removeItem(index) {
+          this.allocationItems.splice(index, 1);
+          this.calculated = false;
+          this.growthData = [];
+        },
+        calculate() {
+          // 重新计算金额（防止总资金变更后金额未更新）
+          this.allocationItems = this.allocationItems.map(item => ({
+            ...item,
+            amount: this.totalAmount * (item.percent / 100)
+          }));
+          this.calculated = true;
+          this.calculateGrowth();
+        },
+        calculateGrowth() {
+          // 计算10年每年资产价值推演，复利计算：
+          // FV = PV * (1 + r)^year
+          const years = 10;
+          const data = [];
+          for (let year = 0; year <= years; year++) {
+            let yearValues = {};
+            let yearTotal = 0;
+            this.allocationItems.forEach(item => {
+              const fv = item.amount * Math.pow(1 + item.annualReturn / 100, year);
+              yearValues[item.key] = fv;
+              yearTotal += fv;
+            });
+            data.push({
+              year,
+              values: yearValues,
+              total: yearTotal,
+            });
+          }
+          this.growthData = data;
+        },
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      },
+      watch: {
+        totalAmount() {
+          // 更新金额，重置计算结果
+          this.allocationItems = this.allocationItems.map(item => ({
+            ...item,
+            amount: this.totalAmount * (item.percent / 100),
+          }));
+          this.calculated = false;
+          this.growthData = [];
+        }
+      },
+      mounted() {
+        // 初始化年化收益默认值
+        this.annualReturn = 18;
+      }
+    });
+  </script>
+</body>
+</html>
