@@ -84,20 +84,29 @@
       font-family: "Courier New", Courier, monospace;
       white-space: pre-wrap;
     }
+    .warning {
+      color: #d9534f;
+      font-weight: bold;
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <h1>信贷与定投收益计算器（韩信点兵）</h1>
     <form @submit.prevent="calculate">
+      <label for="loanPrincipal">贷款本金（元）</label>
+      <input id="loanPrincipal" type="number" v-model.number="loanPrincipalInput" min="1" step="1" required />
+
       <label for="loanRate">贷款年利率（%）</label>
       <input id="loanRate" type="number" v-model.number="loanRate" min="0" step="0.01" required />
 
-      <label for="monthlyCashFlow">每月可用还款金额（元）</label>
-      <input id="monthlyCashFlow" type="number" v-model.number="monthlyCashFlow" min="1" step="1" required />
-
       <label for="loanTerm">贷款期限（年）</label>
       <input id="loanTerm" type="number" v-model.number="loanTerm" min="1" step="1" required />
+
+      <label for="monthlyCashFlow">每月可用还款金额（元）</label>
+      <input id="monthlyCashFlow" type="number" v-model.number="monthlyCashFlow" min="1" step="1" required />
 
       <label for="fundRate">基金年化收益率（%）</label>
       <input id="fundRate" type="number" v-model.number="fundRate" min="0" step="0.01" required />
@@ -109,81 +118,110 @@
       <table>
         <thead>
           <tr>
-            <th>方案</th>
-            <th>投入现金流（元）</th>
-            <th>{{loanTerm}}年后基金价值（元）</th>
-            <th>净收益（元）</th>
+            <th>项目</th>
+            <th>数值</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>借贷一次性投入</td>
-            <td>{{ formatNumber(totalLoanRepayment) }} (还款总额)</td>
-            <td>{{ formatNumber(fundValueLumpSum) }}</td>
-            <td>{{ formatNumber(netProfitLumpSum) }}</td>
+            <td>贷款本金</td>
+            <td>{{ formatNumber(loanPrincipalInput) }} 元</td>
           </tr>
           <tr>
-            <td>每月定投</td>
-            <td>{{ formatNumber(totalMonthlyInvestment) }} (累计投入)</td>
-            <td>{{ formatNumber(fundValueMonthly) }}</td>
-            <td>{{ formatNumber(netProfitMonthly) }}</td>
+            <td>贷款期限（月）</td>
+            <td>{{ totalMonths }} 月</td>
+          </tr>
+          <tr>
+            <td>月利率</td>
+            <td>{{ (monthlyLoanRate * 100).toFixed(4) }} %</td>
+          </tr>
+          <tr>
+            <td>每月应还款额（本金+利息）</td>
+            <td>{{ formatNumber(monthlyRepayment) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月可用还款金额</td>
+            <td>{{ formatNumber(monthlyCashFlow) }} 元</td>
+          </tr>
+          <tr v-if="monthlyCashFlow < monthlyRepayment" class="warning">
+            <td colspan="2">警告：每月可用还款金额不足以支付贷款月还款！</td>
+          </tr>
+          <tr>
+            <td>贷款总还款额</td>
+            <td>{{ formatNumber(totalLoanRepayment) }} 元</td>
+          </tr>
+          <tr>
+            <td>贷款总利息</td>
+            <td>{{ formatNumber(totalLoanRepayment - loanPrincipalInput) }} 元</td>
+          </tr>
+          <tr>
+            <td>贷款方案一次性投入基金{{ loanTerm }}年后价值</td>
+            <td>{{ formatNumber(fundValueLumpSum) }} 元</td>
+          </tr>
+          <tr>
+            <td>贷款方案净收益（基金价值 - 总还款）</td>
+            <td>{{ formatNumber(netProfitLumpSum) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月定投基金{{ loanTerm }}年后价值</td>
+            <td>{{ formatNumber(fundValueMonthly) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月定投累计投入本金</td>
+            <td>{{ formatNumber(totalMonthlyInvestment) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月定投方案净收益</td>
+            <td>{{ formatNumber(netProfitMonthly) }} 元</td>
           </tr>
           <tr style="font-weight: bold; background: #f0f9ff;">
-            <td>净收益差额</td>
-            <td colspan="2">—</td>
-            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly) }}</td>
+            <td>净收益差额（贷款方案 - 每月定投）</td>
+            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly) }} 元</td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <div v-if="calculated" class="formula">
-贷款本金计算（等额本息）：
-P = M ÷ [ r(1+r)^n / ((1+r)^n - 1) ]
+贷款本金 P = {{ formatNumber(loanPrincipalInput) }} 元  
+贷款年利率 = {{ loanRate }} %  
+贷款期限 = {{ loanTerm }} 年（共 {{ totalMonths }} 月）  
+月利率 r = {{ monthlyLoanRate.toFixed(6) }}  
 
-其中：
-- M = 每月还款额 = {{ monthlyCashFlow }}
-- r = 月利率 = 年利率 / 12 = {{ loanRate }}% ÷ 12 = {{ monthlyLoanRate.toFixed(6) }}
-- n = 期数（月）= {{ loanTerm }} × 12 = {{ totalMonths }}
+每月应还款额 M = P × [ r(1+r)^n / ((1+r)^n -1) ]  
+(1+r)^n = {{ pow1rN.toFixed(6) }}  
+还款系数 = {{ repaymentFactor.toFixed(8) }}  
 
 计算：
-(1+r)^n = {{ pow1rN.toFixed(6) }}
-还款系数 = r × (1+r)^n / [ (1+r)^n - 1 ] = {{ repaymentFactor.toFixed(8) }}
-
-贷款本金 P = M ÷ 还款系数 = {{ monthlyCashFlow }} ÷ {{ repaymentFactor.toFixed(8) }} = {{ loanPrincipal.toFixed(2) }} 元
+M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRepayment.toFixed(2) }} 元
 
 ---
 
-借款一次性投入基金后的7年后基金价值：
-FV = P × (1 + 基金年化收益率)^年数 = {{ loanPrincipal.toFixed(2) }} × (1 + {{ fundRate }}%)^{{ loanTerm }} = {{ fundValueLumpSum.toFixed(2) }} 元
-
-贷款总还款：
-{{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalLoanRepayment }} 元
-
-借贷方案真实净收益：
-基金价值 - 贷款总还款 = {{ fundValueLumpSum.toFixed(2) }} - {{ totalLoanRepayment }} = {{ netProfitLumpSum.toFixed(2) }} 元
+贷款总还款额 = M × n = {{ monthlyRepayment.toFixed(2) }} × {{ totalMonths }} = {{ totalLoanRepayment.toFixed(2) }} 元  
+贷款总利息 = 总还款额 - 贷款本金 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
 
 ---
 
-每月定投基金价值计算：
-FV = P × [ (1 + r)^n - 1 ] ÷ r × (1 + r)
+贷款本金一次性投入基金{{ loanTerm }}年后价值：  
+FV = P × (1 + 基金年化收益率)^年数 = {{ loanPrincipalInput }} × (1 + {{ fundRate }}%)^{{ loanTerm }} = {{ fundValueLumpSum.toFixed(2) }} 元
 
-其中：
-- P = 每月定投 = {{ monthlyCashFlow }}
-- r = 月基金收益率 = {{ monthlyFundRate.toFixed(6) }}
-- n = {{ totalMonths }}
+---
 
-计算：
-(1 + r)^n = {{ pow1rN_Fund.toFixed(6) }}
+每月定投基金价值计算：  
+FV = P × [ (1 + r)^n - 1 ] ÷ r × (1 + r)  
+其中：  
+P = 每月定投 = {{ monthlyCashFlow }} 元  
+r = 月基金收益率 = {{ monthlyFundRate.toFixed(6) }}  
+n = {{ totalMonths }}
 
-FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthlyFundRate.toFixed(6) }} × (1 + {{ monthlyFundRate.toFixed(6) }})
+计算：  
+(1 + r)^n = {{ pow1rN_Fund.toFixed(6) }}  
+
+FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthlyFundRate.toFixed(6) }} × (1 + {{ monthlyFundRate.toFixed(6) }})  
 = {{ fundValueMonthly.toFixed(2) }} 元
 
-累计投入本金：
-{{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalMonthlyInvestment }} 元
-
-定投方案净收益：
-基金价值 - 累计投入本金 = {{ fundValueMonthly.toFixed(2) }} - {{ totalMonthlyInvestment }} = {{ netProfitMonthly.toFixed(2) }} 元
+累计投入本金 = {{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalMonthlyInvestment.toFixed(2) }} 元  
+定投方案净收益 = 基金价值 - 累计投入本金 = {{ netProfitMonthly.toFixed(2) }} 元
     </div>
   </div>
 
@@ -191,17 +229,19 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
     new Vue({
       el: "#app",
       data: {
-        loanRate: 3,            // 年利率 %
-        monthlyCashFlow: 1500,  // 每月还款额 元
-        loanTerm: 7,            // 年
-        fundRate: 18,           // 年化收益率 %
+        loanPrincipalInput: 100000, // 贷款本金输入
+        loanRate: 3,                // 年利率 %
+        loanTerm: 7,                // 年
+        monthlyCashFlow: 1500,      // 每月可用还款额
+        fundRate: 18,               // 基金年化收益率 %
         calculated: false,
+
         // 计算结果相关变量
-        loanPrincipal: 0,
-        totalMonths: 0,
         monthlyLoanRate: 0,
+        totalMonths: 0,
         pow1rN: 0,
         repaymentFactor: 0,
+        monthlyRepayment: 0,
         totalLoanRepayment: 0,
         fundValueLumpSum: 0,
         netProfitLumpSum: 0,
@@ -213,37 +253,33 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
       },
       methods: {
         calculate() {
-          // 基础数据
           this.totalMonths = this.loanTerm * 12;
           this.monthlyLoanRate = this.loanRate / 100 / 12;
           this.monthlyFundRate = this.fundRate / 100 / 12;
 
-          // 计算 (1+r)^n
           this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
-
-          // 还款系数
           this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
 
-          // 贷款本金
-          this.loanPrincipal = this.monthlyCashFlow / this.repaymentFactor;
+          // 计算每月应还款额（本金+利息）
+          this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
 
-          // 贷款总还款额
-          this.totalLoanRepayment = this.monthlyCashFlow * this.totalMonths;
+          // 总还款额
+          this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
 
-          // 一次性投入基金价值
-          this.fundValueLumpSum = this.loanPrincipal * Math.pow(1 + this.fundRate / 100, this.loanTerm);
+          // 贷款本金一次性投入基金价值
+          this.fundValueLumpSum = this.loanPrincipalInput * Math.pow(1 + this.fundRate / 100, this.loanTerm);
 
-          // 净收益
+          // 贷款方案净收益（基金价值 - 总还款）
           this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
 
-          // 每月定投基金价值
+          // 每月定投基金价值（用每月可用还款金额作为定投金额）
           this.pow1rN_Fund = Math.pow(1 + this.monthlyFundRate, this.totalMonths);
           this.fundValueMonthly = this.monthlyCashFlow * ((this.pow1rN_Fund - 1) / this.monthlyFundRate) * (1 + this.monthlyFundRate);
 
           // 累计投入本金
           this.totalMonthlyInvestment = this.monthlyCashFlow * this.totalMonths;
 
-          // 定投净收益
+          // 定投方案净收益
           this.netProfitMonthly = this.fundValueMonthly - this.totalMonthlyInvestment;
 
           this.calculated = true;
