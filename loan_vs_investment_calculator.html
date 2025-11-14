@@ -8,7 +8,7 @@
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 600px;
+      max-width: 700px;
       margin: 20px auto;
       padding: 0 15px;
       background: #f9f9f9;
@@ -61,10 +61,11 @@
       border-radius: 6px;
       overflow: hidden;
       margin-bottom: 2em;
+      font-size: 0.9em;
     }
     th, td {
       text-align: center;
-      padding: 12px 10px;
+      padding: 12px 8px;
       border-bottom: 1px solid #eee;
     }
     th {
@@ -83,6 +84,7 @@
       line-height: 1.5em;
       font-family: "Courier New", Courier, monospace;
       white-space: pre-wrap;
+      font-size: 0.95em;
     }
     .warning {
       color: #d9534f;
@@ -180,6 +182,30 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- 新增还款明细表 -->
+      <h2>等额本息还款明细（前12个月）</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>月份</th>
+            <th>月供（元）</th>
+            <th>利息（元）</th>
+            <th>本金（元）</th>
+            <th>剩余本金（元）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in repaymentSchedule" :key="item.month">
+            <td>{{ item.month }}</td>
+            <td>{{ formatNumber(item.monthlyRepayment) }}</td>
+            <td>{{ formatNumber(item.interest) }}</td>
+            <td>{{ formatNumber(item.principal) }}</td>
+            <td>{{ formatNumber(item.balance < 0 ? 0 : item.balance) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
     </div>
 
     <div v-if="calculated" class="formula">
@@ -236,7 +262,6 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         fundRate: 18,               // 基金年化收益率 %
         calculated: false,
 
-        // 计算结果相关变量
         monthlyLoanRate: 0,
         totalMonths: 0,
         pow1rN: 0,
@@ -250,6 +275,8 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         fundValueMonthly: 0,
         totalMonthlyInvestment: 0,
         netProfitMonthly: 0,
+
+        repaymentSchedule: [],
       },
       methods: {
         calculate() {
@@ -260,27 +287,33 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
           this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
 
-          // 计算每月应还款额（本金+利息）
           this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
-
-          // 总还款额
           this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
 
-          // 贷款本金一次性投入基金价值
           this.fundValueLumpSum = this.loanPrincipalInput * Math.pow(1 + this.fundRate / 100, this.loanTerm);
-
-          // 贷款方案净收益（基金价值 - 总还款）
           this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
 
-          // 每月定投基金价值（用每月可用还款金额作为定投金额）
           this.pow1rN_Fund = Math.pow(1 + this.monthlyFundRate, this.totalMonths);
           this.fundValueMonthly = this.monthlyCashFlow * ((this.pow1rN_Fund - 1) / this.monthlyFundRate) * (1 + this.monthlyFundRate);
-
-          // 累计投入本金
           this.totalMonthlyInvestment = this.monthlyCashFlow * this.totalMonths;
-
-          // 定投方案净收益
           this.netProfitMonthly = this.fundValueMonthly - this.totalMonthlyInvestment;
+
+          // 计算还款明细，默认显示前12个月（如果期限小于12个月则显示全部）
+          this.repaymentSchedule = [];
+          let balance = this.loanPrincipalInput;
+          const showMonths = Math.min(this.totalMonths, 12);
+          for (let month = 1; month <= showMonths; month++) {
+            const interest = balance * this.monthlyLoanRate;
+            const principal = this.monthlyRepayment - interest;
+            balance -= principal;
+            this.repaymentSchedule.push({
+              month,
+              monthlyRepayment: this.monthlyRepayment,
+              interest,
+              principal,
+              balance,
+            });
+          }
 
           this.calculated = true;
         },
