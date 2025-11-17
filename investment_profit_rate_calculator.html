@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>收益率计算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 480px;
+      margin: 30px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5em;
+      color: #409eff;
+    }
+    form {
+      background: #fff;
+      padding: 20px 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 600;
+      color: #555;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 1em;
+      margin-top: 6px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    input[type="number"]:focus {
+      border-color: #409eff;
+      outline: none;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px 0;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1em;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    .result {
+      background: #fff;
+      padding: 20px 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      line-height: 1.6em;
+      font-size: 1.1em;
+      color: #222;
+    }
+    .result-item {
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .label {
+      font-weight: 600;
+      color: #555;
+    }
+    .value {
+      font-weight: 700;
+      color: #409eff;
+    }
+    .warning {
+      margin-top: 12px;
+      color: #d9534f;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>收益率计算器</h1>
+    <form @submit.prevent="calculate">
+      <label for="buyPrice">买入价格（美元）</label>
+      <input id="buyPrice" type="number" v-model.number="buyPrice" min="0.0001" step="0.0001" required />
+
+      <label for="sellPrice">卖出价格（美元）</label>
+      <input id="sellPrice" type="number" v-model.number="sellPrice" min="0.0001" step="0.0001" required />
+
+      <label for="holdMonths">预估持有时间（月）</label>
+      <input id="holdMonths" type="number" v-model.number="holdMonths" min="1" step="1" required />
+
+      <button type="submit">计算收益率</button>
+    </form>
+
+    <div v-if="calculated" class="result">
+      <div class="result-item">
+        <span class="label">收益金额 (美元):</span>
+        <span class="value">{{ formatNumber(profitAmount) }}</span>
+      </div>
+      <div class="result-item">
+        <span class="label">收益率 (%):</span>
+        <span class="value">{{ (profitRate * 100).toFixed(2) }}%</span>
+      </div>
+      <div class="result-item" v-if="holdMonths > 0">
+        <span class="label">预估日收益 (%):</span>
+        <span class="value">{{ (dailyReturn * 100).toFixed(4) }}%</span>
+      </div>
+      <div class="result-item" v-if="holdMonths > 0">
+        <span class="label">预估月收益 (%):</span>
+        <span class="value">{{ (monthlyReturn * 100).toFixed(3) }}%</span>
+      </div>
+      <div class="result-item" v-if="holdMonths > 0">
+        <span class="label">预估年收益 (%):</span>
+        <span class="value">{{ (annualReturn * 100).toFixed(2) }}%</span>
+      </div>
+    </div>
+
+    <div v-if="errorMessage" class="warning">{{ errorMessage }}</div>
+  </div>
+
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        buyPrice: null,
+        sellPrice: null,
+        holdMonths: null,
+        calculated: false,
+        profitAmount: 0,
+        profitRate: 0,
+        dailyReturn: 0,
+        monthlyReturn: 0,
+        annualReturn: 0,
+        errorMessage: ''
+      },
+      methods: {
+        calculate() {
+          this.errorMessage = '';
+          this.calculated = false;
+
+          if (this.buyPrice <= 0 || this.sellPrice <= 0 || this.holdMonths <= 0) {
+            this.errorMessage = '所有输入必须为正数且持有时间至少为1个月。';
+            return;
+          }
+          if (this.sellPrice < this.buyPrice) {
+            // 亏损也允许计算，但提示用户
+            this.errorMessage = '';
+          }
+
+          const profitAmount = this.sellPrice - this.buyPrice;
+          const profitRate = profitAmount / this.buyPrice; // 总收益率
+
+          // 预估收益率计算，假设简单复利
+          const months = this.holdMonths;
+          // 月收益率（复利）：(1 + 总收益率)^(1/持有月数) - 1
+          const monthlyReturn = Math.pow(1 + profitRate, 1 / months) - 1;
+          // 日收益率，按30天/月算
+          const dailyReturn = Math.pow(1 + monthlyReturn, 1 / 30) - 1;
+          // 年收益率，12个月复利
+          const annualReturn = Math.pow(1 + monthlyReturn, 12) - 1;
+
+          this.profitAmount = profitAmount;
+          this.profitRate = profitRate;
+          this.monthlyReturn = monthlyReturn;
+          this.dailyReturn = dailyReturn;
+          this.annualReturn = annualReturn;
+
+          this.calculated = true;
+        },
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      }
+    });
+  </script>
+</body>
+</html>
