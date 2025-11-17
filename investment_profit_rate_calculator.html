@@ -96,10 +96,10 @@
   <div id="app">
     <h1>收益率计算器</h1>
     <form @submit.prevent="calculate">
-      <label for="buyPrice">买入价格（美元）</label>
+      <label for="buyPrice">买入价格</label>
       <input id="buyPrice" type="number" v-model.number="buyPrice" min="0.0001" step="0.0001" required />
 
-      <label for="sellPrice">卖出价格（美元）</label>
+      <label for="sellPrice">卖出价格</label>
       <input id="sellPrice" type="number" v-model.number="sellPrice" min="0.0001" step="0.0001" required />
 
       <label for="holdMonths">预估持有时间（月）</label>
@@ -110,7 +110,7 @@
 
     <div v-if="calculated" class="result">
       <div class="result-item">
-        <span class="label">收益金额 (美元):</span>
+        <span class="label">收益金额:</span>
         <span class="value">{{ formatNumber(profitAmount) }}</span>
       </div>
       <div class="result-item">
