@@ -102,6 +102,9 @@
       <label for="sellPrice">卖出价格</label>
       <input id="sellPrice" type="number" v-model.number="sellPrice" min="0.0001" step="0.0001" required />
 
+      <label for="shares">份额</label>
+      <input id="shares" type="number" v-model.number="shares" min="0.0001" step="0.0001" required />
+
       <label for="holdMonths">预估持有时间（月）</label>
       <input id="holdMonths" type="number" v-model.number="holdMonths" min="1" step="1" required />
 
@@ -114,19 +117,19 @@
         <span class="value">{{ formatNumber(profitAmount) }}</span>
       </div>
       <div class="result-item">
-        <span class="label">收益率 (%):</span>
+        <span class="label">收益率:</span>
         <span class="value">{{ (profitRate * 100).toFixed(2) }}%</span>
       </div>
       <div class="result-item" v-if="holdMonths > 0">
-        <span class="label">预估日收益 (%):</span>
+        <span class="label">预估日收益:</span>
         <span class="value">{{ (dailyReturn * 100).toFixed(4) }}%</span>
       </div>
       <div class="result-item" v-if="holdMonths > 0">
-        <span class="label">预估月收益 (%):</span>
+        <span class="label">预估月收益:</span>
         <span class="value">{{ (monthlyReturn * 100).toFixed(3) }}%</span>
       </div>
       <div class="result-item" v-if="holdMonths > 0">
-        <span class="label">预估年收益 (%):</span>
+        <span class="label">预估年收益:</span>
         <span class="value">{{ (annualReturn * 100).toFixed(2) }}%</span>
       </div>
     </div>
@@ -138,9 +141,10 @@
     new Vue({
       el: '#app',
       data: {
-        buyPrice: 50,
-        sellPrice: 100,
-        holdMonths: 12,
+        buyPrice: null,
+        sellPrice: null,
+        shares: 1,
+        holdMonths: null,
         calculated: false,
         profitAmount: 0,
         profitRate: 0,
@@ -154,25 +158,22 @@
           this.errorMessage = '';
           this.calculated = false;
 
-          if (this.buyPrice <= 0 || this.sellPrice <= 0 || this.holdMonths <= 0) {
-            this.errorMessage = '所有输入必须为正数且持有时间至少为1个月。';
+          if (
+            this.buyPrice <= 0 ||
+            this.sellPrice <= 0 ||
+            this.shares <= 0 ||
+            this.holdMonths <= 0
+          ) {
+            this.errorMessage = '所有输入必须为正数，持有时间至少为1个月。';
             return;
           }
-          if (this.sellPrice < this.buyPrice) {
-            // 亏损也允许计算，但提示用户
-            this.errorMessage = '';
-          }
 
-          const profitAmount = this.sellPrice - this.buyPrice;
-          const profitRate = profitAmount / this.buyPrice; // 总收益率
+          const profitAmount = (this.sellPrice - this.buyPrice) * this.shares;
+          const profitRate = profitAmount / (this.buyPrice * this.shares); // 总收益率
 
-          // 预估收益率计算，假设简单复利
           const months = this.holdMonths;
-          // 月收益率（复利）：(1 + 总收益率)^(1/持有月数) - 1
           const monthlyReturn = Math.pow(1 + profitRate, 1 / months) - 1;
-          // 日收益率，按30天/月算
           const dailyReturn = Math.pow(1 + monthlyReturn, 1 / 30) - 1;
-          // 年收益率，12个月复利
           const annualReturn = Math.pow(1 + monthlyReturn, 12) - 1;
 
           this.profitAmount = profitAmount;
@@ -184,9 +185,12 @@
           this.calculated = true;
         },
         formatNumber(num) {
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-      }
+          return num.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        },
+      },
     });
   </script>
 </body>
