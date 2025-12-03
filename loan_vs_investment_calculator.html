@@ -160,7 +160,7 @@
             <td>{{ formatNumber(totalLoanRepayment - loanPrincipalInput) }} 元</td>
           </tr>
           <tr>
-            <td>一次性投入系数 β</td>
+            <td>一次性投入系数 beta</td>
             <td>{{ lumpSumBeta.toFixed(2) }}</td>
           </tr>
           <tr>
@@ -235,9 +235,9 @@ M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRep
 
 ---
 
-一次性投入系数 β = {{ lumpSumBeta }}  
+一次性投入系数 beta = {{ lumpSumBeta }}  
 贷款本金一次性投入基金{{ loanTerm }}年后价值：  
-FV = P × β × (1 + 基金年化收益率)^年数  
+FV = P × beta × (1 + 基金年化收益率)^年数  
 = {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm }}  
 = {{ fundValueLumpSum.toFixed(2) }} 元
 
@@ -270,7 +270,7 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         loanTerm: 7,                // 年
         monthlyCashFlow: 1500,      // 每月可用还款额
         fundRate: 18,               // 基金年化收益率 %
-        lumpSumBeta: 1,             // 一次性投入系数 β，默认1
+        lumpSumBeta: 1,             // 一次性投入系数 beta，默认1
         calculated: false,
 
         monthlyLoanRate: 0,
