@@ -113,6 +113,9 @@
       <label for="fundRate">基金年化收益率（%）</label>
       <input id="fundRate" type="number" v-model.number="fundRate" min="0" step="0.01" required />
 
+      <label for="lumpSumBeta">一次性投入时选择的beta</label>
+      <input id="lumpSumBeta" type="number" v-model.number="lumpSumBeta" min="0" step="0.01" required />
+
       <button type="submit">计算</button>
     </form>
 
@@ -155,6 +158,10 @@
           <tr>
             <td>贷款总利息</td>
             <td>{{ formatNumber(totalLoanRepayment - loanPrincipalInput) }} 元</td>
+          </tr>
+          <tr>
+            <td>一次性投入系数 β</td>
+            <td>{{ lumpSumBeta.toFixed(2) }}</td>
           </tr>
           <tr>
             <td>贷款方案一次性投入基金{{ loanTerm }}年后价值</td>
@@ -228,8 +235,11 @@ M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRep
 
 ---
 
+一次性投入系数 β = {{ lumpSumBeta }}  
 贷款本金一次性投入基金{{ loanTerm }}年后价值：  
-FV = P × (1 + 基金年化收益率)^年数 = {{ loanPrincipalInput }} × (1 + {{ fundRate }}%)^{{ loanTerm }} = {{ fundValueLumpSum.toFixed(2) }} 元
+FV = P × β × (1 + 基金年化收益率)^年数  
+= {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm }}  
+= {{ fundValueLumpSum.toFixed(2) }} 元
 
 ---
 
@@ -260,6 +270,7 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         loanTerm: 7,                // 年
         monthlyCashFlow: 1500,      // 每月可用还款额
         fundRate: 18,               // 基金年化收益率 %
+        lumpSumBeta: 1,             // 一次性投入系数 β，默认1
         calculated: false,
 
         monthlyLoanRate: 0,
@@ -290,7 +301,8 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
           this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
 
-          this.fundValueLumpSum = this.loanPrincipalInput * Math.pow(1 + this.fundRate / 100, this.loanTerm);
+          // 一次性投入计算乘以beta
+          this.fundValueLumpSum = this.loanPrincipalInput * this.lumpSumBeta * Math.pow(1 + this.fundRate / 100, this.loanTerm);
           this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
 
           this.pow1rN_Fund = Math.pow(1 + this.monthlyFundRate, this.totalMonths);
