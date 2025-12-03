@@ -30,7 +30,7 @@
       margin-top: 10px;
       font-weight: 600;
     }
-    input[type="number"] {
+    input[type="number"], select {
       width: 100%;
       padding: 8px 10px;
       font-size: 1em;
@@ -116,6 +116,12 @@
       <label for="lumpSumBeta">一次性投入时选择的beta</label>
       <input id="lumpSumBeta" type="number" v-model.number="lumpSumBeta" min="0" step="0.01" required />
 
+      <label for="repaymentMethod">还款方式</label>
+      <select id="repaymentMethod" v-model="repaymentMethod" required>
+        <option value="equalPrincipalAndInterest">等额本息</option>
+        <option value="interestFirst">先息后本</option>
+      </select>
+
       <button type="submit">计算</button>
     </form>
 
@@ -160,6 +166,10 @@
             <td>{{ formatNumber(totalLoanRepayment - loanPrincipalInput) }} 元</td>
           </tr>
           <tr>
+            <td>还款方式</td>
+            <td>{{ repaymentMethodLabel }}</td>
+          </tr>
+          <tr>
             <td>一次性投入系数 beta</td>
             <td>{{ lumpSumBeta.toFixed(2) }}</td>
           </tr>
@@ -191,7 +201,7 @@
       </table>
 
       <!-- 新增还款明细表 -->
-      <h2>等额本息还款明细（前12个月）</h2>
+      <h2>还款明细（前12个月）</h2>
       <table>
         <thead>
           <tr>
@@ -221,6 +231,9 @@
 贷款期限 = {{ loanTerm }} 年（共 {{ totalMonths }} 月）  
 月利率 r = {{ monthlyLoanRate.toFixed(6) }}  
 
+还款方式：{{ repaymentMethodLabel }}
+
+<template v-if="repaymentMethod === 'equalPrincipalAndInterest'">
 每月应还款额 M = P × [ r(1+r)^n / ((1+r)^n -1) ]  
 (1+r)^n = {{ pow1rN.toFixed(6) }}  
 还款系数 = {{ repaymentFactor.toFixed(8) }}  
@@ -232,6 +245,16 @@ M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRep
 
 贷款总还款额 = M × n = {{ monthlyRepayment.toFixed(2) }} × {{ totalMonths }} = {{ totalLoanRepayment.toFixed(2) }} 元  
 贷款总利息 = 总还款额 - 贷款本金 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
+</template>
+
+<template v-else>
+先息后本还款方式：  
+每月利息 = P × r = {{ (loanPrincipalInput * monthlyLoanRate).toFixed(2) }} 元  
+每月本金 = 贷款本金 / 贷款期限（月） = {{ (loanPrincipalInput / totalMonths).toFixed(2) }} 元  
+第1个月月供 = 利息 + 本金 = {{ (loanPrincipalInput * monthlyLoanRate + loanPrincipalInput / totalMonths).toFixed(2) }} 元  
+总还款额 = 贷款本金 + 利息总额 = {{ totalLoanRepayment.toFixed(2) }} 元  
+贷款总利息 = 利息总额 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
+</template>
 
 ---
 
@@ -267,10 +290,11 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
       data: {
         loanPrincipalInput: 100000, // 贷款本金输入
         loanRate: 3,                // 年利率 %
-        loanTerm: 7,                // 年
+        loanTerm: 5,                // 年
         monthlyCashFlow: 1500,      // 每月可用还款额
         fundRate: 18,               // 基金年化收益率 %
         lumpSumBeta: 1,             // 一次性投入系数 beta，默认1
+        repaymentMethod: "equalPrincipalAndInterest", // 还款方式，默认等额本息
         calculated: false,
 
         monthlyLoanRate: 0,
@@ -289,17 +313,34 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
 
         repaymentSchedule: [],
       },
+      computed: {
+        repaymentMethodLabel() {
+          return this.repaymentMethod === "equalPrincipalAndInterest" ? "等额本息" : "先息后本";
+        }
+      },
       methods: {
         calculate() {
           this.totalMonths = this.loanTerm * 12;
           this.monthlyLoanRate = this.loanRate / 100 / 12;
           this.monthlyFundRate = this.fundRate / 100 / 12;
 
-          this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
-          this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
-
-          this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
-          this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
+          // 计算贷款还款总额和月还款额
+          if (this.repaymentMethod === "equalPrincipalAndInterest") {
+            this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
+            this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
+            this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
+            this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
+          } else if (this.repaymentMethod === "interestFirst") {
+            // 先息后本：
+            // 每月利息固定，月本金固定
+            // 总利息 = 贷款本金 * 月利率 * 月数
+            // 总还款额 = 贷款本金 + 总利息
+            // 月还款额每月变化，第一月月供 = 利息 + 本金，之后利息不变，本金不变，月供递减
+            this.monthlyRepayment = (this.loanPrincipalInput * this.monthlyLoanRate) + (this.loanPrincipalInput / this.totalMonths);
+            this.totalLoanRepayment = this.loanPrincipalInput + (this.loanPrincipalInput * this.monthlyLoanRate * this.totalMonths);
+            this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
+            this.repaymentFactor = 0; // 不适用
+          }
 
           // 一次性投入计算乘以beta
           this.fundValueLumpSum = this.loanPrincipalInput * this.lumpSumBeta * Math.pow(1 + this.fundRate / 100, this.loanTerm);
@@ -314,17 +355,37 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           this.repaymentSchedule = [];
           let balance = this.loanPrincipalInput;
           const showMonths = Math.min(this.totalMonths, 12);
-          for (let month = 1; month <= showMonths; month++) {
-            const interest = balance * this.monthlyLoanRate;
-            const principal = this.monthlyRepayment - interest;
-            balance -= principal;
-            this.repaymentSchedule.push({
-              month,
-              monthlyRepayment: this.monthlyRepayment,
-              interest,
-              principal,
-              balance,
-            });
+
+          if (this.repaymentMethod === "equalPrincipalAndInterest") {
+            for (let month = 1; month <= showMonths; month++) {
+              const interest = balance * this.monthlyLoanRate;
+              const principal = this.monthlyRepayment - interest;
+              balance -= principal;
+              this.repaymentSchedule.push({
+                month,
+                monthlyRepayment: this.monthlyRepayment,
+                interest,
+                principal,
+                balance,
+              });
+            }
+          } else if (this.repaymentMethod === "interestFirst") {
+            // 先息后本每月利息固定，本金固定，月供递减
+            const monthlyPrincipal = this.loanPrincipalInput / this.totalMonths;
+            const monthlyInterest = this.loanPrincipalInput * this.monthlyLoanRate;
+            for (let month = 1; month <= showMonths; month++) {
+              const interest = monthlyInterest;
+              const principal = monthlyPrincipal;
+              const monthlyRepayment = interest + principal;
+              balance -= principal;
+              this.repaymentSchedule.push({
+                month,
+                monthlyRepayment,
+                interest,
+                principal,
+                balance,
+              });
+            }
           }
 
           this.calculated = true;
