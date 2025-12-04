@@ -318,14 +318,16 @@
     new Vue({
       el: '#app',
       data() {
+        const birthYear = 1996;
+        const currentYear = new Date().getFullYear();
         return {
           initialInvestment: 0,
           monthlyInvestment: 1000,
           annualRate: 18,
           beta: 1,
           years: 30,
-          currentAge: 30,
-          startYear: 2026,
+          startYear: currentYear, // 自动设置为当前系统年份
+          currentAge: currentYear - birthYear, // 根据出生年份计算当前年龄
           retirementAge: 50,
           withdrawRate: 2,
           results: [],
