@@ -1,475 +1,560 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>复利定投计算器（含初始投入，季度收益修正版）</title>
-<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    max-width: 720px;
-    margin: auto;
-    padding: 1rem;
-    word-break: break-word;
-  }
-
-  label {
-    display: block;
-    margin-top: 1rem;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.4rem 0.6rem;
-    font-size: 1rem;
-    box-sizing: border-box;
-  }
-
-  button {
-    margin-top: 1rem;
-    padding: 0.6rem 1.2rem;
-    font-size: 1rem;
-    cursor: pointer;
-    /* 保持按钮横向排列，手机时会堆叠 */
-  }
-  #app > button {
-    margin-right: 1rem;
-    margin-left: 0;
-  }
-
-  /* 取消表格滚动，保持正常表格布局 */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 0.5rem;
-  }
-
-  th, td {
-    border: 1px solid #ccc;
-    padding: 0.3rem 0.4rem; /* 减小padding */
-    text-align: center;
-    /* 允许换行，避免撑破单元格 */
-    white-space: normal;
-    word-break: break-word;
-    font-size: 0.9rem;
-  }
-
-  th {
-    background-color: #f0f0f0;
-  }
-
-  /* 表格隔年两色交替 */
-  tbody tr.year-color-0 {
-    background-color: #ffffff;
-  }
-
-  tbody tr.year-color-1 {
-    background-color: #e8f0fe;
-  }
-
-  /* 高亮样式 */
-  .highlight-report {
-    background-color: #fffae6;
-    border-left: 4px solid #f39c12;
-    padding: 0.3rem 0.5rem;
-    margin: 0.5rem 0;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-
-  .highlight-report.active {
-    background-color: #f39c12;
-    color: white;
-    font-weight: bold;
-  }
-
-  tbody tr.highlight-row {
-    background-color: #ffeaa7 !important;
-    transition: background-color 0.3s;
-  }
-
-  /* 响应式调整 */
-  @media (max-width: 480px) {
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>复利定投计算器（含初始投入，季度收益修正版）</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
     body {
-      padding: 0.5rem;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 720px;
+      margin: 20px auto;
+      padding: 0 15px 60px;
+      background: #f9f9f9;
+      color: #333;
+      word-break: break-word;
+      line-height: 1.6;
     }
-    input {
-      font-size: 0.9rem;
-      padding: 0.3rem 0.5rem;
+    h1 {
+      text-align: center;
+      margin-bottom: 1.1em;
     }
-    button {
-      width: 100%;
-      margin: 0.5rem 0 0 0;
+    form {
+      background: #fff;
+      padding: 20px 25px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
       font-size: 1rem;
     }
-    #app > button {
-      margin-right: 0;
-      margin-left: 0;
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      color: #555;
     }
-    /* 手机端表格字体更小，padding更紧凑 */
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 1rem;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    input[type="number"]:focus {
+      border-color: #409eff;
+      outline: none;
+      box-shadow: 0 0 5px #a6c8ff;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 24px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      user-select: none;
+      font-size: 1.1rem;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    button + button {
+      margin-left: 12px;
+      background: #67c23a;
+    }
+    button + button:hover {
+      background: #85ce61;
+    }
+    /* 报告文本区域 */
+    .reports {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      margin-bottom: 1.5em;
+    }
+    .highlight-report {
+      background-color: #fffae6;
+      border-left: 4px solid #f39c12;
+      padding: 8px 12px;
+      margin: 8px 0;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      border-radius: 3px;
+      font-size: 0.95rem;
+      color: #555;
+      user-select: none;
+    }
+    .highlight-report.active {
+      background-color: #f39c12;
+      color: white;
+      font-weight: 700;
+    }
+    /* 表格 */
     table {
-      font-size: 0.85rem;
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+    thead {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
     th, td {
-      padding: 0.2rem 0.3rem;
-      font-size: 0.8rem;
+      text-align: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+      word-break: break-word;
+      vertical-align: middle;
     }
-  }
-</style>
+    tbody tr.year-color-0 {
+      background-color: #fff;
+    }
+    tbody tr.year-color-1 {
+      background-color: #f0f7ff;
+    }
+    tbody tr.highlight-row {
+      background-color: #ffeaa7 !important;
+      transition: background-color 0.3s;
+    }
+    /* 计算公式区域 */
+    .formula-section {
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      padding: 20px 25px;
+      margin-top: 3em;
+      color: #444;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .formula-section h3 {
+      color: #409eff;
+      margin-top: 0;
+      margin-bottom: 1em;
+      font-weight: 700;
+      text-align: center;
+    }
+    .formula-section p {
+      margin: 10px 0;
+    }
+    .formula-section code {
+      background: #eef6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #3178c6;
+    }
+    /* 响应式 */
+    @media (max-width: 480px) {
+      body {
+        padding: 15px 12px 50px;
+      }
+      form {
+        padding: 15px 18px;
+      }
+      label {
+        margin-top: 12px;
+        font-size: 0.95rem;
+      }
+      input[type="number"] {
+        font-size: 0.9rem;
+        padding: 7px 10px;
+      }
+      button {
+        width: 100%;
+        margin-top: 15px;
+        font-size: 1rem;
+        padding: 10px 0;
+      }
+      button + button {
+        margin-left: 0;
+      }
+      table {
+        font-size: 0.85rem;
+      }
+      th, td {
+        padding: 8px 6px;
+      }
+      .formula-section {
+        padding: 15px 18px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
 </head>
 <body>
-<div id="app">
-  <h2>复利定投计算器（含初始投入，季度收益修正版）</h2>
-  <label>
-    初始投入资金（元）:
-    <input type="number" v-model.number="initialInvestment" min="0" step="0.01" />
-  </label>
-  <label>
-    每月定投金额（元）:
-    <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" />
-  </label>
-  <label>
-    预估年化收益率（%）:
-    <input type="number" v-model.number="annualRate" min="0" step="0.01" />
-  </label>
-  <label>
-    投资年限（年）:
-    <input type="number" v-model.number="years" min="1" step="1" />
-  </label>
-  <label>
-    当前年龄（岁）:
-    <input type="number" v-model.number="currentAge" min="0" step="1" />
-  </label>
-  <label>
-    开始投资年份:
-    <input type="number" v-model.number="startYear" min="1900" step="1" />
-  </label>
-  <!-- 新增字段 -->
-  <label>
-    开始退休年龄（岁）:
-    <input type="number" v-model.number="retirementAge" min="0" step="1" />
-  </label>
-  <label>
-    每年质押资产百分比（%）:
-    <input type="number" v-model.number="pledgePercent" min="0" max="100" step="0.01" />
-  </label>
-  <button @click="calculate">确定</button>
-  <button v-if="results.length" @click="exportCSV">导出CSV</button>
+  <div id="app">
+    <h1>复利定投计算器（含初始投入，季度收益修正版）</h1>
+    <form @submit.prevent="calculate" aria-label="复利定投计算器表单">
+      <label for="initialInvestment">初始投入资金（元）:</label>
+      <input id="initialInvestment" type="number" v-model.number="initialInvestment" min="0" step="0.01" required />
 
-  <!-- 报告文本 -->
-  <div v-if="results.length && reports.length" style="margin-top:1.5rem;">
-    <h3>收益突破报告：</h3>
-    <div>
-      <div
-        v-for="(report, index) in reports"
-        :key="report.id"
-        :class="['highlight-report', selectedReportId === report.id ? 'active' : '']"
-        @click="scrollToRow(report.id)"
-        tabindex="0"
-        @keyup.enter="scrollToRow(report.id)"
-        role="button"
-        :aria-pressed="selectedReportId === report.id">
-        {{ report.text }}
+      <label for="monthlyInvestment">每月定投金额（元）:</label>
+      <input id="monthlyInvestment" type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required />
+
+      <label for="annualRate">预估年化收益率（%）:</label>
+      <input id="annualRate" type="number" v-model.number="annualRate" min="0" step="0.01" required />
+
+      <label for="beta">收益调整系数 β（beta）:</label>
+      <input id="beta" type="number" v-model.number="beta" min="0" step="0.01" required />
+
+      <label for="years">投资年限（年）:</label>
+      <input id="years" type="number" v-model.number="years" min="1" step="1" required />
+
+      <label for="currentAge">当前年龄（岁）:</label>
+      <input id="currentAge" type="number" v-model.number="currentAge" min="0" step="1" required />
+
+      <label for="startYear">开始投资年份:</label>
+      <input id="startYear" type="number" v-model.number="startYear" min="1900" step="1" required />
+
+      <label for="retirementAge">开始退休年龄（岁）:</label>
+      <input id="retirementAge" type="number" v-model.number="retirementAge" min="0" step="1" required />
+
+      <label for="withdrawRate">提领率（%）:</label>
+      <input id="withdrawRate" type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required />
+
+      <button type="submit">确定</button>
+      <button type="button" v-if="results.length" @click="exportCSV">导出CSV</button>
+    </form>
+
+    <section v-if="results.length && reports.length" class="reports" aria-live="polite" aria-atomic="true">
+      <h3 style="margin-top:0; margin-bottom: 10px; color: #409eff;">收益突破报告：</h3>
+      <div>
+        <div
+          v-for="report in reports"
+          :key="report.reportId"
+          :class="['highlight-report', selectedReportId === report.id ? 'active' : '']"
+          @click="scrollToRow(report.id)"
+          tabindex="0"
+          @keyup.enter="scrollToRow(report.id)"
+          role="button"
+          :aria-pressed="selectedReportId === report.id"
+          :aria-label="report.text"
+        >
+          {{ report.text }}
+        </div>
       </div>
-    </div>
+    </section>
+
+    <table v-if="results.length" aria-label="复利定投计算结果表">
+      <thead>
+        <tr>
+          <th width="40">年份</th>
+          <th>季度</th>
+          <th>年龄</th>
+          <th>累计本金（元）</th>
+          <th>未来价值（元）</th>
+          <th>收益部分（元）</th>
+          <th>总收益倍数</th>
+          <th width="60">年化收益率（%）</th>
+          <th>提领金额（元）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="item in results"
+          :key="item.index"
+          :id="`row-${item.year}-${item.quarter}-${item.index}`"
+          :class="[
+            'year-color-' + ((item.year - startYear) % 2),
+            selectedReportId === (`row-${item.year}-${item.quarter}-${item.index}`) ? 'highlight-row' : ''
+          ]"
+        >
+          <td>{{ item.year }}</td>
+          <td>Q{{ item.quarter }}</td>
+          <td>{{ item.age }}</td>
+          <td v-html="formatCurrencyWithWan(item.principal)"></td>
+          <td v-html="formatCurrencyWithWan(item.futureValue)"></td>
+          <td v-html="formatCurrencyWithWan(item.profit)"></td>
+          <td>{{ item.totalReturnRatio.toFixed(2) }}倍</td>
+          <td>{{ (item.cagr * 100).toFixed(2) }}</td>
+          <td v-html="(item.withdrawAmount > 0 && item.quarter === 4) ? formatCurrencyWithWan(item.withdrawAmount) : ''"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <section class="formula-section" aria-label="计算公式说明">
+      <h3>计算公式说明</h3>
+      <p>每季度复利收益率计算公式：</p>
+      <p><code>季度收益率 = (1 + 年化收益率)^(1/4) - 1</code></p>
+      <p>考虑收益调整系数 β（beta），实际季度收益率为：</p>
+      <p><code>季度收益率 (修正) = ((1 + 年化收益率)^(1/4) - 1) × β</code></p>
+      <p>每季度未来价值计算：</p>
+      <p><code>FVi = FVi-1 × (1 + 季度收益率 (修正)) + 每季度投入金额</code></p>
+      <ul>
+        <li>其中，每季度投入金额 = 每月定投金额 × 3</li>
+        <li>初始季度未来价值 = 初始投入资金 + 每季度投入金额</li>
+      </ul>
+      <p>累计本金 = 初始投入资金 + 已投入的所有定投金额</p>
+      <p>收益部分 = 未来价值 - 累计本金</p>
+      <p>总收益倍数 = 未来价值 ÷ 累计本金</p>
+      <p>年化收益率（CAGR）计算：</p>
+      <p><code>CAGR = (总收益倍数)^(1/投资年数) - 1</code></p>
+      <p>提领金额（假设从退休年龄开始，每年提取一次，显示在第四季度）：</p>
+      <p><code>提领金额 = 未来价值 × 提领率（%）</code></p>
+      <p>注：提领率为用户输入的百分比，用于计算退休后每季度可提取的资金。本计算器仅显示每年第四季度的提领金额。</p>
+    </section>
   </div>
 
-  <table v-if="results.length" style="margin-top:0.5rem;">
-    <thead style="position: sticky; top: 0; background: white; z-index: 1;">
-      <tr>
-        <th width="35">年份</th>
-        <th>季度</th>
-        <th>年龄</th>
-        <th>累计本金（元）</th>
-        <th>未来价值（元）</th>
-        <th>收益部分（元）</th>
-        <th>总收益倍数</th>
-        <th width="50">年化收益率（%）</th>
-        <th>质押资产金额（元）</th> <!-- 新增列 -->
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        v-for="item in results"
-        :key="item.year + '-' + item.quarter"
-        :id="'row-' + item.year + '-' + item.quarter"
-        :class="[
-          'year-color-' + ((item.year - startYear) % 2),
-          selectedReportId === ('row-' + item.year + '-' + item.quarter) ? 'highlight-row' : ''
-        ]"
-      >
-        <td>{{ item.year }}</td>
-        <td>Q{{ item.quarter }}</td>
-        <td>{{ item.age }}</td>
-        <td v-html="formatCurrencyWithWan(item.principal)"></td>
-        <td v-html="formatCurrencyWithWan(item.futureValue)"></td>
-        <td v-html="formatCurrencyWithWan(item.profit)"></td>
-        <td>{{ item.totalReturnRatio.toFixed(2) }}倍</td>
-        <td>{{ (item.cagr * 100).toFixed(2) }}</td>
-        <td v-html="item.pledgedAmount > 0 ? formatCurrencyWithWan(item.pledgedAmount) : ''"></td> <!-- 仅退休年龄及以后显示 -->
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<script>
-new Vue({
-  el: '#app',
-  data() {
-    return {
-      initialInvestment: 0,
-      monthlyInvestment: 1000,
-      annualRate: 18,
-      years: 30,
-      currentAge: 30,
-      startYear: 2026,
-      retirementAge: 50,   // 新增退休年龄默认值
-      pledgePercent: 2,   // 新增质押百分比默认值
-      results: [],
-      reports: [],         // 突破报告数组
-      selectedReportId: null // 当前高亮报告id
-    }
-  },
-  methods: {
-    // 格式化数字为带“万”单位的括号简写
-    formatCurrencyWithWan(num) {
-      const formatted = num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
-      // 转换成万，保留两位小数
-      const wan = (num / 10000).toFixed(2);
-      return `${formatted}<br>（约${wan}万）`;
-    },
-    formatCurrency(num) {
-      return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
-    },
-    calculate() {
-      if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 || this.years <= 0 || this.currentAge < 0 || this.startYear < 1900 || this.retirementAge < 0 || this.pledgePercent < 0 || this.pledgePercent > 100) {
-        alert('请输入合理的正数，且质押百分比在0-100之间！');
-        return;
-      }
-
-      this.results = [];
-      this.reports = [];
-      this.selectedReportId = null;
-
-      const r = this.annualRate / 100;          // 年利率
-      const quarterlyRate = Math.pow(1 + r, 1/4) - 1; // 季度复利率
-      const monthsPerQuarter = 3;
-      const monthlyInvestment = this.monthlyInvestment;
-      const initialInvestment = this.initialInvestment;
-      const totalQuarters = this.years * 4;
-      const currentAge = this.currentAge;
-      const startYear = this.startYear;
-      const retirementAge = this.retirementAge;
-      const pledgePercent = this.pledgePercent / 100;
-
-      for(let q = 1; q <= totalQuarters; q++) {
-        const year = startYear + Math.floor((q - 1) / 4);
-        const quarter = ((q - 1) % 4) + 1;
-        const age = currentAge + Math.floor((q - 1) / 4);
-
-        const totalMonthsInvested = q * monthsPerQuarter;
-        const principal = initialInvestment + monthlyInvestment * totalMonthsInvested;
-
-        const principalAddedThisQuarter = monthlyInvestment * monthsPerQuarter;
-
-        let futureValue = 0;
-        if (q === 1) {
-          futureValue = initialInvestment + principalAddedThisQuarter;
-        } else {
-          const lastFV = this.results[q - 2] ? this.results[q - 2].futureValue : initialInvestment;
-          futureValue = lastFV * (1 + quarterlyRate) + principalAddedThisQuarter;
+  <script>
+    new Vue({
+      el: '#app',
+      data() {
+        return {
+          initialInvestment: 0,
+          monthlyInvestment: 1000,
+          annualRate: 18,
+          beta: 1,
+          years: 30,
+          currentAge: 30,
+          startYear: 2026,
+          retirementAge: 50,
+          withdrawRate: 2,
+          results: [],
+          reports: [],
+          selectedReportId: null
         }
-
-        const profit = futureValue - principal;
-        const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
-
-        let cagr = 0;
-        const fullYearsElapsed = Math.floor(q / 4);
-        if (principal > 0 && fullYearsElapsed > 0) {
-          cagr = Math.pow(totalReturnRatio, 1 / fullYearsElapsed) - 1;
-        }
-
-        // 计算退休后质押资产数额，只有退休年龄及以后才显示
-        let pledgedAmount = 0;
-        if (age >= retirementAge) {
-          pledgedAmount = futureValue * pledgePercent;
-        }
-
-        this.results.push({
-          year,
-          quarter,
-          age,
-          principal,
-          futureValue,
-          profit,
-          totalReturnRatio,
-          cagr,
-          investYear: Math.floor((q - 1) / 4) + 1, // 计算“开始投资第x年”
-          pledgedAmount
-        });
-      }
-
-      // 生成报告文本 - 多维度突破检测
-
-      // 收益倍数突破阈值（2倍、10倍、50倍、100倍、500倍、1000倍、5000倍、10000倍...）
-      const returnBreakpoints = this.generateReturnBreakpoints();
-
-      // 收益金额突破阈值（10万、50万、100万、500万、1000万、5000万、1亿...）
-      const moneyBreakpoints = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
-
-      // 三个金额字段，均检测突破金额阈值
-      // 记录已突破的倍数和金额，避免重复报告
-      let brokenReturns = new Set();
-      let brokenMoney = { principal: new Set(), futureValue: new Set(), profit: new Set() };
-
-      this.results.forEach(item => {
-        const id = `row-${item.year}-${item.quarter}`;
-
-        // 1. 收益倍数突破报告
-        for (const bp of returnBreakpoints) {
-          if (item.totalReturnRatio >= bp && !brokenReturns.has(bp)) {
-            brokenReturns.add(bp);
-            const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益倍数突破 ${bp} 倍，累计收益约 ${this.formatCurrency(item.profit)}（${(item.profit/10000).toFixed(0)}万）元，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
-            this.reports.push({ id, text });
-            break; // 每季度只报告一个倍数突破，避免重复
+      },
+      methods: {
+        formatCurrencyWithWan(num) {
+          const formatted = num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+          const wan = (num / 10000).toFixed(2);
+          return `${formatted}<br>（约${wan}万）`;
+        },
+        formatCurrency(num) {
+          return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        },
+        calculate() {
+          if (
+            this.initialInvestment < 0 ||
+            this.monthlyInvestment < 0 ||
+            this.annualRate <= 0 ||
+            this.beta < 0 ||
+            this.years <= 0 ||
+            this.currentAge < 0 ||
+            this.startYear < 1900 ||
+            this.retirementAge < 0 ||
+            this.withdrawRate < 0 ||
+            this.withdrawRate > 100
+          ) {
+            alert('请输入合理的正数，且提领率在0-100之间！');
+            return;
           }
-        }
+          this.results = [];
+          this.reports = [];
+          this.selectedReportId = null;
 
-        // 2. 三列金额突破报告（累计本金、未来价值、收益部分）
-        // 额外处理收益部分首次超过1万的要求
-        const moneyFields = ['principal', 'futureValue', 'profit'];
-        const fieldNames = {
-          principal: '累计本金',
-          futureValue: '未来价值',
-          profit: '收益部分',
-        };
-        moneyFields.forEach(field => {
-          for (const bp of moneyBreakpoints) {
-            // 对收益部分增加1万的特别判断（即1万也是突破）
-            if (field === 'profit' && bp === 100000) {
-              // 当收益部分超过1万（10000）且没报过10000这个阈值，要报告
-              if (item.profit >= 10000 && !brokenMoney.profit.has(10000)) {
-                brokenMoney.profit.add(10000);
-                const wanStr = (item.profit/10000).toFixed(0);
-                const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益部分首次突破 1 万元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
-                this.reports.push({ id, text });
+          const r = this.annualRate / 100;
+          const baseQuarterlyRate = Math.pow(1 + r, 1/4) - 1;
+          const quarterlyRate = baseQuarterlyRate * this.beta;
+          const monthsPerQuarter = 3;
+          const monthlyInvestment = this.monthlyInvestment;
+          const initialInvestment = this.initialInvestment;
+          const totalQuarters = this.years * 4;
+          const currentAge = this.currentAge;
+          const startYear = this.startYear;
+          const retirementAge = this.retirementAge;
+          const withdrawRate = this.withdrawRate / 100;
+
+          for(let q = 1; q <= totalQuarters; q++) {
+            const year = startYear + Math.floor((q - 1) / 4);
+            const quarter = ((q - 1) % 4) + 1;
+            const age = currentAge + Math.floor((q - 1) / 4);
+
+            const totalMonthsInvested = q * monthsPerQuarter;
+            const principal = initialInvestment + monthlyInvestment * totalMonthsInvested;
+
+            const principalAddedThisQuarter = monthlyInvestment * monthsPerQuarter;
+
+            let futureValue = 0;
+            if (q === 1) {
+              futureValue = initialInvestment + principalAddedThisQuarter;
+            } else {
+              const lastFV = this.results[q - 2] ? this.results[q - 2].futureValue : initialInvestment;
+              futureValue = lastFV * (1 + quarterlyRate) + principalAddedThisQuarter;
+            }
+
+            const profit = futureValue - principal;
+            const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
+
+            let cagr = 0;
+            const fullYearsElapsed = Math.floor(q / 4);
+            if (principal > 0 && fullYearsElapsed > 0) {
+              cagr = Math.pow(totalReturnRatio, 1 / fullYearsElapsed) - 1;
+            }
+
+            // 提领金额，从退休年龄开始计算，且只在第四季度显示
+            let withdrawAmount = 0;
+            if (age >= retirementAge && quarter === 4) {
+              withdrawAmount = futureValue * withdrawRate;
+            }
+
+            this.results.push({
+              year,
+              quarter,
+              age,
+              principal,
+              futureValue,
+              profit,
+              totalReturnRatio,
+              cagr,
+              investYear: Math.floor((q - 1) / 4) + 1,
+              withdrawAmount,
+              index: q - 1 // 唯一索引
+            });
+          }
+
+          // 生成收益突破报告
+          const returnBreakpoints = this.generateReturnBreakpoints();
+          const moneyBreakpoints = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
+
+          let brokenReturns = new Set();
+          let brokenMoney = { principal: new Set(), futureValue: new Set(), profit: new Set() };
+
+          let reportCounter = 0;
+
+          this.results.forEach(item => {
+            const id = `row-${item.year}-${item.quarter}-${item.index}`;
+
+            for (const bp of returnBreakpoints) {
+              if (item.totalReturnRatio >= bp && !brokenReturns.has(bp)) {
+                brokenReturns.add(bp);
+                const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益倍数突破 ${bp} 倍，累计收益约 ${this.formatCurrency(item.profit)}（${(item.profit/10000).toFixed(0)}万）元，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+                this.reports.push({ id, text, reportId: `report-${id}-${reportCounter++}` });
                 break;
               }
             }
-            // 对其它阈值正常判断
-            if (item[field] >= bp && !brokenMoney[field].has(bp)) {
-              brokenMoney[field].add(bp);
-              const wanStr = (item[field]/10000).toFixed(0);
-              const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，${fieldNames[field]}突破 ${bp.toLocaleString()} 元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
-              this.reports.push({ id, text });
-              break; // 每季度每字段只报告一个阈值突破
-            }
+
+            const moneyFields = ['principal', 'futureValue', 'profit'];
+            const fieldNames = {
+              principal: '累计本金',
+              futureValue: '未来价值',
+              profit: '收益部分',
+            };
+            moneyFields.forEach(field => {
+              for (const bp of moneyBreakpoints) {
+                if (field === 'profit' && bp === 100000) {
+                  if (item.profit >= 10000 && !brokenMoney.profit.has(10000)) {
+                    brokenMoney.profit.add(10000);
+                    const wanStr = (item.profit/10000).toFixed(0);
+                    const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益部分首次突破 1 万元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+                    this.reports.push({ id, text, reportId: `report-${id}-${reportCounter++}` });
+                    break;
+                  }
+                }
+                if (item[field] >= bp && !brokenMoney[field].has(bp)) {
+                  brokenMoney[field].add(bp);
+                  const wanStr = (item[field]/10000).toFixed(0);
+                  const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，${fieldNames[field]}突破 ${bp.toLocaleString()} 元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
+                  this.reports.push({ id, text, reportId: `report-${id}-${reportCounter++}` });
+                  break;
+                }
+              }
+            });
+          });
+
+          this.reports.sort((a,b) => {
+            const [aYear, aQuarter] = a.id.replace('row-', '').split('-').map(Number);
+            const [bYear, bQuarter] = b.id.replace('row-', '').split('-').map(Number);
+            return aYear !== bYear ? aYear - bYear : aQuarter - bQuarter;
+          });
+        },
+        generateReturnBreakpoints() {
+          const basePoints = [2,10,50,100,500,1000];
+          const extendedPoints = [];
+          let val = 5000;
+          while(val <= 100000) {
+            extendedPoints.push(val);
+            val = val < 10000 ? 10000 : val * 2;
           }
-        });
-      });
+          return basePoints.concat(extendedPoints);
+        },
+        scrollToRow(id) {
+          this.selectedReportId = id;
+          this.$nextTick(() => {
+            const el = document.getElementById(id);
+            if (el) {
+              const offset = el.getBoundingClientRect().top + window.pageYOffset - 80;
+              window.scrollTo({ top: offset, behavior: 'smooth' });
+              el.setAttribute('tabindex', '-1');
+              el.focus();
+            }
+          });
+        },
+        exportCSV() {
+          if (!this.results.length) {
+            alert('没有数据可导出！');
+            return;
+          }
+          const headers = [
+            '年份',
+            '季度',
+            '年龄',
+            '累计本金（元）',
+            '未来价值（元）',
+            '收益部分（元）',
+            '总收益倍数',
+            '年化收益率（%）',
+            '提领金额（元）'
+          ];
 
-      // 按年份季度顺序排序报告，方便阅读
-      this.reports.sort((a,b) => {
-        const [aYear, aQuarter] = a.id.replace('row-', '').split('-').map(Number);
-        const [bYear, bQuarter] = b.id.replace('row-', '').split('-').map(Number);
-        return aYear !== bYear ? aYear - bYear : aQuarter - bQuarter;
-      });
+          const rows = this.results.map(item => [
+            item.year,
+            'Q' + item.quarter,
+            item.age,
+            item.principal.toFixed(2),
+            item.futureValue.toFixed(2),
+            item.profit.toFixed(2),
+            item.totalReturnRatio.toFixed(2),
+            (item.cagr * 100).toFixed(2),
+            (item.withdrawAmount > 0 && item.quarter === 4) ? item.withdrawAmount.toFixed(2) : ''
+          ]);
 
-      // // 默认选中第一个报告并高亮
-      // if (this.reports.length > 0) {
-      //   this.selectedReportId = this.reports[0].id;
-      //   this.$nextTick(() => {
-      //     this.scrollToRow(this.selectedReportId);
-      //   });
-      // }
-    },
-    // 生成收益倍数突破阈值（2倍、10倍、50倍、100倍、500倍、1000倍、5000倍、10000倍...）
-    generateReturnBreakpoints() {
-      const basePoints = [2,10,50,100,500,1000];
-      const extendedPoints = [];
-      let val = 5000;
-      while(val <= 100000) {
-        extendedPoints.push(val);
-        val = val < 10000 ? 10000 : val * 2;
-      }
-      return basePoints.concat(extendedPoints);
-    },
-    scrollToRow(id) {
-      this.selectedReportId = id;
-      this.$nextTick(() => {
-        const el = document.getElementById(id);
-        if (el) {
-          const offset = el.getBoundingClientRect().top + window.pageYOffset - 80;
-          window.scrollTo({ top: offset, behavior: 'smooth' });
-          el.setAttribute('tabindex', '-1');
-          el.focus();
+          function safeCSVField(field) {
+            const fieldStr = String(field);
+            if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
+              return `"${fieldStr.replace(/"/g, '""')}"`;
+            }
+            return fieldStr;
+          }
+
+          let csvContent = headers.map(safeCSVField).join(',') + '\r\n';
+          rows.forEach(row => {
+            csvContent += row.map(safeCSVField).join(',') + '\r\n';
+          });
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+
+          const link = document.createElement('a');
+          link.href = url;
+          const fileName = `复利定投计算结果_${this.startYear}_${this.years}年.csv`;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
         }
-      });
-    },
-    exportCSV() {
-      if (!this.results.length) {
-        alert('没有数据可导出！');
-        return;
       }
-      // CSV标题行
-      const headers = [
-        '年份',
-        '季度',
-        '年龄',
-        '累计本金（元）',
-        '未来价值（元）',
-        '收益部分（元）',
-        '总收益倍数',
-        '年化收益率（%）',
-        '质押资产金额（元）'  // 新增列
-      ];
-
-      // 生成CSV数据行
-      const rows = this.results.map(item => {
-        return [
-          item.year,
-          'Q' + item.quarter,
-          item.age,
-          item.principal.toFixed(2),
-          item.futureValue.toFixed(2),
-          item.profit.toFixed(2),
-          item.totalReturnRatio.toFixed(2),
-          (item.cagr * 100).toFixed(2),
-          item.pledgedAmount > 0 ? item.pledgedAmount.toFixed(2) : ''
-        ];
-      });
-
-      // 拼接CSV字符串（逗号分隔，换行符）
-      // 处理字段中可能的逗号或换行符，使用双引号包裹
-      function safeCSVField(field) {
-        const fieldStr = String(field);
-        if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
-          return `"${fieldStr.replace(/"/g, '""')}"`;
-        }
-        return fieldStr;
-      }
-
-      let csvContent = headers.map(safeCSVField).join(',') + '\r\n';
-      rows.forEach(row => {
-        csvContent += row.map(safeCSVField).join(',') + '\r\n';
-      });
-
-      // 创建下载链接并自动点击
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      const fileName = `复利定投计算结果_${this.startYear}_${this.years}年.csv`;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-  }
-});
-</script>
+    });
+  </script>
 </body>
 </html>
