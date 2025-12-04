@@ -254,8 +254,8 @@
       </div>
     </section>
 
-    <table v-if="results.length" aria-label="复利定投计算结果表">
-      <thead>
+    <table v-if="results.length" aria-label="复利定投计算结果表" style="overflow: auto;">
+      <thead style="position: sticky;top: 0;z-index: 1;">
         <tr>
           <th width="40">年份</th>
           <th>季度</th>
