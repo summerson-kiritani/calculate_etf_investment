@@ -3,18 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>复利定投计算器（含初始投入，季度收益修正版）</title>
+  <title>信贷与定投收益计算器（韩信点兵）</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 720px;
+      max-width: 700px;
       margin: 20px auto;
-      padding: 0 15px 60px;
+      padding: 0 15px;
       background: #f9f9f9;
       color: #333;
-      word-break: break-word;
-      line-height: 1.6;
     }
     h1 {
       text-align: center;
@@ -22,36 +20,28 @@
     }
     form {
       background: #fff;
-      padding: 20px 25px;
+      padding: 15px 20px;
       border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
       margin-bottom: 2em;
-      font-size: 1rem;
     }
     label {
       display: block;
-      margin-top: 15px;
+      margin-top: 10px;
       font-weight: 600;
-      color: #555;
     }
-    input[type="number"] {
+    input[type="number"], select {
       width: 100%;
-      padding: 8px 12px;
-      font-size: 1rem;
+      padding: 8px 10px;
+      font-size: 1em;
       margin-top: 6px;
       border-radius: 4px;
       border: 1px solid #ccc;
       box-sizing: border-box;
-      transition: border-color 0.3s ease;
-    }
-    input[type="number"]:focus {
-      border-color: #409eff;
-      outline: none;
-      box-shadow: 0 0 5px #a6c8ff;
     }
     button {
-      margin-top: 20px;
-      padding: 10px 24px;
+      margin-top: 15px;
+      padding: 10px 20px;
       background: #409eff;
       border: none;
       color: #fff;
@@ -59,503 +49,362 @@
       border-radius: 4px;
       cursor: pointer;
       transition: background 0.3s ease;
-      user-select: none;
-      font-size: 1.1rem;
     }
     button:hover {
       background: #66b1ff;
     }
-    button + button {
-      margin-left: 12px;
-      background: #67c23a;
-    }
-    button + button:hover {
-      background: #85ce61;
-    }
-    /* 报告文本区域 */
-    .reports {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      margin-bottom: 1.5em;
-    }
-    .highlight-report {
-      background-color: #fffae6;
-      border-left: 4px solid #f39c12;
-      padding: 8px 12px;
-      margin: 8px 0;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      border-radius: 3px;
-      font-size: 0.95rem;
-      color: #555;
-      user-select: none;
-    }
-    .highlight-report.active {
-      background-color: #f39c12;
-      color: white;
-      font-weight: 700;
-    }
-    /* 表格 */
     table {
       width: 100%;
       border-collapse: collapse;
       background: #fff;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
       border-radius: 6px;
       overflow: hidden;
-      font-size: 0.95rem;
-      margin-top: 10px;
-    }
-    thead {
-      background: #409eff;
-      color: white;
-      font-weight: 600;
-      position: sticky;
-      top: 0;
-      z-index: 1;
+      margin-bottom: 2em;
+      font-size: 0.9em;
     }
     th, td {
       text-align: center;
-      padding: 12px 10px;
+      padding: 12px 8px;
       border-bottom: 1px solid #eee;
-      word-break: break-word;
-      vertical-align: middle;
     }
-    tbody tr.year-color-0 {
-      background-color: #fff;
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
     }
-    tbody tr.year-color-1 {
-      background-color: #f0f7ff;
+    tr:last-child td {
+      border-bottom: none;
     }
-    tbody tr.highlight-row {
-      background-color: #ffeaa7 !important;
-      transition: background-color 0.3s;
-    }
-    /* 计算公式区域 */
-    .formula-section {
+    .formula {
       background: #fff;
+      padding: 15px 20px;
       border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      padding: 20px 25px;
-      margin-top: 3em;
-      color: #444;
-      font-size: 0.95rem;
-      line-height: 1.5;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      line-height: 1.5em;
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre-wrap;
+      font-size: 0.95em;
     }
-    .formula-section h3 {
-      color: #409eff;
-      margin-top: 0;
-      margin-bottom: 1em;
-      font-weight: 700;
+    .warning {
+      color: #d9534f;
+      font-weight: bold;
+      margin-top: 10px;
       text-align: center;
-    }
-    .formula-section p {
-      margin: 10px 0;
-    }
-    .formula-section code {
-      background: #eef6ff;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 0.95rem;
-      color: #3178c6;
-    }
-    /* 响应式 */
-    @media (max-width: 480px) {
-      body {
-        padding: 15px 12px 50px;
-      }
-      form {
-        padding: 15px 18px;
-      }
-      label {
-        margin-top: 12px;
-        font-size: 0.95rem;
-      }
-      input[type="number"] {
-        font-size: 0.9rem;
-        padding: 7px 10px;
-      }
-      button {
-        width: 100%;
-        margin-top: 15px;
-        font-size: 1rem;
-        padding: 10px 0;
-      }
-      button + button {
-        margin-left: 0;
-      }
-      table {
-        font-size: 0.85rem;
-      }
-      th, td {
-        padding: 8px 6px;
-      }
-      .formula-section {
-        padding: 15px 18px;
-        font-size: 0.9rem;
-      }
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <h1>复利定投计算器（含初始投入，季度收益修正版）</h1>
-    <form @submit.prevent="calculate" aria-label="复利定投计算器表单">
-      <label for="initialInvestment">初始投入资金（元）:</label>
-      <input id="initialInvestment" type="number" v-model.number="initialInvestment" min="0" step="0.01" required />
+    <h1>信贷与定投收益计算器（韩信点兵）</h1>
+    <form @submit.prevent="calculate">
+      <label for="loanPrincipal">贷款本金（元）</label>
+      <input id="loanPrincipal" type="number" v-model.number="loanPrincipalInput" min="1" step="1" required />
 
-      <label for="monthlyInvestment">每月定投金额（元）:</label>
-      <input id="monthlyInvestment" type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required />
+      <label for="loanRate">贷款年利率（%）</label>
+      <input id="loanRate" type="number" v-model.number="loanRate" min="0" step="0.01" required />
 
-      <label for="annualRate">预估年化收益率（%）:</label>
-      <input id="annualRate" type="number" v-model.number="annualRate" min="0" step="0.01" required />
+      <label for="loanTerm">贷款期限（年）</label>
+      <input id="loanTerm" type="number" v-model.number="loanTerm" min="1" step="1" required />
 
-      <label for="beta">收益调整系数 β（beta）:</label>
-      <input id="beta" type="number" v-model.number="beta" min="0" step="0.01" required />
+      <label for="monthlyCashFlow">每月可用还款金额（元）</label>
+      <input id="monthlyCashFlow" type="number" v-model.number="monthlyCashFlow" min="1" step="1" required />
 
-      <label for="years">投资年限（年）:</label>
-      <input id="years" type="number" v-model.number="years" min="1" step="1" required />
+      <label for="fundRate">基金年化收益率（%）</label>
+      <input id="fundRate" type="number" v-model.number="fundRate" min="0" step="0.01" required />
 
-      <label for="currentAge">当前年龄（岁）:</label>
-      <input id="currentAge" type="number" v-model.number="currentAge" min="0" step="1" required />
+      <label for="lumpSumBeta">一次性投入时选择的beta</label>
+      <input id="lumpSumBeta" type="number" v-model.number="lumpSumBeta" min="0" max="1" step="0.01" required />
 
-      <label for="startYear">开始投资年份:</label>
-      <input id="startYear" type="number" v-model.number="startYear" min="1900" step="1" required />
+      <label for="repaymentMethod">还款方式</label>
+      <select id="repaymentMethod" v-model="repaymentMethod" required>
+        <option value="equalPrincipalAndInterest">等额本息</option>
+        <option value="interestFirst">先息后本</option>
+      </select>
 
-      <label for="retirementAge">开始退休年龄（岁）:</label>
-      <input id="retirementAge" type="number" v-model.number="retirementAge" min="0" step="1" required />
-
-      <label for="withdrawRate">提领率（%）:</label>
-      <input id="withdrawRate" type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required />
-
-      <button type="submit">确定</button>
-      <button type="button" v-if="results.length" @click="exportCSV">导出CSV</button>
+      <button type="submit">计算</button>
     </form>
 
-    <section v-if="results.length && reports.length" class="reports" aria-live="polite" aria-atomic="true">
-      <h3 style="margin-top:0; margin-bottom: 10px; color: #409eff;">收益突破报告：</h3>
-      <div>
-        <div
-          v-for="report in reports"
-          :key="report.reportId"
-          :class="['highlight-report', selectedReportId === report.id ? 'active' : '']"
-          @click="scrollToRow(report.id)"
-          tabindex="0"
-          @keyup.enter="scrollToRow(report.id)"
-          role="button"
-          :aria-pressed="selectedReportId === report.id"
-          :aria-label="report.text"
-        >
-          {{ report.text }}
-        </div>
-      </div>
-    </section>
+    <div v-if="calculated">
+      <table>
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>数值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>贷款本金</td>
+            <td>{{ formatNumber(loanPrincipalInput) }} 元</td>
+          </tr>
+          <tr>
+            <td>贷款期限（月）</td>
+            <td>{{ totalMonths }} 月</td>
+          </tr>
+          <tr>
+            <td>月利率</td>
+            <td>{{ (monthlyLoanRate * 100).toFixed(4) }} %</td>
+          </tr>
+          <tr>
+            <td>每月应还款额（本金+利息）</td>
+            <td>{{ formatNumber(monthlyRepayment) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月可用还款金额</td>
+            <td>{{ formatNumber(monthlyCashFlow) }} 元</td>
+          </tr>
+          <tr v-if="monthlyCashFlow < monthlyRepayment" class="warning">
+            <td colspan="2">警告：每月可用还款金额不足以支付贷款月还款！</td>
+          </tr>
+          <tr>
+            <td>贷款总还款额</td>
+            <td>{{ formatNumber(totalLoanRepayment) }} 元</td>
+          </tr>
+          <tr>
+            <td>贷款总利息</td>
+            <td>{{ formatNumber(totalLoanRepayment - loanPrincipalInput) }} 元</td>
+          </tr>
+          <tr>
+            <td>还款方式</td>
+            <td>{{ repaymentMethodLabel }}</td>
+          </tr>
+          <tr>
+            <td>一次性投入系数 beta</td>
+            <td>{{ lumpSumBeta.toFixed(2) }}</td>
+          </tr>
+          <tr>
+            <td>贷款方案一次性投入基金{{ loanTerm }}年后价值</td>
+            <td>{{ formatNumber(fundValueLumpSum) }} 元</td>
+          </tr>
+          <tr>
+            <td>贷款方案净收益（基金价值 - 总还款）</td>
+            <td>{{ formatNumber(netProfitLumpSum) }} 元</td>
+          </tr>
+          <tr>
+            <td>闲置资金（未投资部分）</td>
+            <td>{{ formatNumber(idleCapital) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月定投基金{{ loanTerm }}年后价值</td>
+            <td>{{ formatNumber(fundValueMonthly) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月定投累计投入本金</td>
+            <td>{{ formatNumber(totalMonthlyInvestment) }} 元</td>
+          </tr>
+          <tr>
+            <td>每月定投方案净收益</td>
+            <td>{{ formatNumber(netProfitMonthly) }} 元</td>
+          </tr>
+          <tr style="font-weight: bold; background: #f0f9ff;">
+            <td>净收益差额（贷款方案 - 每月定投 + 闲置资金）</td>
+            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly + idleCapital) }} 元</td>
+          </tr>
+        </tbody>
+      </table>
 
-    <table v-if="results.length" aria-label="复利定投计算结果表" style="overflow: auto;">
-      <thead style="position: sticky;top: 0;z-index: 1;">
-        <tr>
-          <th width="40">年份</th>
-          <th>季度</th>
-          <th>年龄</th>
-          <th>累计本金（元）</th>
-          <th>未来价值（元）</th>
-          <th>收益部分（元）</th>
-          <th>总收益倍数</th>
-          <th width="60">年化收益率（%）</th>
-          <th>提领金额（元）</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="item in results"
-          :key="item.index"
-          :id="`row-${item.year}-${item.quarter}-${item.index}`"
-          :class="[
-            'year-color-' + ((item.year - startYear) % 2),
-            selectedReportId === (`row-${item.year}-${item.quarter}-${item.index}`) ? 'highlight-row' : ''
-          ]"
-        >
-          <td>{{ item.year }}</td>
-          <td>Q{{ item.quarter }}</td>
-          <td>{{ item.age }}</td>
-          <td v-html="formatCurrencyWithWan(item.principal)"></td>
-          <td v-html="formatCurrencyWithWan(item.futureValue)"></td>
-          <td v-html="formatCurrencyWithWan(item.profit)"></td>
-          <td>{{ item.totalReturnRatio.toFixed(2) }}倍</td>
-          <td>{{ (item.cagr * 100).toFixed(2) }}</td>
-          <td v-html="(item.withdrawAmount > 0 && item.quarter === 4) ? formatCurrencyWithWan(item.withdrawAmount) : ''"></td>
-        </tr>
-      </tbody>
-    </table>
+      <!-- 新增还款明细表 -->
+      <h2>还款明细（前12个月）</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>月份</th>
+            <th>月供（元）</th>
+            <th>利息（元）</th>
+            <th>本金（元）</th>
+            <th>剩余本金（元）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in repaymentSchedule" :key="item.month">
+            <td>{{ item.month }}</td>
+            <td>{{ formatNumber(item.monthlyRepayment) }}</td>
+            <td>{{ formatNumber(item.interest) }}</td>
+            <td>{{ formatNumber(item.principal) }}</td>
+            <td>{{ formatNumber(item.balance < 0 ? 0 : item.balance) }}</td>
+          </tr>
+        </tbody>
+      </table>
 
-    <section class="formula-section" aria-label="计算公式说明">
-      <h3>计算公式说明</h3>
-      <p>每季度复利收益率计算公式：</p>
-      <p><code>季度收益率 = (1 + 年化收益率)^(1/4) - 1</code></p>
-      <p>考虑收益调整系数 β（beta），实际季度收益率为：</p>
-      <p><code>季度收益率 (修正) = ((1 + 年化收益率)^(1/4) - 1) × β</code></p>
-      <p>每季度未来价值计算：</p>
-      <p><code>FVi = FVi-1 × (1 + 季度收益率 (修正)) + 每季度投入金额</code></p>
-      <ul>
-        <li>其中，每季度投入金额 = 每月定投金额 × 3</li>
-        <li>初始季度未来价值 = 初始投入资金 + 每季度投入金额</li>
-      </ul>
-      <p>累计本金 = 初始投入资金 + 已投入的所有定投金额</p>
-      <p>收益部分 = 未来价值 - 累计本金</p>
-      <p>总收益倍数 = 未来价值 ÷ 累计本金</p>
-      <p>年化收益率（CAGR）计算：</p>
-      <p><code>CAGR = (总收益倍数)^(1/投资年数) - 1</code></p>
-      <p>提领金额（假设从退休年龄开始，每年提取一次，显示在第四季度）：</p>
-      <p><code>提领金额 = 未来价值 × 提领率（%）</code></p>
-      <p>注：提领率为用户输入的百分比，用于计算退休后每季度可提取的资金。本计算器仅显示每年第四季度的提领金额。</p>
-    </section>
+    </div>
+
+    <div v-if="calculated" class="formula">
+贷款本金 P = {{ formatNumber(loanPrincipalInput) }} 元  
+贷款年利率 = {{ loanRate }} %  
+贷款期限 = {{ loanTerm }} 年（共 {{ totalMonths }} 月）  
+月利率 r = {{ monthlyLoanRate.toFixed(6) }}  
+
+还款方式：{{ repaymentMethodLabel }}
+
+<template v-if="repaymentMethod === 'equalPrincipalAndInterest'">
+每月应还款额 M = P × [ r(1+r)^n / ((1+r)^n -1) ]  
+(1+r)^n = {{ pow1rN.toFixed(6) }}  
+还款系数 = {{ repaymentFactor.toFixed(8) }}  
+
+计算：
+M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRepayment.toFixed(2) }} 元
+
+---
+
+贷款总还款额 = M × n = {{ monthlyRepayment.toFixed(2) }} × {{ totalMonths }} = {{ totalLoanRepayment.toFixed(2) }} 元  
+贷款总利息 = 总还款额 - 贷款本金 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
+</template>
+
+<template v-else>
+先息后本还款方式：  
+每月利息 = P × r = {{ (loanPrincipalInput * monthlyLoanRate).toFixed(2) }} 元  
+每月本金 = 贷款本金 / 贷款期限（月） = {{ (loanPrincipalInput / totalMonths).toFixed(2) }} 元  
+第1个月月供 = 利息 + 本金 = {{ (loanPrincipalInput * monthlyLoanRate + loanPrincipalInput / totalMonths).toFixed(2) }} 元  
+总还款额 = 贷款本金 + 利息总额 = {{ totalLoanRepayment.toFixed(2) }} 元  
+贷款总利息 = 利息总额 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
+</template>
+
+---
+
+一次性投入系数 beta = {{ lumpSumBeta }}  
+贷款本金一次性投入基金{{ loanTerm }}年后价值：  
+FV = P × beta × (1 + 基金年化收益率)^年数  
+= {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm }}  
+= {{ fundValueLumpSum.toFixed(2) }} 元
+
+闲置资金（未投资部分）：  
+= 贷款本金 × (1 - beta)  
+= {{ loanPrincipalInput }} × (1 - {{ lumpSumBeta }})  
+= {{ idleCapital.toFixed(2) }} 元
+
+---
+
+每月定投基金价值计算：  
+FV = P × [ (1 + r)^n - 1 ] ÷ r × (1 + r)  
+其中：  
+P = 每月定投 = {{ monthlyCashFlow }} 元  
+r = 月基金收益率 = {{ monthlyFundRate.toFixed(6) }}  
+n = {{ totalMonths }}
+
+计算：  
+(1 + r)^n = {{ pow1rN_Fund.toFixed(6) }}  
+
+FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthlyFundRate.toFixed(6) }} × (1 + {{ monthlyFundRate.toFixed(6) }})  
+= {{ fundValueMonthly.toFixed(2) }} 元
+
+累计投入本金 = {{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalMonthlyInvestment.toFixed(2) }} 元  
+定投方案净收益 = 基金价值 - 累计投入本金 = {{ netProfitMonthly.toFixed(2) }} 元
+    </div>
   </div>
 
   <script>
     new Vue({
-      el: '#app',
-      data() {
-        const birthYear = 1996;
-        const currentYear = new Date().getFullYear();
-        return {
-          initialInvestment: 0,
-          monthlyInvestment: 1000,
-          annualRate: 18,
-          beta: 1,
-          years: 30,
-          startYear: currentYear, // 自动设置为当前系统年份
-          currentAge: currentYear - birthYear, // 根据出生年份计算当前年龄
-          retirementAge: 50,
-          withdrawRate: 2,
-          results: [],
-          reports: [],
-          selectedReportId: null
+      el: "#app",
+      data: {
+        loanPrincipalInput: 100000, // 贷款本金输入
+        loanRate: 3,                // 年利率 %
+        loanTerm: 5,                // 年
+        monthlyCashFlow: 1500,      // 每月可用还款额
+        fundRate: 18,               // 基金年化收益率 %
+        lumpSumBeta: 1,             // 一次性投入系数 beta，默认1，限制最大1
+        repaymentMethod: "equalPrincipalAndInterest", // 还款方式，默认等额本息
+        calculated: false,
+
+        monthlyLoanRate: 0,
+        totalMonths: 0,
+        pow1rN: 0,
+        repaymentFactor: 0,
+        monthlyRepayment: 0,
+        totalLoanRepayment: 0,
+        fundValueLumpSum: 0,
+        netProfitLumpSum: 0,
+        monthlyFundRate: 0,
+        pow1rN_Fund: 0,
+        fundValueMonthly: 0,
+        totalMonthlyInvestment: 0,
+        netProfitMonthly: 0,
+
+        idleCapital: 0, // 闲置资金
+
+        repaymentSchedule: [],
+      },
+      computed: {
+        repaymentMethodLabel() {
+          return this.repaymentMethod === "equalPrincipalAndInterest" ? "等额本息" : "先息后本";
         }
       },
       methods: {
-        formatCurrencyWithWan(num) {
-          const formatted = num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
-          const wan = (num / 10000).toFixed(2);
-          return `${formatted}<br>（约${wan}万）`;
-        },
-        formatCurrency(num) {
-          return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
-        },
         calculate() {
-          if (
-            this.initialInvestment < 0 ||
-            this.monthlyInvestment < 0 ||
-            this.annualRate <= 0 ||
-            this.beta < 0 ||
-            this.years <= 0 ||
-            this.currentAge < 0 ||
-            this.startYear < 1900 ||
-            this.retirementAge < 0 ||
-            this.withdrawRate < 0 ||
-            this.withdrawRate > 100
-          ) {
-            alert('请输入合理的正数，且提领率在0-100之间！');
-            return;
-          }
-          this.results = [];
-          this.reports = [];
-          this.selectedReportId = null;
+          // 限制beta最大为1，最小0
+          if (this.lumpSumBeta > 1) this.lumpSumBeta = 1;
+          if (this.lumpSumBeta < 0) this.lumpSumBeta = 0;
 
-          const r = this.annualRate / 100;
-          const baseQuarterlyRate = Math.pow(1 + r, 1/4) - 1;
-          const quarterlyRate = baseQuarterlyRate * this.beta;
-          const monthsPerQuarter = 3;
-          const monthlyInvestment = this.monthlyInvestment;
-          const initialInvestment = this.initialInvestment;
-          const totalQuarters = this.years * 4;
-          const currentAge = this.currentAge;
-          const startYear = this.startYear;
-          const retirementAge = this.retirementAge;
-          const withdrawRate = this.withdrawRate / 100;
+          this.totalMonths = this.loanTerm * 12;
+          this.monthlyLoanRate = this.loanRate / 100 / 12;
+          this.monthlyFundRate = this.fundRate / 100 / 12;
 
-          for(let q = 1; q <= totalQuarters; q++) {
-            const year = startYear + Math.floor((q - 1) / 4);
-            const quarter = ((q - 1) % 4) + 1;
-            const age = currentAge + Math.floor((q - 1) / 4);
-
-            const totalMonthsInvested = q * monthsPerQuarter;
-            const principal = initialInvestment + monthlyInvestment * totalMonthsInvested;
-
-            const principalAddedThisQuarter = monthlyInvestment * monthsPerQuarter;
-
-            let futureValue = 0;
-            if (q === 1) {
-              futureValue = initialInvestment + principalAddedThisQuarter;
-            } else {
-              const lastFV = this.results[q - 2] ? this.results[q - 2].futureValue : initialInvestment;
-              futureValue = lastFV * (1 + quarterlyRate) + principalAddedThisQuarter;
-            }
-
-            const profit = futureValue - principal;
-            const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
-
-            let cagr = 0;
-            const fullYearsElapsed = Math.floor(q / 4);
-            if (principal > 0 && fullYearsElapsed > 0) {
-              cagr = Math.pow(totalReturnRatio, 1 / fullYearsElapsed) - 1;
-            }
-
-            // 提领金额，从退休年龄开始计算，且只在第四季度显示
-            let withdrawAmount = 0;
-            if (age >= retirementAge && quarter === 4) {
-              withdrawAmount = futureValue * withdrawRate;
-            }
-
-            this.results.push({
-              year,
-              quarter,
-              age,
-              principal,
-              futureValue,
-              profit,
-              totalReturnRatio,
-              cagr,
-              investYear: Math.floor((q - 1) / 4) + 1,
-              withdrawAmount,
-              index: q - 1 // 唯一索引
-            });
+          if (this.repaymentMethod === "equalPrincipalAndInterest") {
+            this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
+            this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
+            this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
+            this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
+          } else if (this.repaymentMethod === "interestFirst") {
+            this.monthlyRepayment = (this.loanPrincipalInput * this.monthlyLoanRate) + (this.loanPrincipalInput / this.totalMonths);
+            this.totalLoanRepayment = this.loanPrincipalInput + (this.loanPrincipalInput * this.monthlyLoanRate * this.totalMonths);
+            this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
+            this.repaymentFactor = 0;
           }
 
-          // 生成收益突破报告
-          const returnBreakpoints = this.generateReturnBreakpoints();
-          const moneyBreakpoints = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
+          // 计算闲置资金
+          this.idleCapital = this.loanPrincipalInput * (1 - this.lumpSumBeta);
 
-          let brokenReturns = new Set();
-          let brokenMoney = { principal: new Set(), futureValue: new Set(), profit: new Set() };
+          // 一次性投入基金价值（只对beta部分投资）
+          this.fundValueLumpSum = this.loanPrincipalInput * this.lumpSumBeta * Math.pow(1 + this.fundRate / 100, this.loanTerm);
+          this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
 
-          let reportCounter = 0;
+          this.pow1rN_Fund = Math.pow(1 + this.monthlyFundRate, this.totalMonths);
+          this.fundValueMonthly = this.monthlyCashFlow * ((this.pow1rN_Fund - 1) / this.monthlyFundRate) * (1 + this.monthlyFundRate);
+          this.totalMonthlyInvestment = this.monthlyCashFlow * this.totalMonths;
+          this.netProfitMonthly = this.fundValueMonthly - this.totalMonthlyInvestment;
 
-          this.results.forEach(item => {
-            const id = `row-${item.year}-${item.quarter}-${item.index}`;
+          // 还款明细，默认显示前12个月（如果期限小于12个月则显示全部）
+          this.repaymentSchedule = [];
+          let balance = this.loanPrincipalInput;
+          const showMonths = Math.min(this.totalMonths, 12);
 
-            for (const bp of returnBreakpoints) {
-              if (item.totalReturnRatio >= bp && !brokenReturns.has(bp)) {
-                brokenReturns.add(bp);
-                const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益倍数突破 ${bp} 倍，累计收益约 ${this.formatCurrency(item.profit)}（${(item.profit/10000).toFixed(0)}万）元，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
-                this.reports.push({ id, text, reportId: `report-${id}-${reportCounter++}` });
-                break;
-              }
+          if (this.repaymentMethod === "equalPrincipalAndInterest") {
+            for (let month = 1; month <= showMonths; month++) {
+              const interest = balance * this.monthlyLoanRate;
+              const principal = this.monthlyRepayment - interest;
+              balance -= principal;
+              this.repaymentSchedule.push({
+                month,
+                monthlyRepayment: this.monthlyRepayment,
+                interest,
+                principal,
+                balance,
+              });
             }
+          } else if (this.repaymentMethod === "interestFirst") {
+            const monthlyPrincipal = this.loanPrincipalInput / this.totalMonths;
+            const monthlyInterest = this.loanPrincipalInput * this.monthlyLoanRate;
+            for (let month = 1; month <= showMonths; month++) {
+              const interest = monthlyInterest;
+              const principal = monthlyPrincipal;
+              const monthlyRepayment = interest + principal;
+              balance -= principal;
+              this.repaymentSchedule.push({
+                month,
+                monthlyRepayment,
+                interest,
+                principal,
+                balance,
+              });
+            }
+          }
 
-            const moneyFields = ['principal', 'futureValue', 'profit'];
-            const fieldNames = {
-              principal: '累计本金',
-              futureValue: '未来价值',
-              profit: '收益部分',
-            };
-            moneyFields.forEach(field => {
-              for (const bp of moneyBreakpoints) {
-                if (field === 'profit' && bp === 100000) {
-                  if (item.profit >= 10000 && !brokenMoney.profit.has(10000)) {
-                    brokenMoney.profit.add(10000);
-                    const wanStr = (item.profit/10000).toFixed(0);
-                    const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，收益部分首次突破 1 万元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
-                    this.reports.push({ id, text, reportId: `report-${id}-${reportCounter++}` });
-                    break;
-                  }
-                }
-                if (item[field] >= bp && !brokenMoney[field].has(bp)) {
-                  brokenMoney[field].add(bp);
-                  const wanStr = (item[field]/10000).toFixed(0);
-                  const text = `在你开始投资的第 ${item.investYear} 年（${item.year}，${item.age} 岁）第 ${item.quarter} 季度，${fieldNames[field]}突破 ${bp.toLocaleString()} 元（约 ${wanStr} 万）。累计收益倍数 ${item.totalReturnRatio.toFixed(2)} 倍，年化收益率 ${(item.cagr*100).toFixed(2)}%。`;
-                  this.reports.push({ id, text, reportId: `report-${id}-${reportCounter++}` });
-                  break;
-                }
-              }
-            });
-          });
-
-          this.reports.sort((a,b) => {
-            const [aYear, aQuarter] = a.id.replace('row-', '').split('-').map(Number);
-            const [bYear, bQuarter] = b.id.replace('row-', '').split('-').map(Number);
-            return aYear !== bYear ? aYear - bYear : aQuarter - bQuarter;
-          });
+          this.calculated = true;
         },
-        generateReturnBreakpoints() {
-          const basePoints = [2,10,50,100,500,1000];
-          const extendedPoints = [];
-          let val = 5000;
-          while(val <= 100000) {
-            extendedPoints.push(val);
-            val = val < 10000 ? 10000 : val * 2;
-          }
-          return basePoints.concat(extendedPoints);
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
-        scrollToRow(id) {
-          this.selectedReportId = id;
-          this.$nextTick(() => {
-            const el = document.getElementById(id);
-            if (el) {
-              const offset = el.getBoundingClientRect().top + window.pageYOffset - 80;
-              window.scrollTo({ top: offset, behavior: 'smooth' });
-              el.setAttribute('tabindex', '-1');
-              el.focus();
-            }
-          });
-        },
-        exportCSV() {
-          if (!this.results.length) {
-            alert('没有数据可导出！');
-            return;
-          }
-          const headers = [
-            '年份',
-            '季度',
-            '年龄',
-            '累计本金（元）',
-            '未来价值（元）',
-            '收益部分（元）',
-            '总收益倍数',
-            '年化收益率（%）',
-            '提领金额（元）'
-          ];
-
-          const rows = this.results.map(item => [
-            item.year,
-            'Q' + item.quarter,
-            item.age,
-            item.principal.toFixed(2),
-            item.futureValue.toFixed(2),
-            item.profit.toFixed(2),
-            item.totalReturnRatio.toFixed(2),
-            (item.cagr * 100).toFixed(2),
-            (item.withdrawAmount > 0 && item.quarter === 4) ? item.withdrawAmount.toFixed(2) : ''
-          ]);
-
-          function safeCSVField(field) {
-            const fieldStr = String(field);
-            if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
-              return `"${fieldStr.replace(/"/g, '""')}"`;
-            }
-            return fieldStr;
-          }
-
-          let csvContent = headers.map(safeCSVField).join(',') + '\r\n';
-          rows.forEach(row => {
-            csvContent += row.map(safeCSVField).join(',') + '\r\n';
-          });
-
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-
-          const link = document.createElement('a');
-          link.href = url;
-          const fileName = `复利定投计算结果_${this.startYear}_${this.years}年.csv`;
-          link.setAttribute('download', fileName);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }
-      }
+      },
     });
   </script>
 </body>
