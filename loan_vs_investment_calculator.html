@@ -114,7 +114,7 @@
       <input id="fundRate" type="number" v-model.number="fundRate" min="0" step="0.01" required />
 
       <label for="lumpSumBeta">一次性投入时选择的beta</label>
-      <input id="lumpSumBeta" type="number" v-model.number="lumpSumBeta" min="0" step="0.01" required />
+      <input id="lumpSumBeta" type="number" v-model.number="lumpSumBeta" min="0" max="1" step="0.01" required />
 
       <label for="repaymentMethod">还款方式</label>
       <select id="repaymentMethod" v-model="repaymentMethod" required>
@@ -182,6 +182,10 @@
             <td>{{ formatNumber(netProfitLumpSum) }} 元</td>
           </tr>
           <tr>
+            <td>闲置资金（未投资部分）</td>
+            <td>{{ formatNumber(idleCapital) }} 元</td>
+          </tr>
+          <tr>
             <td>每月定投基金{{ loanTerm }}年后价值</td>
             <td>{{ formatNumber(fundValueMonthly) }} 元</td>
           </tr>
@@ -194,8 +198,8 @@
             <td>{{ formatNumber(netProfitMonthly) }} 元</td>
           </tr>
           <tr style="font-weight: bold; background: #f0f9ff;">
-            <td>净收益差额（贷款方案 - 每月定投）</td>
-            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly) }} 元</td>
+            <td>净收益差额（贷款方案 - 每月定投 + 闲置资金）</td>
+            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly + idleCapital) }} 元</td>
           </tr>
         </tbody>
       </table>
@@ -264,6 +268,11 @@ FV = P × beta × (1 + 基金年化收益率)^年数
 = {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm }}  
 = {{ fundValueLumpSum.toFixed(2) }} 元
 
+闲置资金（未投资部分）：  
+= 贷款本金 × (1 - beta)  
+= {{ loanPrincipalInput }} × (1 - {{ lumpSumBeta }})  
+= {{ idleCapital.toFixed(2) }} 元
+
 ---
 
 每月定投基金价值计算：  
@@ -293,7 +302,7 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         loanTerm: 5,                // 年
         monthlyCashFlow: 1500,      // 每月可用还款额
         fundRate: 18,               // 基金年化收益率 %
-        lumpSumBeta: 1,             // 一次性投入系数 beta，默认1
+        lumpSumBeta: 1,             // 一次性投入系数 beta，默认1，限制最大1
         repaymentMethod: "equalPrincipalAndInterest", // 还款方式，默认等额本息
         calculated: false,
 
@@ -311,6 +320,8 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         totalMonthlyInvestment: 0,
         netProfitMonthly: 0,
 
+        idleCapital: 0, // 闲置资金
+
         repaymentSchedule: [],
       },
       computed: {
@@ -320,29 +331,30 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
       },
       methods: {
         calculate() {
+          // 限制beta最大为1，最小0
+          if (this.lumpSumBeta > 1) this.lumpSumBeta = 1;
+          if (this.lumpSumBeta < 0) this.lumpSumBeta = 0;
+
           this.totalMonths = this.loanTerm * 12;
           this.monthlyLoanRate = this.loanRate / 100 / 12;
           this.monthlyFundRate = this.fundRate / 100 / 12;
 
-          // 计算贷款还款总额和月还款额
           if (this.repaymentMethod === "equalPrincipalAndInterest") {
             this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
             this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
             this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
             this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
           } else if (this.repaymentMethod === "interestFirst") {
-            // 先息后本：
-            // 每月利息固定，月本金固定
-            // 总利息 = 贷款本金 * 月利率 * 月数
-            // 总还款额 = 贷款本金 + 总利息
-            // 月还款额每月变化，第一月月供 = 利息 + 本金，之后利息不变，本金不变，月供递减
             this.monthlyRepayment = (this.loanPrincipalInput * this.monthlyLoanRate) + (this.loanPrincipalInput / this.totalMonths);
             this.totalLoanRepayment = this.loanPrincipalInput + (this.loanPrincipalInput * this.monthlyLoanRate * this.totalMonths);
             this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
-            this.repaymentFactor = 0; // 不适用
+            this.repaymentFactor = 0;
           }
 
-          // 一次性投入计算乘以beta
+          // 计算闲置资金
+          this.idleCapital = this.loanPrincipalInput * (1 - this.lumpSumBeta);
+
+          // 一次性投入基金价值（只对beta部分投资）
           this.fundValueLumpSum = this.loanPrincipalInput * this.lumpSumBeta * Math.pow(1 + this.fundRate / 100, this.loanTerm);
           this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
 
@@ -351,7 +363,7 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           this.totalMonthlyInvestment = this.monthlyCashFlow * this.totalMonths;
           this.netProfitMonthly = this.fundValueMonthly - this.totalMonthlyInvestment;
 
-          // 计算还款明细，默认显示前12个月（如果期限小于12个月则显示全部）
+          // 还款明细，默认显示前12个月（如果期限小于12个月则显示全部）
           this.repaymentSchedule = [];
           let balance = this.loanPrincipalInput;
           const showMonths = Math.min(this.totalMonths, 12);
@@ -370,7 +382,6 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
               });
             }
           } else if (this.repaymentMethod === "interestFirst") {
-            // 先息后本每月利息固定，本金固定，月供递减
             const monthlyPrincipal = this.loanPrincipalInput / this.totalMonths;
             const monthlyInterest = this.loanPrincipalInput * this.monthlyLoanRate;
             for (let month = 1; month <= showMonths; month++) {
