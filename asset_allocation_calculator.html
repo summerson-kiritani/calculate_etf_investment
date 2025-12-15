@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>资产配置计算器（含年化收益与10年增长推演）</title>
+  <title>初始资产配置计算器（含年化收益与10年增长推演）</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
@@ -111,7 +111,7 @@
 </head>
 <body>
   <div id="app">
-    <h1>资产配置计算器</h1>
+    <h1>初始资产配置计算器</h1>
     <form @submit.prevent="onAddItem" class="section">
       <label for="totalAmount">总资金（元）</label>
       <input id="totalAmount" type="number" v-model.number="totalAmount" min="0" step="1" required />
@@ -227,7 +227,7 @@
         totalAmount: 300000,
         selectedAssetKey: "",
         inputPercent: null,
-        annualReturn: 18,
+        annualReturn: null,
         allocationItems: [],
         calculated: false,
         availableAssets: {
@@ -255,6 +255,25 @@
           return this.allocationItems.reduce((acc, item) => acc + (item.percent * item.annualReturn), 0) / 100;
         }
       },
+      watch: {
+        totalAmount() {
+          // 更新金额，重置计算结果
+          this.allocationItems = this.allocationItems.map(item => ({
+            ...item,
+            amount: this.totalAmount * (item.percent / 100),
+          }));
+          this.calculated = false;
+          this.growthData = [];
+        },
+        selectedAssetKey(newVal) {
+          // 当选择资产类别变化时自动填充默认年化收益率
+          if (newVal && this.availableAssets[newVal]) {
+            this.annualReturn = this.availableAssets[newVal].defaultReturn;
+          } else {
+            this.annualReturn = null;
+          }
+        }
+      },
       methods: {
         onAddItem() {
           if (!this.selectedAssetKey) {
@@ -265,9 +284,9 @@
             alert("请输入有效的配置比例");
             return;
           }
-          // 默认年化收益率赋值（如果当前annualReturn为空或无效）
           if (this.annualReturn === null || this.annualReturn < 0) {
-            this.annualReturn = this.availableAssets[this.selectedAssetKey].defaultReturn;
+            alert("请输入有效的年化收益率");
+            return;
           }
           const newTotalPercent = this.totalPercent + this.inputPercent;
           if (newTotalPercent > 100) {
@@ -306,10 +325,10 @@
               annualReturn: this.annualReturn,
             });
           }
-          // 清空选择
+          // 清空选择和输入
           this.selectedAssetKey = "";
           this.inputPercent = null;
-          this.annualReturn = 18;
+          this.annualReturn = null;
           this.calculated = false;
           this.growthData = [];
         },
@@ -352,20 +371,9 @@
           return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
       },
-      watch: {
-        totalAmount() {
-          // 更新金额，重置计算结果
-          this.allocationItems = this.allocationItems.map(item => ({
-            ...item,
-            amount: this.totalAmount * (item.percent / 100),
-          }));
-          this.calculated = false;
-          this.growthData = [];
-        }
-      },
       mounted() {
-        // 初始化年化收益默认值
-        this.annualReturn = 18;
+        // 初始化年化收益默认值保持空，等选择资产后自动填充
+        this.annualReturn = null;
       }
     });
   </script>
