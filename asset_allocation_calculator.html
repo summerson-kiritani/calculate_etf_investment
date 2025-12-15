@@ -231,11 +231,11 @@
         allocationItems: [],
         calculated: false,
         availableAssets: {
-          QQQ: { name: "QQQ", beta: 1.0 },
-          QLD: { name: "QLD", beta: 2.0 },
-          TQQQ: { name: "TQQQ", beta: 3.0 },
-          SPY: { name: "SPY", beta: 0.8 },
-          CASH: { name: "货币市场基金（现金）", beta: 0.0 }
+          QQQ: { name: "QQQ", beta: 1.0, defaultReturn: 18 },
+          QLD: { name: "QLD", beta: 2.0, defaultReturn: 36 },
+          TQQQ: { name: "TQQQ", beta: 3.0, defaultReturn: 54 },
+          SPY: { name: "SPY", beta: 0.8, defaultReturn: 15 },
+          CASH: { name: "货币市场基金（现金）", beta: 0.0, defaultReturn: 0.02 }
         },
         growthData: []
       },
@@ -265,9 +265,9 @@
             alert("请输入有效的配置比例");
             return;
           }
+          // 默认年化收益率赋值（如果当前annualReturn为空或无效）
           if (this.annualReturn === null || this.annualReturn < 0) {
-            alert("请输入有效的年化收益率");
-            return;
+            this.annualReturn = this.availableAssets[this.selectedAssetKey].defaultReturn;
           }
           const newTotalPercent = this.totalPercent + this.inputPercent;
           if (newTotalPercent > 100) {
