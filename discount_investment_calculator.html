@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>折扣计算器（双模式带投资收益率）</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 700px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    form {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 1em;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2em;
+      font-size: 0.95em;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 8px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .formula {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      line-height: 1.5em;
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre-wrap;
+      font-size: 0.95em;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>折扣计算器（双模式带投资收益率）</h1>
+
+    <form @submit.prevent="calculate">
+      <label for="mode">计算模式</label>
+      <select id="mode" v-model="mode" required>
+        <option value="rate">输入原价 + 折扣率 → 计算折后价</option>
+        <option value="price">输入原价 + 折后价 → 计算折扣率</option>
+      </select>
+
+      <label for="originalPrice">商品原价（元）</label>
+      <input id="originalPrice" type="number" v-model.number="originalPrice" min="0.01" step="0.01" required />
+
+      <template v-if="mode === 'rate'">
+        <label for="discountRate">折扣率（%）</label>
+        <input id="discountRate" type="number" v-model.number="discountRate" min="0" max="100" step="0.01" required />
+      </template>
+
+      <template v-else>
+        <label for="discountedPrice">折后价格（元）</label>
+        <input id="discountedPrice" type="number" v-model.number="discountedPriceInput" :max="originalPrice" min="0" step="0.01" required />
+      </template>
+
+      <button type="submit">计算</button>
+    </form>
+
+    <div v-if="calculated">
+      <table>
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>数值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>商品原价</td>
+            <td>{{ formatNumber(originalPrice) }} 元</td>
+          </tr>
+
+          <tr v-if="mode === 'rate'">
+            <td>折扣率</td>
+            <td>{{ discountRate.toFixed(2) }} %</td>
+          </tr>
+
+          <tr v-if="mode === 'rate'">
+            <td>折后价格</td>
+            <td>{{ formatNumber(discountedPrice) }} 元</td>
+          </tr>
+
+          <tr v-if="mode === 'price'">
+            <td>折后价格</td>
+            <td>{{ formatNumber(discountedPrice) }} 元</td>
+          </tr>
+
+          <tr v-if="mode === 'price'">
+            <td>折扣率</td>
+            <td>{{ discountRate.toFixed(2) }} %</td>
+          </tr>
+
+          <tr>
+            <td>节省金额</td>
+            <td>{{ formatNumber(savedAmount) }} 元</td>
+          </tr>
+
+          <tr>
+            <td>投资收益率</td>
+            <td>{{ investmentReturn.toFixed(2) }} %</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="formula" v-if="mode === 'rate'">
+商品原价 P = {{ formatNumber(originalPrice) }} 元  
+折扣率 d = {{ discountRate.toFixed(2) }} %
+
+折后价格 = P × (d ÷ 100)  
+= {{ originalPrice }} × {{ (discountRate / 100).toFixed(4) }}  
+= {{ discountedPrice.toFixed(2) }} 元
+
+节省金额 = P - 折后价格  
+= {{ savedAmount.toFixed(2) }} 元
+
+---
+
+投资收益率 = (原价 - 折后价) ÷ 折后价 × 100%  
+= ({{ originalPrice.toFixed(2) }} - {{ discountedPrice.toFixed(2) }}) ÷ {{ discountedPrice.toFixed(2) }} × 100%  
+= {{ investmentReturn.toFixed(2) }} %
+      </div>
+
+      <div class="formula" v-else>
+商品原价 P = {{ formatNumber(originalPrice) }} 元  
+折后价格 F = {{ formatNumber(discountedPrice) }} 元
+
+折扣率 d = (折后价格 ÷ 原价) × 100%  
+= ({{ discountedPrice.toFixed(2) }} ÷ {{ originalPrice.toFixed(2) }}) × 100%  
+= {{ discountRate.toFixed(2) }} %
+
+节省金额 = P - F  
+= {{ savedAmount.toFixed(2) }} 元
+
+---
+
+投资收益率 = (原价 - 折后价) ÷ 折后价 × 100%  
+= ({{ originalPrice.toFixed(2) }} - {{ discountedPrice.toFixed(2) }}) ÷ {{ discountedPrice.toFixed(2) }} × 100%  
+= {{ investmentReturn.toFixed(2) }} %
+      </div>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        mode: 'rate', // 计算模式：'rate' 或 'price'
+        originalPrice: 100,
+        discountRate: 90,
+        discountedPrice: 0,
+        discountedPriceInput: 90,
+        savedAmount: 0,
+        investmentReturn: 0,
+        calculated: false,
+      },
+      watch: {
+        originalPrice(val) {
+          if (val < 0) this.originalPrice = 0;
+          if (this.mode === 'price' && this.discountedPriceInput > val) {
+            this.discountedPriceInput = val;
+          }
+        },
+        discountedPriceInput(val) {
+          if (val > this.originalPrice) {
+            this.discountedPriceInput = this.originalPrice;
+          } else if (val < 0) {
+            this.discountedPriceInput = 0;
+          }
+        },
+        discountRate(val) {
+          if (val > 100) this.discountRate = 100;
+          if (val < 0) this.discountRate = 0;
+        }
+      },
+      methods: {
+        calculate() {
+          if (this.originalPrice <= 0) {
+            alert("请输入有效的商品原价");
+            return;
+          }
+          if (this.mode === 'rate') {
+            if (this.discountRate < 0) this.discountRate = 0;
+            if (this.discountRate > 100) this.discountRate = 100;
+            this.discountedPrice = this.originalPrice * (this.discountRate / 100);
+            this.savedAmount = this.originalPrice - this.discountedPrice;
+          } else {
+            if (this.discountedPriceInput < 0) {
+              this.discountedPriceInput = 0;
+            }
+            if (this.discountedPriceInput > this.originalPrice) {
+              this.discountedPriceInput = this.originalPrice;
+            }
+            this.discountedPrice = this.discountedPriceInput;
+            this.savedAmount = this.originalPrice - this.discountedPrice;
+            this.discountRate = (this.discountedPrice / this.originalPrice) * 100;
+          }
+          // 计算投资收益率 = (原价 - 折后价) / 折后价 * 100%
+          if (this.discountedPrice > 0) {
+            this.investmentReturn = ((this.originalPrice - this.discountedPrice) / this.discountedPrice) * 100;
+          } else {
+            this.investmentReturn = 0;
+          }
+
+          this.calculated = true;
+        },
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      },
+      mounted() {
+        this.calculate();
+      }
+    });
+  </script>
+</body>
+</html>
