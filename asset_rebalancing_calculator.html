@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>资产再平衡计算器</title>
+  <title>无脑资产再平衡计算器</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
@@ -102,7 +102,7 @@
 </head>
 <body>
   <div id="app">
-    <h1>资产再平衡计算器</h1>
+    <h1>无脑资产再平衡计算器</h1>
 
     <form @submit.prevent="addCurrentAsset" class="section">
       <label>当前资产类别</label>
@@ -228,13 +228,12 @@
       data: {
         availableAssets: {
           QQQ: { name: "QQQ" },
-          QLD: { name: "QLD" },
           CASH: { name: "货币市场基金（现金）" }
         },
         currentAssetKey: "",
         currentAssetValue: null,
         currentAssets: [],
-        targetPercents: { QQQ: 0, QLD: 0, CASH: 0 },
+        targetPercents: { QQQ: 0, CASH: 0 },
         rebalanceResults: [],
         rebalanceCalculated: false,
       },
