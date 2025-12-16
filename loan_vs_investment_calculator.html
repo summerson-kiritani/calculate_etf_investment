@@ -104,8 +104,19 @@
       <label for="loanRate">贷款年利率（%）</label>
       <input id="loanRate" type="number" v-model.number="loanRate" min="0" step="0.01" required />
 
-      <label for="loanTerm">贷款期限（年）</label>
-      <input id="loanTerm" type="number" v-model.number="loanTerm" min="1" step="1" required />
+      <label for="loanTermMonths">贷款期限（月）</label>
+      <div style="display:flex; align-items:center;">
+        <input
+          id="loanTermMonths"
+          type="number"
+          v-model.number="loanTermMonths"
+          min="1"
+          step="1"
+          required
+          style="flex:1; margin-right:8px;"
+        />
+        <span>{{ (loanTermMonths / 12).toFixed(2) }} 年</span>
+      </div>
 
       <label for="monthlyCashFlow">每月可用还款金额（元）</label>
       <input id="monthlyCashFlow" type="number" v-model.number="monthlyCashFlow" min="1" step="1" required />
@@ -174,7 +185,7 @@
             <td>{{ lumpSumBeta.toFixed(2) }}</td>
           </tr>
           <tr>
-            <td>贷款方案一次性投入基金{{ loanTerm }}年后价值</td>
+            <td>贷款方案一次性投入基金{{ loanTerm.toFixed(2) }}年后价值</td>
             <td>{{ formatNumber(fundValueLumpSum) }} 元</td>
           </tr>
           <tr>
@@ -186,7 +197,7 @@
             <td>{{ formatNumber(idleCapital) }} 元</td>
           </tr>
           <tr>
-            <td>每月定投基金{{ loanTerm }}年后价值</td>
+            <td>每月定投基金{{ loanTerm.toFixed(2) }}年后价值</td>
             <td>{{ formatNumber(fundValueMonthly) }} 元</td>
           </tr>
           <tr>
@@ -232,7 +243,7 @@
     <div v-if="calculated" class="formula">
 贷款本金 P = {{ formatNumber(loanPrincipalInput) }} 元  
 贷款年利率 = {{ loanRate }} %  
-贷款期限 = {{ loanTerm }} 年（共 {{ totalMonths }} 月）  
+贷款期限 = {{ loanTerm.toFixed(2) }} 年（共 {{ totalMonths }} 月）  
 月利率 r = {{ monthlyLoanRate.toFixed(6) }}  
 
 还款方式：{{ repaymentMethodLabel }}
@@ -263,9 +274,9 @@ M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRep
 ---
 
 一次性投入系数 beta = {{ lumpSumBeta }}  
-贷款本金一次性投入基金{{ loanTerm }}年后价值：  
+贷款本金一次性投入基金{{ loanTerm.toFixed(2) }}年后价值：  
 FV = P × beta × (1 + 基金年化收益率)^年数  
-= {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm }}  
+= {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm.toFixed(2) }}  
 = {{ fundValueLumpSum.toFixed(2) }} 元
 
 闲置资金（未投资部分）：  
@@ -299,7 +310,7 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
       data: {
         loanPrincipalInput: 100000, // 贷款本金输入
         loanRate: 3,                // 年利率 %
-        loanTerm: 5,                // 年
+        loanTermMonths: 60,         // 贷款期限（月）
         monthlyCashFlow: 1500,      // 每月可用还款额
         fundRate: 18,               // 基金年化收益率 %
         lumpSumBeta: 1,             // 一次性投入系数 beta，默认1，限制最大1
@@ -323,6 +334,8 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
         idleCapital: 0, // 闲置资金
 
         repaymentSchedule: [],
+
+        loanTerm: 0, // 年数，计算用
       },
       computed: {
         repaymentMethodLabel() {
@@ -335,7 +348,8 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           if (this.lumpSumBeta > 1) this.lumpSumBeta = 1;
           if (this.lumpSumBeta < 0) this.lumpSumBeta = 0;
 
-          this.totalMonths = this.loanTerm * 12;
+          this.totalMonths = this.loanTermMonths;
+          this.loanTerm = this.loanTermMonths / 12;
           this.monthlyLoanRate = this.loanRate / 100 / 12;
           this.monthlyFundRate = this.fundRate / 100 / 12;
 
