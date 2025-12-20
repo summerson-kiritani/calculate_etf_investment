@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>复利定投回测功能</title>
+  <title>复利定投回测计算器</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -129,16 +130,36 @@
         padding: 8px 6px;
       }
     }
+    #chart {
+      width: 100%;
+      height: 320px;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
   </style>
 </head>
 <body>
   <div id="app" role="main" aria-label="复利定投回测功能">
-    <h1>复利定投回测功能</h1>
+    <h1>复利定投回测计算器</h1>
     <form @submit.prevent="runBacktest" aria-label="回测参数表单">
+      <label for="selectData">选择回测数据:</label>
+      <select id="selectData" v-model="selectedDataName" required @change="onDataChange">
+        <option disabled value="">请选择数据</option>
+        <option v-for="item in select" :key="item.name" :value="item.name">{{ item.name }}</option>
+      </select>
+
       <label for="startDate">开始日期:</label>
       <select id="startDate" v-model="selectedStartDate" required>
         <option disabled value="">请选择开始月份</option>
-        <option v-for="item in monthlyData" :key="item.date" :value="item.date">
+        <option v-for="item in monthlyData" :key="item.date" :value="item.date">{{ item.date }}</option>
+      </select>
+
+      <label for="endDate">结束日期:</label>
+      <select id="endDate" v-model="selectedEndDate" required>
+        <option disabled value="">请选择结束月份</option>
+        <option v-for="item in monthlyData" :key="'end-' + item.date" :value="item.date" :disabled="isEndDateDisabled(item.date)">
           {{ item.date }}
         </option>
       </select>
@@ -151,9 +172,6 @@
 
       <label for="beta">收益调整系数 β（beta）:</label>
       <input id="beta" type="number" v-model.number="beta" min="0" step="0.01" required />
-
-      <label for="years">投资年限（年）:</label>
-      <input id="years" type="number" v-model.number="years" min="1" step="1" required />
 
       <button type="submit">开始回测</button>
       <button type="button" v-if="results.length" @click="exportCSV">导出CSV</button>
@@ -188,79 +206,101 @@
       <p style="margin-top: 1em; font-weight: 600;">最终年化收益率：{{ (finalCAGR * 100).toFixed(2) }}%</p>
     </section>
 
+    <div id="chart" role="img" aria-label="回测收益走势图"></div>
   </div>
 
-  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qqq_data.js">
-  </script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qqq_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qld_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/tqqq_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/xauusd_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/spy_data.js"></script>
 
   <script>
-
-    rawData = rawData.reverse()
-console.log(rawData)
-
-    // QQQ历史数据，按时间升序排列（日期格式 YYYY/MM/DD）
-    // const rawData = [
-    //   { date: "2023/1/1", close: 294.46 },
-    //   { date: "2023/2/1", close: 293.41 },
-    //   { date: "2023/3/1", close: 320.76 },
-    //   { date: "2023/4/1", close: 322.39 },
-    //   { date: "2023/5/1", close: 347.81 },
-    //   { date: "2023/6/1", close: 369.23 },
-    //   { date: "2023/7/1", close: 383.48 },
-    //   { date: "2023/8/1", close: 377.79 },
-    //   { date: "2023/9/1", close: 358.08 },
-    //   { date: "2023/10/1", close: 350.69 },
-    //   { date: "2023/11/1", close: 388.63 },
-    //   { date: "2023/12/1", close: 409.52 },
-    //   { date: "2024/1/1", close: 416.97 },
-    //   { date: "2024/2/1", close: 439.00 },
-    //   { date: "2024/3/1", close: 444.01 },
-    //   { date: "2024/4/1", close: 424.59 },
-    //   { date: "2024/5/1", close: 450.71 },
-    //   { date: "2024/6/1", close: 479.11 },
-    //   { date: "2024/7/1", close: 471.07 },
-    //   { date: "2024/8/1", close: 476.27 },
-    //   { date: "2024/9/1", close: 488.07 },
-    //   { date: "2024/10/1", close: 483.85 },
-    //   { date: "2024/11/1", close: 509.74 },
-    //   { date: "2024/12/1", close: 511.23 },
-    //   { date: "2025/1/1", close: 522.29 },
-    //   { date: "2025/2/1", close: 508.17 },
-    //   { date: "2025/3/1", close: 468.92 },
-    //   { date: "2025/4/1", close: 475.47 },
-    //   { date: "2025/5/1", close: 519.11 },
-    //   { date: "2025/6/1", close: 551.64 },
-    //   { date: "2025/7/1", close: 565.01 },
-    //   { date: "2025/8/1", close: 570.40 },
-    //   { date: "2025/9/1", close: 600.37 },
-    //   { date: "2025/10/1", close: 629.07 },
-    //   { date: "2025/11/1", close: 619.25 }
-    // ];
+    let select = [
+      {
+        name: 'QQQ',
+        data: qqqData,
+      },
+      {
+        name: 'QLD',
+        data: qldData,
+      },
+      {
+        name: 'TQQQ',
+        data: tqqqData,
+      },
+      {
+        name: 'XAU/USD(黄金)',
+        data: xauusdData,
+      },
+      {
+        name: 'SPY',
+        data: spyData,
+      },
+    ];
 
     new Vue({
       el: '#app',
       data() {
         return {
-          monthlyData: rawData,
+          select: select,
+          selectedDataName: '',
+          monthlyData: [],
           selectedStartDate: '',
+          selectedEndDate: '',
           initialInvestment: 10000,
           monthlyInvestment: 1000,
           beta: 1,
-          years: 99,
           results: [],
-          finalCAGR: 0
+          finalCAGR: 0,
+          chart: null
         }
+      },
+      watch: {
+        selectedDataName(val) {
+          this.updateMonthlyData();
+        },
+        monthlyData() {
+          // 重置日期选择
+          this.selectedStartDate = '';
+          this.selectedEndDate = '';
+          this.results = [];
+          this.finalCAGR = 0;
+          this.clearChart();
+        },
       },
       methods: {
         formatCurrency(num) {
           return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        },
+        updateMonthlyData() {
+          const selected = this.select.find(item => item.name === this.selectedDataName);
+          if (selected && selected.data && selected.data.length) {
+            // 保证数据按日期升序
+            this.monthlyData = selected.data.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+          } else {
+            this.monthlyData = [];
+          }
+        },
+        isEndDateDisabled(date) {
+          if (!this.selectedStartDate) return false;
+          // 结束日期必须大于等于开始日期
+          return new Date(date) < new Date(this.selectedStartDate);
         },
         runBacktest() {
           if (!this.selectedStartDate) {
             alert('请选择开始日期');
             return;
           }
-          if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.beta < 0 || this.years < 1) {
+          if (!this.selectedEndDate) {
+            alert('请选择结束日期');
+            return;
+          }
+          if (new Date(this.selectedEndDate) < new Date(this.selectedStartDate)) {
+            alert('结束日期不能早于开始日期');
+            return;
+          }
+          if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.beta < 0) {
             alert('请输入合理的参数');
             return;
           }
@@ -268,51 +308,36 @@ console.log(rawData)
           this.results = [];
           this.finalCAGR = 0;
 
-          // 找到开始日期索引
           const startIdx = this.monthlyData.findIndex(d => d.date === this.selectedStartDate);
-          if (startIdx === -1) {
-            alert('开始日期数据未找到');
+          const endIdx = this.monthlyData.findIndex(d => d.date === this.selectedEndDate);
+          if (startIdx === -1 || endIdx === -1) {
+            alert('开始或结束日期数据未找到');
+            return;
+          }
+          if (endIdx < startIdx) {
+            alert('结束日期不能早于开始日期');
             return;
           }
 
-          // 计算总月份数
-          const totalMonths = this.years * 12;
-          // 结束索引（不超过数据最后）
-          const endIdx = Math.min(startIdx + totalMonths - 1, this.monthlyData.length - 1);
-
-          // 计算季度收益修正，实际用历史价格收益，不用预估年化收益率
-          // 这里beta作为收益调整系数，影响未来价值增长的模拟
-          // 实际用价格涨跌率计算复利
-
-          // 初始投入后持有份额，按初始投资价格计算份额
           const startPrice = this.monthlyData[startIdx].close;
           let totalShares = this.initialInvestment / startPrice;
           let totalPrincipal = this.initialInvestment;
-
-          // 记录每个月份数据
-          // 每月定投，按当月收盘价买入份额
           const monthlyInvestment = this.monthlyInvestment;
 
           for (let i = startIdx; i <= endIdx; i++) {
             const date = this.monthlyData[i].date;
             const price = this.monthlyData[i].close;
 
-            // 每月定投买入份额（从第二月开始）
             if (i > startIdx) {
               const sharesBought = monthlyInvestment / price;
               totalShares += sharesBought;
               totalPrincipal += monthlyInvestment;
             }
 
-            // 计算未来价值
-            // 这里用beta调整未来价值：futureValue = totalShares * price * beta
-            // 但beta一般是收益调整系数，暂且乘以beta模拟调整后估值
             const futureValue = totalShares * price * this.beta;
             const profit = futureValue - totalPrincipal;
             const returnRatio = totalPrincipal > 0 ? futureValue / totalPrincipal : 0;
 
-            // 计算年化收益率
-            // 计算投资时间（年） = (月份数 +1)/12
             const monthsElapsed = i - startIdx + 1;
             const yearsElapsed = monthsElapsed / 12;
             let cagr = 0;
@@ -331,10 +356,11 @@ console.log(rawData)
             });
           }
 
-          // 最终年化收益率
           if (this.results.length > 0) {
             this.finalCAGR = this.results[this.results.length - 1].cagr;
           }
+
+          this.renderChart();
         },
         exportCSV() {
           if (!this.results.length) {
@@ -379,12 +405,122 @@ console.log(rawData)
 
           const link = document.createElement('a');
           link.href = url;
-          const fileName = `复利定投回测结果_${this.selectedStartDate}_${this.years}年.csv`;
+          const fileName = `复利定投回测结果_${this.selectedDataName}_${this.selectedStartDate}_${this.selectedEndDate}.csv`;
           link.setAttribute('download', fileName);
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
+        },
+        renderChart() {
+          if (!this.chart) {
+            this.chart = echarts.init(document.getElementById('chart'));
+          }
+          const dates = this.results.map(item => item.date);
+          const futureValues = this.results.map(item => Number(item.futureValue.toFixed(2)));
+          const principals = this.results.map(item => Number(item.principal.toFixed(2)));
+          const profits = this.results.map(item => Number(item.profit.toFixed(2)));
+
+          const option = {
+            title: {
+              text: `回测收益走势图 - ${this.selectedDataName}`,
+              left: 'center',
+              textStyle: {
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#333'
+              }
+            },
+            tooltip: {
+              trigger: 'axis',
+              formatter: function(params) {
+                let res = params[0].axisValue + '<br/>';
+                params.forEach(item => {
+                  res += item.marker + item.seriesName + ': ' + item.data.toLocaleString() + '<br/>';
+                });
+                return res;
+              },
+              axisPointer: {
+                type: 'cross',
+                crossStyle: {
+                  color: '#999'
+                }
+              }
+            },
+            legend: {
+              data: ['未来价值','累计本金','收益'],
+              top: 30
+            },
+            grid: {
+              left: '3%',
+              right: '4%',
+              bottom: '10%',
+              containLabel: true
+            },
+            xAxis: {
+              type: 'category',
+              boundaryGap: false,
+              data: dates,
+              axisLabel: {
+                rotate: 45,
+                formatter: function(value) {
+                  return value.replace(/\//g, '-');
+                }
+              }
+            },
+            yAxis: {
+              type: 'value',
+              name: '金额（元）',
+              axisLabel: {
+                formatter: function(value) {
+                  if (value >= 1e6) return (value / 1e6).toFixed(1) + 'M';
+                  if (value >= 1e3) return (value / 1e3).toFixed(0) + 'k';
+                  return value;
+                }
+              }
+            },
+            series: [
+              {
+                name: '未来价值',
+                type: 'line',
+                smooth: true,
+                data: futureValues,
+                itemStyle: {
+                  color: '#409eff'
+                }
+              },
+              {
+                name: '累计本金',
+                type: 'line',
+                smooth: true,
+                data: principals,
+                itemStyle: {
+                  color: '#67c23a'
+                }
+              },
+              {
+                name: '收益',
+                type: 'line',
+                smooth: true,
+                data: profits,
+                itemStyle: {
+                  color: '#e6a23c'
+                }
+              }
+            ]
+          };
+          this.chart.setOption(option);
+          window.addEventListener('resize', () => {
+            if (this.chart) this.chart.resize();
+          });
+        },
+        clearChart() {
+          if (this.chart) {
+            this.chart.clear();
+          }
+        },
+        onDataChange() {
+          this.updateMonthlyData();
         }
       }
     });
