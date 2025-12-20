@@ -159,7 +159,11 @@
       <label for="endDate">结束日期:</label>
       <select id="endDate" v-model="selectedEndDate" required>
         <option disabled value="">请选择结束月份</option>
-        <option v-for="item in monthlyData" :key="'end-' + item.date" :value="item.date" :disabled="isEndDateDisabled(item.date)">
+        <option 
+          v-for="item in monthlyData.slice().reverse()" 
+          :key="'end-' + item.date" 
+          :value="item.date" 
+          :disabled="isEndDateDisabled(item.date)">
           {{ item.date }}
         </option>
       </select>
@@ -180,7 +184,7 @@
     <section v-if="results.length" aria-live="polite" aria-atomic="true" style="margin-bottom: 1.5em;">
       <h3 style="margin-top:0; margin-bottom: 10px; color: #409eff;">回测结果：</h3>
       <table aria-label="回测结果表">
-        <thead>
+        <thead style="position: sticky;top: 0;z-index: 1;">
           <tr>
             <th>日期</th>
             <th>收盘价</th>
