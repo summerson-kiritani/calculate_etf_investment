@@ -1,1 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>复利定投回测功能</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 720px;
+      margin: 20px auto;
+      padding: 0 15px 60px;
+      background: #f9f9f9;
+      color: #333;
+      word-break: break-word;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    form {
+      background: #fff;
+      padding: 20px 25px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+      font-size: 1rem;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      color: #555;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 1rem;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    select:focus, input[type="number"]:focus {
+      border-color: #409eff;
+      outline: none;
+      box-shadow: 0 0 5px #a6c8ff;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 24px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      user-select: none;
+      font-size: 1.1rem;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+    thead {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+      word-break: break-word;
+      vertical-align: middle;
+    }
+    tbody tr.year-color-0 {
+      background-color: #fff;
+    }
+    tbody tr.year-color-1 {
+      background-color: #f0f7ff;
+    }
+    tbody tr.highlight-row {
+      background-color: #ffeaa7 !important;
+      transition: background-color 0.3s;
+    }
+    /* 响应式 */
+    @media (max-width: 480px) {
+      body {
+        padding: 15px 12px 50px;
+      }
+      form {
+        padding: 15px 18px;
+      }
+      label {
+        margin-top: 12px;
+        font-size: 0.95rem;
+      }
+      select, input[type="number"] {
+        font-size: 0.9rem;
+        padding: 7px 10px;
+      }
+      button {
+        width: 100%;
+        margin-top: 15px;
+        font-size: 1rem;
+        padding: 10px 0;
+      }
+      table {
+        font-size: 0.85rem;
+      }
+      th, td {
+        padding: 8px 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" role="main" aria-label="复利定投回测功能">
+    <h1>复利定投回测功能</h1>
+    <form @submit.prevent="runBacktest" aria-label="回测参数表单">
+      <label for="startDate">开始日期:</label>
+      <select id="startDate" v-model="selectedStartDate" required>
+        <option disabled value="">请选择开始月份</option>
+        <option v-for="item in monthlyData" :key="item.date" :value="item.date">
+          {{ item.date }}
+        </option>
+      </select>
 
+      <label for="initialInvestment">初始投入资金（元）:</label>
+      <input id="initialInvestment" type="number" v-model.number="initialInvestment" min="0" step="0.01" required />
+
+      <label for="monthlyInvestment">每月定投金额（元）:</label>
+      <input id="monthlyInvestment" type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required />
+
+      <label for="beta">收益调整系数 β（beta）:</label>
+      <input id="beta" type="number" v-model.number="beta" min="0" step="0.01" required />
+
+      <label for="years">投资年限（年）:</label>
+      <input id="years" type="number" v-model.number="years" min="1" step="1" required />
+
+      <button type="submit">开始回测</button>
+      <button type="button" v-if="results.length" @click="exportCSV">导出CSV</button>
+    </form>
+
+    <section v-if="results.length" aria-live="polite" aria-atomic="true" style="margin-bottom: 1.5em;">
+      <h3 style="margin-top:0; margin-bottom: 10px; color: #409eff;">回测结果：</h3>
+      <table aria-label="回测结果表">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>收盘价</th>
+            <th>累计本金（元）</th>
+            <th>未来价值（元）</th>
+            <th>收益（元）</th>
+            <th>收益倍数</th>
+            <th>年化收益率（%）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, idx) in results" :key="idx" :class="idx % 2 === 0 ? 'year-color-0' : 'year-color-1'">
+            <td>{{ item.date }}</td>
+            <td>{{ item.close.toFixed(2) }}</td>
+            <td>{{ formatCurrency(item.principal) }}</td>
+            <td>{{ formatCurrency(item.futureValue) }}</td>
+            <td>{{ formatCurrency(item.profit) }}</td>
+            <td>{{ item.returnRatio.toFixed(2) }}倍</td>
+            <td>{{ (item.cagr * 100).toFixed(2) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 1em; font-weight: 600;">最终年化收益率：{{ (finalCAGR * 100).toFixed(2) }}%</p>
+    </section>
+
+  </div>
+
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qqq_data.js">
+  </script>
+
+  <script>
+
+    rawData = rawData.reverse()
+console.log(rawData)
+
+    // QQQ历史数据，按时间升序排列（日期格式 YYYY/MM/DD）
+    // const rawData = [
+    //   { date: "2023/1/1", close: 294.46 },
+    //   { date: "2023/2/1", close: 293.41 },
+    //   { date: "2023/3/1", close: 320.76 },
+    //   { date: "2023/4/1", close: 322.39 },
+    //   { date: "2023/5/1", close: 347.81 },
+    //   { date: "2023/6/1", close: 369.23 },
+    //   { date: "2023/7/1", close: 383.48 },
+    //   { date: "2023/8/1", close: 377.79 },
+    //   { date: "2023/9/1", close: 358.08 },
+    //   { date: "2023/10/1", close: 350.69 },
+    //   { date: "2023/11/1", close: 388.63 },
+    //   { date: "2023/12/1", close: 409.52 },
+    //   { date: "2024/1/1", close: 416.97 },
+    //   { date: "2024/2/1", close: 439.00 },
+    //   { date: "2024/3/1", close: 444.01 },
+    //   { date: "2024/4/1", close: 424.59 },
+    //   { date: "2024/5/1", close: 450.71 },
+    //   { date: "2024/6/1", close: 479.11 },
+    //   { date: "2024/7/1", close: 471.07 },
+    //   { date: "2024/8/1", close: 476.27 },
+    //   { date: "2024/9/1", close: 488.07 },
+    //   { date: "2024/10/1", close: 483.85 },
+    //   { date: "2024/11/1", close: 509.74 },
+    //   { date: "2024/12/1", close: 511.23 },
+    //   { date: "2025/1/1", close: 522.29 },
+    //   { date: "2025/2/1", close: 508.17 },
+    //   { date: "2025/3/1", close: 468.92 },
+    //   { date: "2025/4/1", close: 475.47 },
+    //   { date: "2025/5/1", close: 519.11 },
+    //   { date: "2025/6/1", close: 551.64 },
+    //   { date: "2025/7/1", close: 565.01 },
+    //   { date: "2025/8/1", close: 570.40 },
+    //   { date: "2025/9/1", close: 600.37 },
+    //   { date: "2025/10/1", close: 629.07 },
+    //   { date: "2025/11/1", close: 619.25 }
+    // ];
+
+    new Vue({
+      el: '#app',
+      data() {
+        return {
+          monthlyData: rawData,
+          selectedStartDate: '',
+          initialInvestment: 10000,
+          monthlyInvestment: 1000,
+          beta: 1,
+          years: 99,
+          results: [],
+          finalCAGR: 0
+        }
+      },
+      methods: {
+        formatCurrency(num) {
+          return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        },
+        runBacktest() {
+          if (!this.selectedStartDate) {
+            alert('请选择开始日期');
+            return;
+          }
+          if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.beta < 0 || this.years < 1) {
+            alert('请输入合理的参数');
+            return;
+          }
+
+          this.results = [];
+          this.finalCAGR = 0;
+
+          // 找到开始日期索引
+          const startIdx = this.monthlyData.findIndex(d => d.date === this.selectedStartDate);
+          if (startIdx === -1) {
+            alert('开始日期数据未找到');
+            return;
+          }
+
+          // 计算总月份数
+          const totalMonths = this.years * 12;
+          // 结束索引（不超过数据最后）
+          const endIdx = Math.min(startIdx + totalMonths - 1, this.monthlyData.length - 1);
+
+          // 计算季度收益修正，实际用历史价格收益，不用预估年化收益率
+          // 这里beta作为收益调整系数，影响未来价值增长的模拟
+          // 实际用价格涨跌率计算复利
+
+          // 初始投入后持有份额，按初始投资价格计算份额
+          const startPrice = this.monthlyData[startIdx].close;
+          let totalShares = this.initialInvestment / startPrice;
+          let totalPrincipal = this.initialInvestment;
+
+          // 记录每个月份数据
+          // 每月定投，按当月收盘价买入份额
+          const monthlyInvestment = this.monthlyInvestment;
+
+          for (let i = startIdx; i <= endIdx; i++) {
+            const date = this.monthlyData[i].date;
+            const price = this.monthlyData[i].close;
+
+            // 每月定投买入份额（从第二月开始）
+            if (i > startIdx) {
+              const sharesBought = monthlyInvestment / price;
+              totalShares += sharesBought;
+              totalPrincipal += monthlyInvestment;
+            }
+
+            // 计算未来价值
+            // 这里用beta调整未来价值：futureValue = totalShares * price * beta
+            // 但beta一般是收益调整系数，暂且乘以beta模拟调整后估值
+            const futureValue = totalShares * price * this.beta;
+            const profit = futureValue - totalPrincipal;
+            const returnRatio = totalPrincipal > 0 ? futureValue / totalPrincipal : 0;
+
+            // 计算年化收益率
+            // 计算投资时间（年） = (月份数 +1)/12
+            const monthsElapsed = i - startIdx + 1;
+            const yearsElapsed = monthsElapsed / 12;
+            let cagr = 0;
+            if (returnRatio > 0 && yearsElapsed > 0) {
+              cagr = Math.pow(returnRatio, 1 / yearsElapsed) - 1;
+            }
+
+            this.results.push({
+              date,
+              close: price,
+              principal: totalPrincipal,
+              futureValue,
+              profit,
+              returnRatio,
+              cagr
+            });
+          }
+
+          // 最终年化收益率
+          if (this.results.length > 0) {
+            this.finalCAGR = this.results[this.results.length - 1].cagr;
+          }
+        },
+        exportCSV() {
+          if (!this.results.length) {
+            alert('没有数据可导出！');
+            return;
+          }
+          const headers = [
+            '日期',
+            '收盘价',
+            '累计本金（元）',
+            '未来价值（元）',
+            '收益（元）',
+            '收益倍数',
+            '年化收益率（%）'
+          ];
+
+          const rows = this.results.map(item => [
+            item.date,
+            item.close.toFixed(2),
+            item.principal.toFixed(2),
+            item.futureValue.toFixed(2),
+            item.profit.toFixed(2),
+            item.returnRatio.toFixed(2),
+            (item.cagr * 100).toFixed(2)
+          ]);
+
+          function safeCSVField(field) {
+            const fieldStr = String(field);
+            if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
+              return `"${fieldStr.replace(/"/g, '""')}"`;
+            }
+            return fieldStr;
+          }
+
+          let csvContent = headers.map(safeCSVField).join(',') + '\r\n';
+          rows.forEach(row => {
+            csvContent += row.map(safeCSVField).join(',') + '\r\n';
+          });
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+
+          const link = document.createElement('a');
+          link.href = url;
+          const fileName = `复利定投回测结果_${this.selectedStartDate}_${this.years}年.csv`;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
