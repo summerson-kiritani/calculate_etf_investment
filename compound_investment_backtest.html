@@ -218,6 +218,8 @@
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/tqqq_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/xauusd_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/spy_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/btcusd_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/hs_data.js"></script>
 
   <script>
     let select = [
@@ -234,13 +236,21 @@
         data: tqqqData,
       },
       {
+        name: 'SPY',
+        data: spyData,
+      },
+      {
         name: 'XAU/USD(黄金)',
         data: xauusdData,
       },
       {
-        name: 'SPY',
-        data: spyData,
+        name: 'BTC/USD(比特币)',
+        data: btcusdData,
       },
+      {
+        name: '沪深300ETF',
+        data: hsData,
+      }
     ];
 
     new Vue({
