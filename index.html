@@ -67,6 +67,16 @@
         </li>
       </ul>
     </nav>
+    <h1>站外链接</h1>
+    <nav>
+      <ul>
+        <li v-for="item in externalLinks" :key="item.url">
+          <a :href="item.url" target="_blank" rel="noopener noreferrer">
+            {{ item.name }} ({{ item.url }})
+          </a>
+        </li>
+      </ul>
+    </nav>
     <footer>
       &copy; 2025 Summerson Kiritani
     </footer>
@@ -88,8 +98,14 @@
           { name: "投资收益率计算器", file: "investment_profit_rate_calculator.html" },
           { name: "杠杆计算器", file: "leverage-calculator.html" },
           { name: "贷款与投资对比计算器", file: "loan_vs_investment_calculator.html" }
+        ],
+        // 站外 link
+        externalLinks: [
+          { name: "QQQ/QLD 回测工具", url: "：https://clec-strategy-backtest.vercel.app" },
+          { name: "Investing.com 香港 - 股市報價 & 財經新聞", url: "https://hk.investing.com" },
+          { name: "雪球 - 聪明的投资者都在这里", url: "https://xueqiu.com" },
         ]
-      }
+      },
     });
   </script>
 </body>
