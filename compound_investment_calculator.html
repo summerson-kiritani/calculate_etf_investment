@@ -34,7 +34,7 @@
       font-weight: 600;
       color: #555;
     }
-    input[type="number"] {
+    input[type="number"], select {
       width: 100%;
       padding: 8px 12px;
       font-size: 1rem;
@@ -44,7 +44,7 @@
       box-sizing: border-box;
       transition: border-color 0.3s ease;
     }
-    input[type="number"]:focus {
+    input[type="number"]:focus, select:focus {
       border-color: #409eff;
       outline: none;
       box-shadow: 0 0 5px #a6c8ff;
@@ -174,7 +174,7 @@
         margin-top: 12px;
         font-size: 0.95rem;
       }
-      input[type="number"] {
+      input[type="number"], select {
         font-size: 0.9rem;
         padding: 7px 10px;
       }
@@ -209,6 +209,15 @@
 
       <label for="monthlyInvestment">每月定投金额（元）:</label>
       <input id="monthlyInvestment" type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required />
+
+      <label for="investmentMode">定投方式:</label>
+      <select id="investmentMode" v-model="investmentMode" aria-describedby="investmentModeHelp" required>
+        <option value="quarterly">每季度定投（每季度投入3个月金额）</option>
+        <option value="yearlyInQ1">每年第一季度一次性定投一整年金额</option>
+      </select>
+      <small id="investmentModeHelp" style="color:#555; font-size:0.85rem;">
+        选择“每季度定投”表示每季度投入3个月的金额；选择“每年第一季度一次性定投”表示每年第一季度投入12个月金额，其他季度无投入。
+      </small>
 
       <label for="annualRate">预估年化收益率（%）:</label>
       <input id="annualRate" type="number" v-model.number="annualRate" min="0" step="0.01" required />
@@ -300,8 +309,11 @@
       <p>每季度未来价值计算：</p>
       <p><code>FVi = FVi-1 × (1 + 季度收益率 (修正)) + 每季度投入金额</code></p>
       <ul>
-        <li>其中，每季度投入金额 = 每月定投金额 × 3</li>
-        <li>初始季度未来价值 = 初始投入资金 + 每季度投入金额</li>
+        <li v-if="investmentMode==='quarterly'">其中，每季度投入金额 = 每月定投金额 × 3</li>
+        <li v-if="investmentMode==='yearlyInQ1'">
+          每年第一季度投入金额 = 每月定投金额 × 12，其他季度投入金额为0
+        </li>
+        <li>初始季度未来价值 = 初始投入资金 + 当季投入金额</li>
       </ul>
       <p>累计本金 = 初始投入资金 + 已投入的所有定投金额</p>
       <p>收益部分 = 未来价值 - 累计本金</p>
@@ -332,7 +344,8 @@
           withdrawRate: 2,
           results: [],
           reports: [],
-          selectedReportId: null
+          selectedReportId: null,
+          investmentMode: 'quarterly' // 新增定投方式选择，默认季度定投
         }
       },
       methods: {
@@ -376,30 +389,46 @@
           const retirementAge = this.retirementAge;
           const withdrawRate = this.withdrawRate / 100;
 
+          // 计算累计本金，累积投入金额
+          let cumulativePrincipal = initialInvestment;
+
           for(let q = 1; q <= totalQuarters; q++) {
             const year = startYear + Math.floor((q - 1) / 4);
             const quarter = ((q - 1) % 4) + 1;
             const age = currentAge + Math.floor((q - 1) / 4);
 
-            const totalMonthsInvested = q * monthsPerQuarter;
-            const principal = initialInvestment + monthlyInvestment * totalMonthsInvested;
+            // 计算当季度投入金额，基于选择的定投方式
+            let quarterlyInvestment = 0;
+            if (this.investmentMode === 'quarterly') {
+              // 每季度投入3个月金额
+              quarterlyInvestment = monthlyInvestment * 3;
+            } else if (this.investmentMode === 'yearlyInQ1') {
+              // 每年第一季度投入12个月金额，其他季度无投入
+              quarterlyInvestment = (quarter === 1) ? monthlyInvestment * 12 : 0;
+            }
 
-            const principalAddedThisQuarter = monthlyInvestment * monthsPerQuarter;
+            // 累计本金
+            if (q === 1) {
+              cumulativePrincipal = initialInvestment + quarterlyInvestment;
+            } else {
+              cumulativePrincipal += quarterlyInvestment;
+            }
 
             let futureValue = 0;
             if (q === 1) {
-              futureValue = initialInvestment + principalAddedThisQuarter;
+              // 初始季度未来价值 = 初始投入资金 + 当季投入金额
+              futureValue = initialInvestment + quarterlyInvestment;
             } else {
               const lastFV = this.results[q - 2] ? this.results[q - 2].futureValue : initialInvestment;
-              futureValue = lastFV * (1 + quarterlyRate) + principalAddedThisQuarter;
+              futureValue = lastFV * (1 + quarterlyRate) + quarterlyInvestment;
             }
 
-            const profit = futureValue - principal;
-            const totalReturnRatio = principal > 0 ? futureValue / principal : 0;
+            const profit = futureValue - cumulativePrincipal;
+            const totalReturnRatio = cumulativePrincipal > 0 ? futureValue / cumulativePrincipal : 0;
 
             let cagr = 0;
             const fullYearsElapsed = Math.floor(q / 4);
-            if (principal > 0 && fullYearsElapsed > 0) {
+            if (cumulativePrincipal > 0 && fullYearsElapsed > 0) {
               cagr = Math.pow(totalReturnRatio, 1 / fullYearsElapsed) - 1;
             }
 
@@ -413,7 +442,7 @@
               year,
               quarter,
               age,
-              principal,
+              principal: cumulativePrincipal,
               futureValue,
               profit,
               totalReturnRatio,
