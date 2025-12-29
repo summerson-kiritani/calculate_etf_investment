@@ -96,6 +96,12 @@
       font-weight: normal;
       color: #666;
     }
+    .simulated {
+      font-weight: 700;
+      margin-top: 10px;
+      text-align: center;
+      font-size: 1.1em;
+    }
   </style>
 </head>
 <body>
@@ -126,6 +132,17 @@
         step="0.01"
         required
         placeholder="例如：60 表示 60%"
+      />
+
+      <label for="dropPercent">资产下跌模拟 (%) <small>模拟资产价格下跌百分比，检测维持率风险</small></label>
+      <input
+        id="dropPercent"
+        type="number"
+        v-model.number="dropPercent"
+        min="0"
+        max="100"
+        step="0.01"
+        placeholder="例如：10 表示资产下跌10%"
       />
 
       <button type="submit">计算维持率和LTV</button>
@@ -213,6 +230,17 @@
       <div v-if="maintenanceMarginRatio < maintenanceThreshold" class="warning">
         维持率低于阈值 {{ (maintenanceThreshold * 100).toFixed(2) }}%，存在补仓风险，请注意及时补充资产或还款！
       </div>
+
+      <div v-if="dropPercent > 0" class="simulated" :style="{color: simulatedMaintenanceMarginRatio < maintenanceThreshold ? 'red' : 'inherit'}">
+        模拟资产下跌 {{ dropPercent.toFixed(2) }}% 后，资产市值为：{{ formatNumber(simulatedAssetValue) }} 元<br/>
+        抵押品价值总额变为：{{ formatNumber(simulatedMaxLoanValue) }} 元<br/>
+        模拟维持率：{{ (simulatedMaintenanceMarginRatio * 100).toFixed(2) }}%  
+        <br/>
+        模拟LTV：{{ (simulatedLtv * 100).toFixed(2) }}%
+        <br/>
+        <span v-if="simulatedMaintenanceMarginRatio < maintenanceThreshold">⚠️ 维持率跌破阈值，存在补仓风险！</span>
+        <span v-else>✅ 维持率安全</span>
+      </div>
     </div>
   </div>
 
@@ -224,11 +252,16 @@
         assetValue: 15000000, // 抵押资产市值
         loanAmount: 8000000,  // 未偿还贷款金额
         mixCreditRate: 60,    // 混合信贷率（%），所有模式均适用
+        dropPercent: 0,       // 资产下跌模拟百分比
         maintenanceMarginRatio: 0,
         maxLoanValue: 0,
         ltv: 0,
         calculated: false,
         maintenanceThreshold: 1, // 维持率警戒阈值，默认100%
+        simulatedAssetValue: 0,
+        simulatedMaxLoanValue: 0,
+        simulatedMaintenanceMarginRatio: 0,
+        simulatedLtv: 0,
       },
       computed: {
         calcMethodName() {
@@ -254,9 +287,15 @@
             alert("混合信贷率必须介于0%和100%之间");
             return;
           }
+          if (this.dropPercent < 0 || this.dropPercent > 100) {
+            alert("资产下跌模拟百分比必须介于0%和100%之间");
+            return;
+          }
+
           this.maxLoanValue = this.assetValue * (this.mixCreditRate / 100);
           this.ltv = this.loanAmount / this.assetValue;
 
+          // 计算当前维持率
           if (this.calcMethod === 'hsbc') {
             const denominator = this.assetValue - this.maxLoanValue;
             if (denominator === 0) {
@@ -266,7 +305,6 @@
             this.maintenanceMarginRatio = (this.assetValue - this.loanAmount) / denominator;
             this.maintenanceThreshold = 1; // 100%
           } else if (this.calcMethod === 'commonNet') {
-            // 净维持率 = (资产市值 - 贷款) ÷ 抵押品价值总额
             if (this.maxLoanValue === 0) {
               alert("抵押品价值总额为0，无法计算维持率");
               return;
@@ -274,7 +312,6 @@
             this.maintenanceMarginRatio = (this.assetValue - this.loanAmount) / this.maxLoanValue;
             this.maintenanceThreshold = 0.25; // 25%阈值，常见维持率安全线
           } else if (this.calcMethod === 'commonRatio') {
-            // 维持率 = 抵押品价值总额 ÷ 贷款，与LTV互为倒数
             if (this.loanAmount === 0) {
               alert("贷款金额为0，无法计算维持率");
               return;
@@ -282,7 +319,50 @@
             this.maintenanceMarginRatio = this.maxLoanValue / this.loanAmount;
             this.maintenanceThreshold = 1; // 100%
           }
+
+          // 模拟资产下跌后的维持率和LTV计算
+          this.simulateAfterDrop();
+
           this.calculated = true;
+        },
+        simulateAfterDrop() {
+          if (!this.dropPercent || this.dropPercent <= 0) {
+            this.simulatedAssetValue = this.assetValue;
+            this.simulatedMaxLoanValue = this.maxLoanValue;
+            this.simulatedMaintenanceMarginRatio = this.maintenanceMarginRatio;
+            this.simulatedLtv = this.ltv;
+            return;
+          }
+          // 计算下跌后资产市值
+          this.simulatedAssetValue = this.assetValue * (1 - this.dropPercent / 100);
+          this.simulatedMaxLoanValue = this.simulatedAssetValue * (this.mixCreditRate / 100);
+
+          // 模拟LTV = 贷款金额 / 模拟资产市值
+          this.simulatedLtv = this.loanAmount / this.simulatedAssetValue;
+
+          // 计算模拟维持率
+          let simulatedRatio = 0;
+          if (this.calcMethod === 'hsbc') {
+            const denominator = this.simulatedAssetValue - this.simulatedMaxLoanValue;
+            if (denominator === 0) {
+              simulatedRatio = 0;
+            } else {
+              simulatedRatio = (this.simulatedAssetValue - this.loanAmount) / denominator;
+            }
+          } else if (this.calcMethod === 'commonNet') {
+            if (this.simulatedMaxLoanValue === 0) {
+              simulatedRatio = 0;
+            } else {
+              simulatedRatio = (this.simulatedAssetValue - this.loanAmount) / this.simulatedMaxLoanValue;
+            }
+          } else if (this.calcMethod === 'commonRatio') {
+            if (this.loanAmount === 0) {
+              simulatedRatio = 0;
+            } else {
+              simulatedRatio = this.simulatedMaxLoanValue / this.loanAmount;
+            }
+          }
+          this.simulatedMaintenanceMarginRatio = simulatedRatio;
         },
         formatNumber(num) {
           return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -305,6 +385,11 @@
         mixCreditRate(val) {
           if (val < 0) this.mixCreditRate = 0;
           if (val > 100) this.mixCreditRate = 100;
+          this.calculate();
+        },
+        dropPercent(val) {
+          if (val < 0) this.dropPercent = 0;
+          if (val > 100) this.dropPercent = 100;
           this.calculate();
         }
       },
