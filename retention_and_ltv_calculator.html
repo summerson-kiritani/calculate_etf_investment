@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>维持率 & LTV 计算器（多定义合集，含混合信贷率统一支持）</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 700px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    form {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 1em;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2em;
+      font-size: 0.95em;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 8px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .formula {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      line-height: 1.5em;
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre-wrap;
+      font-size: 0.95em;
+      margin-bottom: 1em;
+    }
+    .warning {
+      color: red;
+      font-weight: 600;
+      margin-top: 1em;
+    }
+    small {
+      font-weight: normal;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>维持率 & LTV 计算器（多定义合集，含混合信贷率统一支持）</h1>
+
+    <form @submit.prevent="calculate">
+      <label for="calcMethod">选择维持率计算定义</label>
+      <select id="calcMethod" v-model="calcMethod">
+        <option value="hsbc">汇丰净孖展比率<br><small>(维持率 = (资产市值 - 贷款) ÷ (资产市值 - 抵押品价值总额))</small></option>
+        <option value="commonNet">一般维持率（净维持率）<br><small>(维持率 = (资产市值 - 贷款) ÷ 抵押品价值总额)</small></option>
+        <option value="commonRatio">一般维持率（倒数定义）<br><small>(维持率 = 抵押品价值总额 ÷ 贷款，与LTV互为倒数)</small></option>
+      </select>
+
+      <label for="assetValue">抵押资产市值（元）</label>
+      <input id="assetValue" type="number" v-model.number="assetValue" min="0.01" step="0.01" required />
+
+      <label for="loanAmount">未偿还贷款金额（元）</label>
+      <input id="loanAmount" type="number" v-model.number="loanAmount" :max="assetValue" min="0.01" step="0.01" required />
+
+      <label for="mixCreditRate">混合信贷率 (%) <small>资产市值的贷款比例，计算抵押品价值总额</small></label>
+      <input
+        id="mixCreditRate"
+        type="number"
+        v-model.number="mixCreditRate"
+        min="0"
+        max="100"
+        step="0.01"
+        required
+        placeholder="例如：60 表示 60%"
+      />
+
+      <button type="submit">计算维持率和LTV</button>
+    </form>
+
+    <div v-if="calculated">
+      <table>
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>数值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>抵押资产市值</td>
+            <td>{{ formatNumber(assetValue) }} 元</td>
+          </tr>
+          <tr>
+            <td>未偿还贷款金额</td>
+            <td>{{ formatNumber(loanAmount) }} 元</td>
+          </tr>
+          <tr>
+            <td>混合信贷率</td>
+            <td>{{ mixCreditRate.toFixed(2) }} %</td>
+          </tr>
+          <tr>
+            <td>抵押品价值总额 (资产市值 × 混合信贷率)</td>
+            <td>{{ formatNumber(maxLoanValue) }} 元</td>
+          </tr>
+          <tr>
+            <td>LTV（贷款价值比）</td>
+            <td :style="{color: ltv > 1 ? 'red' : 'inherit'}">{{ (ltv * 100).toFixed(2) }} %</td>
+          </tr>
+          <tr>
+            <td>维持率（{{ calcMethodName }}）</td>
+            <td :style="{color: maintenanceMarginRatio < maintenanceThreshold ? 'red' : 'inherit'}">{{ (maintenanceMarginRatio * 100).toFixed(2) }} %</td>
+          </tr>
+          <tr v-if="calcMethod === 'commonNet'">
+            <td>净维持率 = 维持率 - 1</td>
+            <td>{{ ((maintenanceMarginRatio - 1) * 100).toFixed(2) }} %</td>
+          </tr>
+          <tr v-if="calcMethod === 'commonRatio'">
+            <td>维持率与LTV倒数校验</td>
+            <td>{{ Math.abs(maintenanceMarginRatio * ltv - 1) < 0.0001 ? '✔️ 正确' : '❌ 不匹配' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="formula">
+        <strong>LTV 计算公式：</strong>
+        <br>LTV = 贷款金额 ÷ 抵押资产市值  
+        <br>= {{ formatNumber(loanAmount) }} ÷ {{ formatNumber(assetValue) }}  
+        <br>= {{ ltv.toFixed(6) }} ({{ (ltv * 100).toFixed(2) }} %)
+      </div>
+
+      <div class="formula" v-if="calcMethod === 'hsbc'">
+        <strong>汇丰净孖展比率（维持率）计算公式：</strong>
+        <br>抵押品价值总额 = 资产市值 × 混合信贷率 = {{ formatNumber(assetValue) }} × {{ (mixCreditRate/100).toFixed(4) }} = {{ formatNumber(maxLoanValue) }} 元
+        <br><br>维持率 = (资产市值 - 贷款) ÷ (资产市值 - 抵押品价值总额)
+        <br>= ({{ formatNumber(assetValue) }} - {{ formatNumber(loanAmount) }}) ÷ ({{ formatNumber(assetValue) }} - {{ formatNumber(maxLoanValue) }})
+        <br>= {{ maintenanceMarginRatio.toFixed(6) }} ({{ (maintenanceMarginRatio * 100).toFixed(2) }} %)
+      </div>
+
+      <div class="formula" v-else-if="calcMethod === 'commonNet'">
+        <strong>一般维持率（净维持率）计算公式：</strong>
+        <br>抵押品价值总额 = 资产市值 × 混合信贷率 = {{ formatNumber(assetValue) }} × {{ (mixCreditRate/100).toFixed(4) }} = {{ formatNumber(maxLoanValue) }} 元
+        <br><br>维持率 = (资产市值 - 贷款) ÷ 抵押品价值总额  
+        <br>= ({{ formatNumber(assetValue) }} - {{ formatNumber(loanAmount) }}) ÷ {{ formatNumber(maxLoanValue) }}  
+        <br>= {{ maintenanceMarginRatio.toFixed(6) }} ({{ (maintenanceMarginRatio * 100).toFixed(2) }} %)
+        <br><br>净维持率 = 维持率 - 1  
+        <br>= {{ (maintenanceMarginRatio - 1).toFixed(6) }} ({{ ((maintenanceMarginRatio - 1) * 100).toFixed(2) }} %)
+      </div>
+
+      <div class="formula" v-else>
+        <strong>一般维持率（倒数定义）计算公式：</strong>
+        <br>抵押品价值总额 = 资产市值 × 混合信贷率 = {{ formatNumber(assetValue) }} × {{ (mixCreditRate/100).toFixed(4) }} = {{ formatNumber(maxLoanValue) }} 元
+        <br><br>维持率 = 抵押品价值总额 ÷ 贷款  
+        <br>= {{ formatNumber(maxLoanValue) }} ÷ {{ formatNumber(loanAmount) }}  
+        <br>= {{ maintenanceMarginRatio.toFixed(6) }} ({{ (maintenanceMarginRatio * 100).toFixed(2) }} %)
+        <br><br>验证：维持率 × LTV = 1  
+        <br>= {{ (maintenanceMarginRatio * ltv).toFixed(6) }}
+      </div>
+
+      <div v-if="maintenanceMarginRatio < maintenanceThreshold" class="warning">
+        维持率低于阈值 {{ (maintenanceThreshold * 100).toFixed(2) }}%，存在补仓风险，请注意及时补充资产或还款！
+      </div>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        calcMethod: 'hsbc', // 选择计算定义：'hsbc' | 'commonNet' | 'commonRatio'
+        assetValue: 15000000, // 抵押资产市值
+        loanAmount: 8000000,  // 未偿还贷款金额
+        mixCreditRate: 60,    // 混合信贷率（%），所有模式均适用
+        maintenanceMarginRatio: 0,
+        maxLoanValue: 0,
+        ltv: 0,
+        calculated: false,
+        maintenanceThreshold: 1, // 维持率警戒阈值，默认100%
+      },
+      computed: {
+        calcMethodName() {
+          switch (this.calcMethod) {
+            case 'hsbc': return '汇丰净孖展比率';
+            case 'commonNet': return '一般维持率（净维持率定义）';
+            case 'commonRatio': return '一般维持率（倒数定义）';
+            default: return '';
+          }
+        }
+      },
+      methods: {
+        calculate() {
+          if (this.assetValue <= 0) {
+            alert("请输入有效的抵押资产市值");
+            return;
+          }
+          if (this.loanAmount <= 0 || this.loanAmount > this.assetValue) {
+            alert("未偿还贷款金额必须大于0且不超过抵押资产市值");
+            return;
+          }
+          if (this.mixCreditRate < 0 || this.mixCreditRate > 100) {
+            alert("混合信贷率必须介于0%和100%之间");
+            return;
+          }
+          this.maxLoanValue = this.assetValue * (this.mixCreditRate / 100);
+          this.ltv = this.loanAmount / this.assetValue;
+
+          if (this.calcMethod === 'hsbc') {
+            const denominator = this.assetValue - this.maxLoanValue;
+            if (denominator === 0) {
+              alert("资产市值与混合信贷率导致分母为零，无法计算维持率");
+              return;
+            }
+            this.maintenanceMarginRatio = (this.assetValue - this.loanAmount) / denominator;
+            this.maintenanceThreshold = 1; // 100%
+          } else if (this.calcMethod === 'commonNet') {
+            // 净维持率 = (资产市值 - 贷款) ÷ 抵押品价值总额
+            if (this.maxLoanValue === 0) {
+              alert("抵押品价值总额为0，无法计算维持率");
+              return;
+            }
+            this.maintenanceMarginRatio = (this.assetValue - this.loanAmount) / this.maxLoanValue;
+            this.maintenanceThreshold = 0.25; // 25%阈值，常见维持率安全线
+          } else if (this.calcMethod === 'commonRatio') {
+            // 维持率 = 抵押品价值总额 ÷ 贷款，与LTV互为倒数
+            if (this.loanAmount === 0) {
+              alert("贷款金额为0，无法计算维持率");
+              return;
+            }
+            this.maintenanceMarginRatio = this.maxLoanValue / this.loanAmount;
+            this.maintenanceThreshold = 1; // 100%
+          }
+          this.calculated = true;
+        },
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      },
+      watch: {
+        calcMethod() {
+          this.calculate();
+        },
+        assetValue(val) {
+          if (val < 0) this.assetValue = 0;
+          if (this.loanAmount > val) this.loanAmount = val;
+          this.calculate();
+        },
+        loanAmount(val) {
+          if (val < 0) this.loanAmount = 0;
+          if (val > this.assetValue) this.loanAmount = this.assetValue;
+          this.calculate();
+        },
+        mixCreditRate(val) {
+          if (val < 0) this.mixCreditRate = 0;
+          if (val > 100) this.mixCreditRate = 100;
+          this.calculate();
+        }
+      },
+      mounted() {
+        this.calculate();
+      }
+    });
+  </script>
+</body>
+</html>
