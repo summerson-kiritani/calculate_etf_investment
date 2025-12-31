@@ -6,30 +6,31 @@
   <title>维持率风险计算器（含LTV计算基准）</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
+    /* 使用B样式页面的整体字体和布局样式 */
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 640px;
+      max-width: 700px;
       margin: 20px auto;
       padding: 0 15px;
-      background: #f7fafc;
+      background: #f9f9f9;
       color: #333;
     }
     h1 {
       text-align: center;
-      margin-bottom: 1rem;
-      color: #0b3d91;
+      margin-bottom: 1em;
+      color: #0b3d91; /* 保留A页面的标题颜色 */
       font-weight: 700;
     }
     form {
       background: #fff;
-      padding: 20px 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
     }
     label {
       display: block;
-      margin-top: 15px;
+      margin-top: 10px;
       font-weight: 600;
       color: #1e293b;
     }
@@ -37,51 +38,53 @@
       width: 100%;
       padding: 8px 10px;
       margin-top: 6px;
-      font-size: 1rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 5px;
+      font-size: 1em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
       box-sizing: border-box;
       transition: border-color 0.3s ease;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     }
     input[type="number"]:focus, select:focus {
-      border-color: #2563eb;
+      border-color: #409eff;
       outline: none;
     }
     button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px 0;
-      background-color: #0b3d91;
-      color: white;
-      font-weight: 700;
-      font-size: 1.1rem;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #409eff;
       border: none;
-      border-radius: 6px;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background 0.3s ease;
+      width: 100%;
+      font-size: 1.1em;
     }
     button:hover {
-      background-color: #0a357c;
+      background: #66b1ff;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
       overflow: hidden;
-      font-size: 1rem;
+      margin-bottom: 2em;
+      font-size: 0.95em;
     }
     th, td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #e2e8f0;
       text-align: center;
+      padding: 12px 8px;
+      border-bottom: 1px solid #eee;
       color: #334155;
     }
     th {
-      background: #0b3d91;
+      background: #409eff;
       color: white;
-      font-weight: 700;
+      font-weight: 600;
     }
     tr:last-child td {
       border-bottom: none;
@@ -102,16 +105,16 @@
       font-weight: 900 !important;
     }
     .note {
-      background: #e0f2fe;
-      border-left: 4px solid #0b3d91;
+      background: #fff;
       padding: 15px 20px;
-      margin-top: 20px;
       border-radius: 6px;
-      font-size: 0.95rem;
-      color: #1e40af;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      font-size: 0.95em;
       line-height: 1.5;
       white-space: pre-wrap;
       font-family: "Courier New", Courier, monospace;
+      margin-top: 1em;
+      color: #334155;
     }
     .info-icon {
       display: inline-block;
@@ -119,7 +122,7 @@
       height: 16px;
       margin-left: 6px;
       border-radius: 50%;
-      background: #0b3d91;
+      background: #409eff;
       color: white;
       text-align: center;
       font-size: 14px;
@@ -198,7 +201,7 @@
         </tr>
         <tr>
           <td>维持率 (计算基准 ÷ 贷款余额)</td>
-          <td :class="maintenanceRateClass">{{ maintenanceRate.toFixed(2) }} %</td>
+          <td :class="maintenanceRateClass">{{ maintenanceRate === Infinity ? '∞' : maintenanceRate.toFixed(2) + ' %' }}</td>
           <td>计算基准 ÷ 贷款余额 × 100%</td>
         </tr>
         <tr>
@@ -209,15 +212,15 @@
     </table>
 
     <div class="note" v-if="calculated" aria-label="计算说明">
-      计算说明：
+计算说明：
 
-      - 最大可贷金额 = 资产市值 × 信贷率
-      - 贷款余额不能超过最大可贷金额
-      - LTV = 贷款余额 ÷ 计算基准 × 100%，计算基准根据选择为总资产市值或有效抵押物市值（资产市值 × 信贷率）
-      - 维持率 = 计算基准 ÷ 贷款余额 × 100%，反映资产价值相对于贷款的安全边际
-      - 维持保证金比例为银行设定的风险阈值，低于此比例时会触发追加保证金（Margin Call）
-      - 若贷款余额为0，视为无风险，维持率显示为无穷大
-      - 维持率越高，风险越低；低于维持保证金比例时，风险较高，有追加保证金的可能性
+- 最大可贷金额 = 资产市值 × 信贷率
+- 贷款余额不能超过最大可贷金额
+- LTV = 贷款余额 ÷ 计算基准 × 100%，计算基准根据选择为总资产市值或有效抵押物市值（资产市值 × 信贷率）
+- 维持率 = 计算基准 ÷ 贷款余额 × 100%，反映资产价值相对于贷款的安全边际
+- 维持保证金比例为银行设定的风险阈值，低于此比例时会触发追加保证金（Margin Call）
+- 若贷款余额为0，视为无风险，维持率显示为无穷大
+- 维持率越高，风险越低；低于维持保证金比例时，风险较高，有追加保证金的可能性
     </div>
   </div>
 
