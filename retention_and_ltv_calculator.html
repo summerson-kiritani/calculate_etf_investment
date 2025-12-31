@@ -3,85 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>净孖展比率计算器（基于模拟下跌资产重新计算抵押品价值）</title>
+  <title>汇财组合贷款的净孖展比率计算器（基于模拟下跌资产重新计算抵押品价值）</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 600px;
+      max-width: 700px;
       margin: 20px auto;
       padding: 0 15px;
-      background: #f7fafc;
+      background: #f9f9f9;
       color: #333;
     }
     h1 {
       text-align: center;
-      margin-bottom: 1rem;
-      color: #0b3d91;
-      font-weight: 700;
+      margin-bottom: 1em;
     }
     form {
       background: #fff;
-      padding: 20px 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
     }
     label {
       display: block;
-      margin-top: 15px;
+      margin-top: 10px;
       font-weight: 600;
       color: #1e293b;
     }
     input[type="number"] {
       width: 100%;
       padding: 8px 10px;
+      font-size: 1em;
       margin-top: 6px;
-      font-size: 1rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
       box-sizing: border-box;
       transition: border-color 0.3s ease;
     }
     input[type="number"]:focus {
-      border-color: #2563eb;
+      border-color: #409eff;
       outline: none;
     }
+    small {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.85em;
+      color: #555;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
     button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px 0;
-      background-color: #0b3d91;
-      color: white;
-      font-weight: 700;
-      font-size: 1.1rem;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #409eff;
       border: none;
-      border-radius: 6px;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background 0.3s ease;
+      width: 100%;
+      font-size: 1.1em;
     }
     button:hover {
-      background-color: #0a357c;
+      background: #66b1ff;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
       overflow: hidden;
-      font-size: 1rem;
+      margin-bottom: 2em;
+      font-size: 0.95em;
     }
     th, td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #e2e8f0;
       text-align: center;
+      padding: 12px 8px;
+      border-bottom: 1px solid #eee;
       color: #334155;
     }
     th {
-      background: #0b3d91;
+      background: #409eff;
       color: white;
-      font-weight: 700;
+      font-weight: 600;
     }
     tr:last-child td {
       border-bottom: none;
@@ -102,22 +108,21 @@
       font-weight: 900 !important;
     }
     .note {
-      background: #e0f2fe;
-      border-left: 4px solid #0b3d91;
+      background: #fff;
       padding: 15px 20px;
-      margin-top: 20px;
       border-radius: 6px;
-      font-size: 0.95rem;
-      color: #1e40af;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      font-size: 0.95em;
       line-height: 1.5;
       white-space: pre-wrap;
       font-family: "Courier New", Courier, monospace;
+      margin-top: 1em;
     }
   </style>
 </head>
 <body>
   <div id="app" role="main">
-    <h1>净孖展比率计算器（基于模拟下跌资产重新计算抵押品价值）</h1>
+    <h1>汇财组合贷款的净孖展比率计算器（基于模拟下跌资产重新计算抵押品价值）</h1>
     <form @submit.prevent="calculateNMR" aria-label="净孖展比率计算表单">
       <label for="totalAsset">抵押资产市值总额（港币万元）</label>
       <input
@@ -234,22 +239,22 @@
     </table>
 
     <div class="note" v-if="calculated" aria-label="计算说明">
-      计算说明：
+计算说明：
 
-      抵押品价值总额 = 资产市值 × 混合信贷率 (%)
+抵押品价值总额 = 资产市值 × 混合信贷率 (%)
 
-      净孖展比率 (NMR) = (资产市值 - 未偿还贷款) ÷ (资产市值 - 抵押品价值总额)
+净孖展比率 (NMR) = (资产市值 - 未偿还贷款) ÷ (资产市值 - 抵押品价值总额)
 
-      模拟下跌后资产市值 = 原始资产市值 × (1 - 下跌百分比 / 100)
+模拟下跌后资产市值 = 原始资产市值 × (1 - 下跌百分比 / 100)
 
-      补仓及清盘标准：
-      - NMR >= 100%：安全状态
-      - 80% <= NMR < 100%：差额通知，建议补仓
-      - 60% <= NMR < 80%：补仓通知，需尽快补仓
-      - NMR < 60%：强制清盘风险，银行有权强制售出资产
+补仓及清盘标准：
+- NMR >= 100%：安全状态
+- 80% <= NMR < 100%：差额通知，建议补仓
+- 60% <= NMR < 80%：补仓通知，需尽快补仓
+- NMR < 60%：强制清盘风险，银行有权强制售出资产
 
-      说明：
-      这里抵押品价值总额会随资产市值变化而调整，更符合实际业务逻辑。
+说明：
+这里抵押品价值总额会随资产市值变化而调整，更符合实际业务逻辑。
     </div>
   </div>
 
@@ -261,7 +266,7 @@
           totalAsset: 1500, // 万港币
           mixedLTV: 60,     // 百分比%
           loanAmount: 839.44,  // 万港币
-          dropPercent: 0,   // 资产模拟下跌百分比
+          dropPercent: 20,   // 资产模拟下跌百分比
           calculated: false,
         };
       },
@@ -300,6 +305,13 @@
         droppedNmrClass() {
           if (this.droppedNmr === -1) return "text-red font-weight-bold";
           if (this.droppedNmrPercentage === null) return "text-red";
+          if (this.droppedNmrPercentage >= 100) return "text-green";
+          if (this.droppedNmrPercentage >= 80) return "text-orange";
+          return "text-red";
+        },
+        droppedRiskClass() {
+          if (this.droppedNmr === null) return "text-red";
+          if (this.droppedNmr === -1) return "text-red font-weight-bold";
           if (this.droppedNmrPercentage >= 100) return "text-green";
           if (this.droppedNmrPercentage >= 80) return "text-orange";
           return "text-red";
