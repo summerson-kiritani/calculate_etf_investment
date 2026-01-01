@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>混合信贷率计算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 720px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    form {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+      font-size: 1em;
+    }
+    label {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 4px;
+      display: block;
+    }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      font-size: 1em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    input[type="number"]:focus, input[type="text"]:focus {
+      border-color: #409eff;
+      outline: none;
+    }
+    button {
+      margin-top: 8px;
+      padding: 8px 16px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      font-size: 1em;
+    }
+    button:hover {
+      background: #66b1ff;
+    }
+    .btn-remove {
+      background: #ef4444;
+      margin-left: 8px;
+      padding: 4px 10px;
+      font-size: 0.9em;
+      border-radius: 4px;
+      user-select: none;
+    }
+    .btn-remove:hover {
+      background: #f87171;
+    }
+    .asset-row {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px 15px;
+      margin-bottom: 12px;
+      background: #fafafa;
+      position: relative;
+    }
+    .asset-row label {
+      margin-top: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2em;
+      font-size: 0.95em;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 8px;
+      border-bottom: 1px solid #eee;
+      color: #334155;
+      word-break: break-word;
+    }
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .text-blue {
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .note {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      font-size: 0.95em;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      font-family: "Courier New", Courier, monospace;
+      margin-top: 1em;
+      color: #334155;
+    }
+    .form-inline {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .form-inline > div {
+      flex: 1 1 140px;
+      min-width: 140px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" role="main" aria-label="混合信贷率计算器">
+    <h1>混合信贷率计算器</h1>
+
+    <form @submit.prevent="calculate" aria-label="资产输入表单">
+      <div v-for="(asset, index) in assets" :key="index" class="asset-row" :aria-label="'资产类别 ' + (index + 1)">
+        <div class="form-inline">
+          <div>
+            <label :for="'name-' + index">资产名称</label>
+            <input
+              :id="'name-' + index"
+              type="text"
+              v-model.trim="asset.name"
+              placeholder="如QQQ"
+              required
+              aria-required="true"
+              autocomplete="off"
+            />
+          </div>
+          <div>
+            <label :for="'amount-' + index">资产金额（万港币）</label>
+            <input
+              :id="'amount-' + index"
+              type="number"
+              v-model.number="asset.amount"
+              min="0"
+              step="0.01"
+              required
+              aria-required="true"
+            />
+          </div>
+          <div>
+            <label :for="'ltv-' + index">信贷率（%）</label>
+            <input
+              :id="'ltv-' + index"
+              type="number"
+              v-model.number="asset.ltv"
+              min="0"
+              max="100"
+              step="0.1"
+              required
+              aria-required="true"
+            />
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button
+              type="button"
+              class="btn-remove"
+              @click="removeAsset(index)"
+              :aria-label="'删除资产 ' + asset.name"
+              title="删除该资产"
+              v-if="assets.length > 1"
+            >
+              × 删除
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" @click="addAsset" aria-label="添加资产">+ 添加资产</button>
+      <button type="submit">计算混合信贷率</button>
+    </form>
+
+    <table v-if="calculated" aria-live="polite" aria-label="计算结果">
+      <thead>
+        <tr>
+          <th>资产名称</th>
+          <th>资产金额（万港币）</th>
+          <th>信贷率（%）</th>
+          <th>允许贷款金额（万港币）</th>
+          <th>资产配置比例（%）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(asset, index) in assets" :key="'result-' + index">
+          <td>{{ asset.name || '无名资产' }}</td>
+          <td>{{ formatNumber(asset.amount) }}</td>
+          <td>{{ formatNumber(asset.ltv) }}</td>
+          <td>{{ formatNumber(assetLoan(asset)) }}</td>
+          <td>{{ formatNumber(assetRatio(asset)) }}</td>
+        </tr>
+        <tr>
+          <td class="text-blue font-weight-bold">总计</td>
+          <td class="text-blue font-weight-bold">{{ formatNumber(totalAmount) }}</td>
+          <td></td>
+          <td class="text-blue font-weight-bold">{{ formatNumber(totalLoanAllowed) }}</td>
+          <td class="text-blue font-weight-bold">100.00</td>
+        </tr>
+        <tr>
+          <td colspan="4" class="text-blue font-weight-bold">混合信贷率</td>
+          <td class="text-blue font-weight-bold">{{ mixedLTV.toFixed(2) }} %</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note" v-if="calculated" aria-label="说明">
+说明：
+
+- 允许贷款金额 = 资产金额 × 该资产信贷率。
+- 资产配置比例 = (资产金额 ÷ 所有资产金额总和) × 100%。
+- 混合信贷率 = (所有资产允许贷款金额总和 ÷ 所有资产金额总和) × 100%。
+- 资产金额总和必须大于0才能计算。
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: "#app",
+      data() {
+        return {
+          assets: [
+            { name: "QQQ", amount: 50, ltv: 70 },
+            { name: "货币市场基金", amount: 50, ltv: 90 },
+          ],
+          calculated: false,
+          totalAmountValue: 0 // 用于存储计算后的总资产金额
+        };
+      },
+      methods: {
+        addAsset() {
+          this.assets.push({ name: "", amount: 0, ltv: 0 });
+          this.calculated = false;
+        },
+        removeAsset(index) {
+          this.assets.splice(index, 1);
+          this.calculated = false;
+        },
+        assetLoan(asset) {
+          return asset.amount * (asset.ltv / 100);
+        },
+        assetRatio(asset) {
+          if (this.totalAmountValue === 0) return 0;
+          return (asset.amount / this.totalAmountValue) * 100;
+        },
+        calculate() {
+          const total = this.assets.reduce((sum, a) => sum + a.amount, 0);
+          if (total <= 0) {
+            alert("所有资产金额总和必须大于0");
+            this.calculated = false;
+            return;
+          }
+          for (let i = 0; i < this.assets.length; i++) {
+            const a = this.assets[i];
+            if (!a.name.trim()) {
+              alert(`第${i + 1}个资产名称不能为空`);
+              this.calculated = false;
+              return;
+            }
+            if (a.amount < 0) {
+              alert(`第${i + 1}个资产金额不能为负数`);
+              this.calculated = false;
+              return;
+            }
+            if (a.ltv < 0 || a.ltv > 100) {
+              alert(`第${i + 1}个资产信贷率应在0-100之间`);
+              this.calculated = false;
+              return;
+            }
+          }
+          this.totalAmountValue = total;
+          this.calculated = true;
+        },
+        formatNumber(num) {
+          if (isNaN(num) || !isFinite(num)) return "-";
+          return num.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        }
+      },
+      computed: {
+        totalAmount() {
+          return this.totalAmountValue;
+        },
+        totalLoanAllowed() {
+          return this.assets.reduce((sum, a) => sum + this.assetLoan(a), 0);
+        },
+        mixedLTV() {
+          if (this.totalAmountValue === 0) return 0;
+          return (this.totalLoanAllowed / this.totalAmountValue) * 100;
+        }
+      },
+      watch: {
+        assets: {
+          handler() {
+            this.calculated = false;
+          },
+          deep: true
+        }
+      },
+      mounted() {
+        this.calculate();
+      }
+    });
+  </script>
+</body>
+</html>
