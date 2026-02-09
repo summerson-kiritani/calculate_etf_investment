@@ -3,20 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>模拟涨跌计算器（单一涨跌选择栏，按添加顺序计算）</title>
+  <title>模拟涨跌计算器（含波动率损失说明和计算）</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 600px;
+      max-width: 700px;
       margin: 20px auto;
       padding: 0 15px;
       background: #f9f9f9;
       color: #333;
+      line-height: 1.6;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
       margin-bottom: 1em;
+      color: #2c3e50;
     }
     form {
       background: #fff;
@@ -29,6 +31,7 @@
       display: block;
       margin-top: 12px;
       font-weight: 600;
+      color: #34495e;
     }
     select, input[type="number"] {
       width: 100%;
@@ -94,12 +97,36 @@
       box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
       font-family: "Courier New", Courier, monospace;
       white-space: pre-wrap;
+      margin-bottom: 2em;
+    }
+    .explanation {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+      color: #2c3e50;
+    }
+    .explanation a {
+      color: #409eff;
+      text-decoration: none;
+    }
+    .explanation a:hover {
+      text-decoration: underline;
+    }
+    pre {
+      background: #f0f4f8;
+      padding: 8px 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.95em;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <h1>模拟涨跌计算器</h1>
+    <h1>模拟涨跌计算器（含波动率损失说明）</h1>
     <form @submit.prevent="onAddChange">
       <label for="principal">本金（元）</label>
       <input id="principal" type="number" v-model.number="principal" min="0" step="0.01" required />
@@ -152,8 +179,54 @@
     {{ formatNumber(item.finalAmount) }} 元
           </pre>
         </div>
-        <div style="margin-top: 12px; font-weight: bold;">
+        <div style="margin-top: 12px; font-weight: bold; font-size: 1.1em;">
           最终金额：{{ formatNumber(changes[changes.length - 1].finalAmount) }} 元
+        </div>
+
+        <div v-if="changes.length >= 2" style="margin-top: 16px; border-top:1px solid #ccc; padding-top: 16px;">
+          <h2>波动率损失说明与计算</h2>
+          <div class="explanation">
+            <p><strong>什么是波动率损失？</strong></p>
+            <p>波动率损失（Volatility Drag）是指由于资产价格上下波动导致的最终收益率低于简单算术平均收益率的现象。</p>
+            <p>例如，资产先上涨10%，后下跌10%，计算如下：</p>
+            <pre>
+初始金额：100元
+上涨10%后 = 100 × (1 + 0.10) = 110元
+下跌10%后 = 110 × (1 - 0.10) = 99元
+最终金额为99元，小于原始本金100元，
+即使涨跌幅度相同，资产价值也出现了减少，这种减少就是波动率损失。</pre>
+            <p>数学上，这个现象可以用公式表示为：</p>
+            <pre>
+最终比例 = (1 + r) × (1 - r) = 1 - r² &lt; 1 （当涨跌幅百分比 r 为正时）
+</pre>
+            <p>其中，r 是涨跌比例的小数形式，波动率损失的大小即为 <code>r²</code>。</p>
+            <p>在连续多次变化时，波动率损失是由各步收益率的乘积和波动引起的，造成实际收益降低。</p>
+          </div>
+
+          <h3>波动率损失计算示例</h3>
+          <div class="explanation">
+            <p>我们这里计算当前模拟涨跌序列的波动率损失，计算公式为：</p>
+            <pre>
+波动率损失(%) = (算术平均收益率) - (几何平均收益率) × 100%
+</pre>
+            <p>具体计算过程：</p>
+            <ol>
+              <li>算术平均收益率 = 每步收益率百分比的算术平均</li>
+              <li>几何平均收益率 = nth 根(最终金额 / 本金) - 1 （n为步数）</li>
+              <li>两者差值乘以100%，即为波动率损失百分比</li>
+            </ol>
+            <p>示例计算：</p>
+            <pre>
+算术平均收益率：
+  {{ avgReturnPercent.toFixed(2) }} %
+
+几何平均收益率：
+  {{ geoReturnPercent.toFixed(2) }} %
+
+波动率损失：
+  {{ volatilityDragPercent.toFixed(2) }} %
+            </pre>
+          </div>
         </div>
       </div>
     </div>
@@ -167,6 +240,24 @@
         selectedChangeType: "",
         percent: null,
         changes: []
+      },
+      computed: {
+        avgReturnPercent() {
+          if (this.changes.length === 0) return 0;
+          const sum = this.changes.reduce((acc, cur) => {
+            return acc + (cur.type === "up" ? cur.percent : -cur.percent);
+          }, 0);
+          return sum / this.changes.length;
+        },
+        geoReturnPercent() {
+          if (this.changes.length === 0) return 0;
+          const final = this.changes[this.changes.length - 1].finalAmount;
+          return (Math.pow(final / this.principal, 1 / this.changes.length) - 1) * 100;
+        },
+        volatilityDragPercent() {
+          // 算术平均收益率 - 几何平均收益率
+          return this.avgReturnPercent - this.geoReturnPercent;
+        }
       },
       methods: {
         onAddChange() {
@@ -183,7 +274,6 @@
             return;
           }
 
-          // 计算新金额，使用前一步最终金额为基数（第一步用本金）
           const baseAmount = this.changes.length > 0
             ? this.changes[this.changes.length - 1].finalAmount
             : this.principal;
@@ -201,7 +291,6 @@
             finalAmount
           });
 
-          // 重置选择和输入
           this.selectedChangeType = "";
           this.percent = null;
         },
