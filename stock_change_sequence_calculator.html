@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>模拟涨跌计算器（单一涨跌选择栏，按添加顺序计算）</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    form {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      margin-bottom: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 1em;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button, .btn-remove {
+      margin-top: 15px;
+      padding: 8px 16px;
+      background: #409eff;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    button:hover, .btn-remove:hover {
+      background: #66b1ff;
+    }
+    .btn-remove {
+      background: #e86c6c;
+      font-weight: 600;
+      font-size: 0.9em;
+      margin-left: 10px;
+      padding: 6px 12px;
+    }
+    .btn-remove:hover {
+      background: #f44336;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 2em;
+      word-break: break-word;
+      text-align: center;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #409eff;
+      color: white;
+      font-weight: 600;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .result {
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>模拟涨跌计算器</h1>
+    <form @submit.prevent="onAddChange">
+      <label for="principal">本金（元）</label>
+      <input id="principal" type="number" v-model.number="principal" min="0" step="0.01" required />
+
+      <label for="changeSelect">选择涨跌幅度</label>
+      <select id="changeSelect" v-model="selectedChangeType" required>
+        <option disabled value="">请选择涨幅或跌幅</option>
+        <option value="up">上涨</option>
+        <option value="down">下跌</option>
+      </select>
+
+      <label for="percentInput">幅度（%）</label>
+      <input id="percentInput" type="number" v-model.number="percent" step="0.01" min="0" placeholder="输入幅度百分比（正数）" required />
+
+      <button type="submit">添加涨跌项</button>
+    </form>
+
+    <div v-if="changes.length">
+      <table>
+        <thead>
+          <tr>
+            <th>序号</th>
+            <th>类型</th>
+            <th>幅度（%）</th>
+            <th>计算后金额（元）</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in changes" :key="index">
+            <td>{{ index + 1 }}</td>
+            <td>{{ item.type === 'up' ? '上涨' : '下跌' }}</td>
+            <td>{{ item.percent.toFixed(2) }}</td>
+            <td>{{ formatNumber(item.finalAmount) }}</td>
+            <td><button class="btn-remove" @click="removeChange(index)">删除</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="result">
+        <div><strong>本金：</strong>{{ formatNumber(principal) }} 元</div>
+        <div><strong>涨跌顺序及金额变化过程：</strong></div>
+        <div v-for="(item, i) in changes" :key="'result' + i" style="margin-top:10px;">
+          <pre>
+第 {{ i + 1 }} 步 {{ item.type === 'up' ? '上涨' : '下跌' }} {{ item.percent.toFixed(2) }}%：
+  计算基数：{{ formatNumber(i === 0 ? principal : changes[i-1].finalAmount) }} 元
+  计算公式：
+    {{ formatNumber(i === 0 ? principal : changes[i-1].finalAmount) }} × (1 {{ item.type === 'up' ? '+' : '-' }} {{ (item.percent/100).toFixed(4).slice(1) }})
+  计算结果：
+    {{ formatNumber(item.finalAmount) }} 元
+          </pre>
+        </div>
+        <div style="margin-top: 12px; font-weight: bold;">
+          最终金额：{{ formatNumber(changes[changes.length - 1].finalAmount) }} 元
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: "#app",
+      data: {
+        principal: 10000,
+        selectedChangeType: "",
+        percent: null,
+        changes: []
+      },
+      methods: {
+        onAddChange() {
+          if (this.principal === null || this.principal < 0) {
+            alert("请输入有效的本金");
+            return;
+          }
+          if (!this.selectedChangeType) {
+            alert("请选择上涨或下跌");
+            return;
+          }
+          if (this.percent === null || this.percent <= 0) {
+            alert("请输入有效的幅度（正数）");
+            return;
+          }
+
+          // 计算新金额，使用前一步最终金额为基数（第一步用本金）
+          const baseAmount = this.changes.length > 0
+            ? this.changes[this.changes.length - 1].finalAmount
+            : this.principal;
+
+          let finalAmount;
+          if (this.selectedChangeType === "up") {
+            finalAmount = baseAmount * (1 + this.percent / 100);
+          } else {
+            finalAmount = baseAmount * (1 - this.percent / 100);
+          }
+
+          this.changes.push({
+            type: this.selectedChangeType,
+            percent: this.percent,
+            finalAmount
+          });
+
+          // 重置选择和输入
+          this.selectedChangeType = "";
+          this.percent = null;
+        },
+        removeChange(idx) {
+          this.changes.splice(idx, 1);
+        },
+        formatNumber(num) {
+          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      }
+    });
+  </script>
+</body>
+</html>
