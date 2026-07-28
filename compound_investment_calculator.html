@@ -23,11 +23,11 @@
 
     <!-- 标题 -->
     <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
-    <p class="text-gray-500 mt-1">含初始投入，季度收益修正版</p>
+    <p class="text-gray-500 mt-1">含初始投入，季度收益修正版（提领逻辑优化）</p>
 
     <!-- 表单 -->
     <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
-      <div class="grid grid-cols-1 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-gray-700">初始投入资金（元）</label>
           <input type="number" v-model.number="initialInvestment" min="0" step="0.01" required
@@ -77,55 +77,61 @@
             class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700">提领率（%）</label>
+          <label class="block text-sm font-semibold text-gray-700">提领率（%，每年Q4执行）</label>
           <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
             class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
-        <div>
+        <div class="md:col-span-2 flex items-center">
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
-            <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded" />
+            <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
             退休后继续定投
           </label>
         </div>
       </div>
       <div class="mt-6 flex gap-3">
-        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">确定</button>
-        <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-500 text-white px-6 py-2 rounded font-semibold hover:bg-green-600">导出CSV</button>
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600 transition">计算</button>
+        <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-500 text-white px-6 py-2 rounded font-semibold hover:bg-green-600 transition">导出CSV</button>
       </div>
     </form>
 
     <!-- 摘要卡片 -->
-    <div v-if="results.length" class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
+    <div v-if="results.length" class="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-6">
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-sm text-gray-500">累计本金</div>
-        <div class="text-xl font-bold">{{ fmtMoney(summary.principal) }}</div>
+        <div class="text-xs text-gray-500">累计本金</div>
+        <div class="text-lg font-bold mt-1">{{ fmtMoney(summary.principal) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-400">
+        <div class="text-xs text-gray-500">累计已提领</div>
+        <div class="text-lg font-bold mt-1 text-purple-600">{{ fmtMoney(summary.totalWithdrawn) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-sm text-gray-500">最终价值</div>
-        <div class="text-xl font-bold">{{ fmtMoney(summary.futureValue) }}</div>
+        <div class="text-xs text-gray-500">期末账户余额</div>
+        <div class="text-lg font-bold mt-1">{{ fmtMoney(summary.futureValueAfterWithdraw) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-indigo-400">
+        <div class="text-xs text-gray-500">真实总价值 (含已领)</div>
+        <div class="text-lg font-bold mt-1 text-indigo-600">{{ fmtMoney(summary.totalWealth) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-sm text-gray-500">提领后价值</div>
-        <div class="text-xl font-bold">{{ fmtMoney(summary.futureValueAfterWithdraw) }}</div>
+        <div class="text-xs text-gray-500">净利润 (账户+已领-本金)</div>
+        <div class="text-lg font-bold mt-1" :class="summary.profit >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(summary.profit) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-sm text-gray-500">总收益</div>
-        <div class="text-xl font-bold" :class="summary.profit >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(summary.profit) }}</div>
-      </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-sm text-gray-500">年化收益率</div>
-        <div class="text-xl font-bold">{{ (summary.cagr * 100).toFixed(2) }}%</div>
+        <div class="text-xs text-gray-500">综合年化 (CAGR)</div>
+        <div class="text-lg font-bold mt-1">{{ (summary.cagr * 100).toFixed(2) }}%</div>
       </div>
     </div>
 
     <!-- 收益突破报告 -->
     <div v-if="reports.length" class="bg-white rounded-lg shadow p-4 mt-6">
-      <h3 class="text-sm font-semibold text-blue-500 mb-3">收益突破报告</h3>
-      <div v-for="r in reports" :key="r.reportId"
-        @click="scrollToRow(r.id)"
-        :class="['px-3 py-2 rounded cursor-pointer text-sm border-l-4 transition-colors',
-          selectedReportId === r.id ? 'bg-yellow-400 text-white font-semibold border-yellow-500' : 'bg-yellow-50 text-gray-600 hover:bg-yellow-100 border-yellow-400']">
-        {{ r.text }}
+      <h3 class="text-sm font-semibold text-blue-500 mb-3">收益与资产突破报告</h3>
+      <div class="space-y-2">
+        <div v-for="r in reports" :key="r.reportId"
+          @click="scrollToRow(r.id)"
+          :class="['px-3 py-2 rounded cursor-pointer text-sm border-l-4 transition-colors',
+            selectedReportId === r.id ? 'bg-yellow-400 text-white font-semibold border-yellow-500' : 'bg-yellow-50 text-gray-600 hover:bg-yellow-100 border-yellow-400']">
+          {{ r.text }}
+        </div>
       </div>
     </div>
 
@@ -137,12 +143,12 @@
             <th class="px-3 py-2 text-left w-8"></th>
             <th class="px-3 py-2">年份</th>
             <th class="px-3 py-2">年龄</th>
-            <th class="px-3 py-2">年末价值</th>
             <th class="px-3 py-2">累计本金</th>
-            <th class="px-3 py-2">收益倍数</th>
-            <th class="px-3 py-2">年化收益率</th>
-            <th class="px-3 py-2">提领金额</th>
-            <th class="px-3 py-2">提领后价值</th>
+            <th class="px-3 py-2">提领前价值</th>
+            <th class="px-3 py-2">当年提领额</th>
+            <th class="px-3 py-2">年末账户余额</th>
+            <th class="px-3 py-2">收益倍数 (含已领)</th>
+            <th class="px-3 py-2">综合年化</th>
           </tr>
         </thead>
         <tbody>
@@ -150,16 +156,16 @@
             <!-- 年度汇总行 -->
             <tr :key="'y-'+yearData.year"
               @click="toggleYear(yearData.year)"
-              :class="['cursor-pointer hover:bg-gray-50 border-b border-gray-100', selectedReportId === ('year-' + yearData.year) ? 'bg-yellow-200' : 'bg-white']">
+              :class="['cursor-pointer hover:bg-gray-50 border-b border-gray-100 font-medium', selectedReportId === ('year-' + yearData.year) ? 'bg-yellow-200' : 'bg-white']">
               <td class="px-3 py-2 text-center text-gray-400">{{ expandedYears.has(yearData.year) ? '▼' : '▶' }}</td>
               <td class="px-3 py-2 text-center font-semibold">{{ yearData.year }}</td>
               <td class="px-3 py-2 text-center">{{ yearData.age }}</td>
-              <td class="px-3 py-2 text-right">{{ fmtMoney(yearData.futureValue) }}</td>
               <td class="px-3 py-2 text-right">{{ fmtMoney(yearData.principal) }}</td>
+              <td class="px-3 py-2 text-right text-gray-500">{{ fmtMoney(yearData.futureValue) }}</td>
+              <td class="px-3 py-2 text-right text-purple-600">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '-' }}</td>
+              <td class="px-3 py-2 text-right font-bold text-blue-600">{{ fmtMoney(yearData.futureValueAfterWithdraw) }}</td>
               <td class="px-3 py-2 text-center">{{ yearData.totalReturnRatio.toFixed(2) }}倍</td>
               <td class="px-3 py-2 text-center">{{ (yearData.cagr * 100).toFixed(2) }}%</td>
-              <td class="px-3 py-2 text-right">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '' }}</td>
-              <td class="px-3 py-2 text-right">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.futureValueAfterWithdraw) : '' }}</td>
             </tr>
             <!-- 季度明细行 -->
             <template v-if="expandedYears.has(yearData.year)">
@@ -167,14 +173,14 @@
                 :id="'row-' + q.year + '-' + q.quarter + '-' + q.index"
                 :class="['bg-gray-50 text-xs border-b border-gray-100', selectedReportId === ('row-' + q.year + '-' + q.quarter + '-' + q.index) ? 'bg-yellow-200' : '']">
                 <td class="px-3 py-1.5"></td>
-                <td class="px-3 py-1.5 text-center">Q{{ q.quarter }}</td>
-                <td class="px-3 py-1.5 text-center">{{ q.age }}</td>
-                <td class="px-3 py-1.5 text-right">{{ fmtMoney(q.futureValue) }}</td>
-                <td class="px-3 py-1.5 text-right">{{ fmtMoney(q.principal) }}</td>
-                <td class="px-3 py-1.5 text-center">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
-                <td class="px-3 py-1.5 text-center">{{ (q.cagr * 100).toFixed(2) }}%</td>
-                <td class="px-3 py-1.5 text-right">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '' }}</td>
-                <td class="px-3 py-1.5 text-right">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.futureValueAfterWithdraw) : '' }}</td>
+                <td class="px-3 py-1.5 text-center text-gray-500">Q{{ q.quarter }}</td>
+                <td class="px-3 py-1.5 text-center text-gray-500">{{ q.age }}</td>
+                <td class="px-3 py-1.5 text-right text-gray-600">{{ fmtMoney(q.principal) }}</td>
+                <td class="px-3 py-1.5 text-right text-gray-500">{{ fmtMoney(q.futureValue) }}</td>
+                <td class="px-3 py-1.5 text-right text-purple-600">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '-' }}</td>
+                <td class="px-3 py-1.5 text-right font-semibold text-gray-700">{{ fmtMoney(q.futureValueAfterWithdraw) }}</td>
+                <td class="px-3 py-1.5 text-center text-gray-600">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
+                <td class="px-3 py-1.5 text-center text-gray-600">{{ (q.cagr * 100).toFixed(2) }}%</td>
               </tr>
             </template>
           </template>
@@ -184,45 +190,23 @@
 
     <!-- 公式说明 -->
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">修正后计算公式说明</h3>
 
-      <h4 class="font-semibold text-gray-800">季度收益率</h4>
+      <h4 class="font-semibold text-gray-800">1. 季度复利与提领基数</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>季度收益率 = (1 + 年化收益率)^(1/4) - 1</code></p>
-        <p><code>季度收益率(修正) = 季度收益率 × β</code></p>
+        <p><code>FV_raw = 上期末账户余额 × (1 + 季度修正收益率) + 当季投入</code></p>
+        <p><code>提领金额 = FV_raw × 提领率（仅每年 Q4 执行）</code></p>
+        <p><code>期末账户余额 = FV_raw - 提领金额</code></p>
+        <p class="text-gray-500">提示：下一个季度的计息基数严格使用【期末账户余额】，提领拿走的部分不再参与接下来的复利计息。</p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">未来价值</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">2. 真实总价值与综合回报率</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>FV₁ = 初始投入 + 当季投入</code></p>
-        <p><code>FVᵢ = FVᵢ₋₁ × (1 + 季度收益率(修正)) + 当季投入</code></p>
-        <p class="text-gray-500">退休后：FVᵢ₋₁ 使用提领后价值（见下方提领规则）</p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">当季投入</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p v-if="investmentMode==='quarterly'"><code>每季度投入 = 每月定投 × 3</code></p>
-        <p v-if="investmentMode==='yearlyInQ1'"><code>每年Q1投入 = 每月定投 × 12，其他季度为0</code></p>
-        <p class="text-gray-500">退休后未勾选"继续定投"时：当季投入 = 0</p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">累计本金与收益</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>累计本金 = 初始投入 + 所有定投金额</code></p>
-        <p><code>收益部分 = 未来价值(提领前) - 累计本金</code></p>
-        <p><code>总收益倍数 = 未来价值(提领前) ÷ 累计本金</code></p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">年化收益率（CAGR）</h4>
-      <div class="mt-1 ml-4">
-        <p><code>CAGR = (总收益倍数)^(1/完整年数) - 1</code></p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">退休提领规则</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>提领金额 = 未来价值 × 提领率（每年Q4）</code></p>
-        <p><code>提领后价值 = 未来价值 - 提领金额</code></p>
-        <p class="text-gray-500">退休后下一年 Q1 的复利基数 = 提领后价值</p>
+        <p><code>真实总价值 = 期末账户余额 + 历史累计已提领额</code></p>
+        <p><code>真实净利润 = 真实总价值 - 累计投入本金</code></p>
+        <p><code>总收益倍数 = 真实总价值 ÷ 累计投入本金</code></p>
+        <p><code>综合年化（CAGR）= (总收益倍数)^(1/完整年数) - 1</code></p>
+        <p class="text-gray-500">提示：此处的 CAGR 计算将“已被你提领消费的现金”加回，避免了提领行为被误判为投资亏损，能科学准确地反映整个盘子的资本增长能力。</p>
       </div>
     </div>
   </div>
@@ -258,15 +242,15 @@
           var last = this.results[this.results.length - 1];
           return {
             principal: last.principal,
-            futureValue: last.futureValue,
             futureValueAfterWithdraw: last.futureValueAfterWithdraw,
-            profit: last.futureValueAfterWithdraw - last.principal,
+            totalWithdrawn: last.totalWithdrawn,
+            totalWealth: last.totalWealth,
+            profit: last.profit,
             cagr: last.cagr
           };
         },
         yearlyData: function() {
           var groups = _.groupBy(this.results, 'year');
-          var self = this;
           return _.map(groups, function(quarters, year) {
             year = Number(year);
             var q4 = _.find(quarters, { quarter: 4 }) || quarters[quarters.length - 1];
@@ -288,6 +272,7 @@
       },
       methods: {
         fmtMoney: function(num) {
+          if (num === null || num === undefined) return '0.00';
           var abs = Math.abs(num);
           if (abs >= 100000000) {
             return (num / 100000000).toFixed(2) + '亿';
@@ -303,7 +288,6 @@
           } else {
             this.expandedYears.add(year);
           }
-          // force Vue reactivity on Set
           this.expandedYears = new Set(this.expandedYears);
         },
         calculate: function() {
@@ -329,7 +313,9 @@
           var sYear = this.startYear;
           var rAge = this.retirementAge;
           var wRate = this.withdrawRate / 100;
+          
           var cumP = init;
+          var cumWithdrawn = 0; // 累计已提领现金
 
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
@@ -348,58 +334,80 @@
 
             cumP = q === 1 ? init + qInvest : cumP + qInvest;
 
-            var fv;
+            // 1. 计算计息与投入后的【提领前价值】
+            var fvRaw;
             if (q === 1) {
-              fv = init + qInvest;
+              fvRaw = init + qInvest;
             } else {
-              fv = this.results[q - 2].futureValueAfterWithdraw * (1 + qRate) + qInvest;
+              // 精确取上一期【提领后的真实账户余额】作为基数
+              var prevNetBalance = this.results[q - 2].futureValueAfterWithdraw;
+              fvRaw = prevNetBalance * (1 + qRate) + qInvest;
             }
 
-            var profit = fv - cumP;
-            var ratio = cumP > 0 ? fv / cumP : 0;
+            // 2. 判断提领（退休年 Q4 执行）
+            var wAmount = 0;
+            if (isRetired && quarter === 4) {
+              wAmount = fvRaw * wRate;
+            }
+            cumWithdrawn += wAmount;
+
+            // 3. 扣除提领额，得出【真正的期末账户余额】
+            var fvAfterWithdraw = fvRaw - wAmount;
+
+            // 4. 计算真实总回报与 CAGR
+            var totalWealth = fvAfterWithdraw + cumWithdrawn; // 账户余额 + 已提领金额
+            var profit = totalWealth - cumP;
+            var ratio = cumP > 0 ? totalWealth / cumP : 0;
             var cagr = 0;
             var fullY = Math.floor(q / 4);
             if (cumP > 0 && fullY > 0) cagr = Math.pow(ratio, 1 / fullY) - 1;
 
-            var wAmount = 0;
-            if (isRetired && quarter === 4) wAmount = fv * wRate;
-            var fvAfterWithdraw = wAmount > 0 ? fv - wAmount : fv;
-
             this.results.push({
-              year: year, quarter: quarter, age: age,
-              principal: cumP, futureValue: fv, profit: profit,
-              totalReturnRatio: ratio, cagr: cagr,
+              year: year, 
+              quarter: quarter, 
+              age: age,
+              principal: cumP, 
+              futureValue: fvRaw, 
+              futureValueAfterWithdraw: fvAfterWithdraw,
+              withdrawAmount: wAmount, 
+              totalWithdrawn: cumWithdrawn,
+              totalWealth: totalWealth,
+              profit: profit,
+              totalReturnRatio: ratio, 
+              cagr: cagr,
               investYear: Math.floor((q - 1) / 4) + 1,
-              withdrawAmount: wAmount, index: q - 1,
-              futureValueAfterWithdraw: fvAfterWithdraw
+              index: q - 1
             });
           }
 
-          // 收益突破报告
+          // 收益与资产突破报告（基于真实总资产与账户净资产）
           var returnBPs = this.genReturnBPs();
           var moneyBPs = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
           var brokenR = {};
-          var brokenM = { principal: {}, futureValue: {}, profit: {} };
+          var brokenM = { principal: {}, totalWealth: {}, profit: {} };
           var rc = 0;
           var self = this;
 
           this.results.forEach(function(item) {
             var id = 'row-' + item.year + '-' + item.quarter + '-' + item.index;
+            
+            // 回报倍数突破
             for (var i = 0; i < returnBPs.length; i++) {
               var bp = returnBPs[i];
               if (item.totalReturnRatio >= bp && !brokenR[bp]) {
                 brokenR[bp] = true;
                 self.reports.push({
                   id: id,
-                  text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，收益倍数突破 ' + bp + ' 倍，收益约 ' + self.fmtMoney(item.profit) + '，年化 ' + (item.cagr * 100).toFixed(2) + '%',
+                  text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数（含已领）突破 ' + bp + ' 倍，净收益 ' + self.fmtMoney(item.profit) + '，综合年化 ' + (item.cagr * 100).toFixed(2) + '%',
                   reportId: 'report-' + id + '-' + rc++
                 });
                 break;
               }
             }
 
-            var fields = ['principal', 'futureValue', 'profit'];
-            var names = { principal: '累计本金', futureValue: '未来价值', profit: '收益部分' };
+            // 资金突破
+            var fields = ['principal', 'totalWealth', 'profit'];
+            var names = { principal: '累计本金', totalWealth: '真实总资产(含已领)', profit: '累计净利润' };
             fields.forEach(function(f) {
               for (var j = 0; j < moneyBPs.length; j++) {
                 var mbp = moneyBPs[j];
@@ -408,7 +416,7 @@
                     brokenM.profit[10000] = true;
                     self.reports.push({
                       id: id,
-                      text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，收益首次突破 1 万元（约' + (item.profit / 10000).toFixed(0) + '万），倍数 ' + item.totalReturnRatio.toFixed(2) + '，年化 ' + (item.cagr * 100).toFixed(2) + '%',
+                      text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，累计净利润首次突破 1 万元，收益倍数 ' + item.totalReturnRatio.toFixed(2) + ' 倍',
                       reportId: 'report-' + id + '-' + rc++
                     });
                     break;
@@ -418,7 +426,7 @@
                   brokenM[f][mbp] = true;
                   self.reports.push({
                     id: id,
-                    text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，' + names[f] + '突破 ' + mbp.toLocaleString() + ' 元（约' + self.fmtMoney(item[f]) + '），倍数 ' + item.totalReturnRatio.toFixed(2) + '，年化 ' + (item.cagr * 100).toFixed(2) + '%',
+                    text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，' + names[f] + '突破 ' + mbp.toLocaleString() + ' 元（约' + self.fmtMoney(item[f]) + '），综合年化 ' + (item.cagr * 100).toFixed(2) + '%',
                     reportId: 'report-' + id + '-' + rc++
                   });
                   break;
@@ -442,7 +450,6 @@
         },
         scrollToRow: function(id) {
           this.selectedReportId = id;
-          // 如果是季度行，确保对应年份已展开
           var parts = id.replace('row-', '').split('-').map(Number);
           if (parts.length >= 2) {
             var year = parts[0];
@@ -461,13 +468,22 @@
         },
         exportCSV: function() {
           if (!this.results.length) return;
-          var headers = ['年份', '季度', '年龄', '累计本金（元）', '未来价值（元）', '收益部分（元）', '总收益倍数', '年化收益率（%）', '提领金额（元）', '提领后价值（元）'];
+          var headers = ['年份', '季度', '年龄', '累计本金（元）', '提领前价值（元）', '当年提领金额（元）', '期末账户余额（元）', '累计已提领（元）', '真实总价值（元）', '真实净利润（元）', '收益倍数', '综合年化（%）'];
           var rows = this.results.map(function(item) {
-            return [item.year, 'Q' + item.quarter, item.age, item.principal.toFixed(2),
-              item.futureValue.toFixed(2), item.profit.toFixed(2),
-              item.totalReturnRatio.toFixed(2), (item.cagr * 100).toFixed(2),
-              (item.withdrawAmount > 0 && item.quarter === 4) ? item.withdrawAmount.toFixed(2) : '',
-              (item.withdrawAmount > 0 && item.quarter === 4) ? item.futureValueAfterWithdraw.toFixed(2) : ''];
+            return [
+              item.year, 
+              'Q' + item.quarter, 
+              item.age, 
+              item.principal.toFixed(2),
+              item.futureValue.toFixed(2),
+              item.withdrawAmount.toFixed(2),
+              item.futureValueAfterWithdraw.toFixed(2),
+              item.totalWithdrawn.toFixed(2),
+              item.totalWealth.toFixed(2),
+              item.profit.toFixed(2),
+              item.totalReturnRatio.toFixed(2), 
+              (item.cagr * 100).toFixed(2)
+            ];
           });
           function safe(f) {
             var s = String(f);
