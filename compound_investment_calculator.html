@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>复利定投计算器</title>
+  <title>复利定投计算器（含通胀折算版）</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
     .formula-section code {
@@ -17,13 +17,13 @@
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
-  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
     <!-- 顶部导航 -->
     <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
 
     <!-- 标题 -->
     <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
-    <p class="text-gray-500 mt-1">含初始投入，季度收益修正版（提领逻辑优化）</p>
+    <p class="text-gray-500 mt-1">含初始投入，季度收益修正版（含通货膨胀与实际购买力折算）</p>
 
     <!-- 表单 -->
     <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
@@ -49,6 +49,11 @@
         <div>
           <label class="block text-sm font-semibold text-gray-700">预估年化收益率（%）</label>
           <input type="number" v-model.number="annualRate" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">预估年通胀率（%）</label>
+          <input type="number" v-model.number="inflationRate" min="0" step="0.01" required
             class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div>
@@ -95,26 +100,34 @@
     </form>
 
     <!-- 摘要卡片 -->
-    <div v-if="results.length" class="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-6">
+    <div v-if="results.length" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
         <div class="text-xs text-gray-500">累计本金</div>
         <div class="text-lg font-bold mt-1">{{ fmtMoney(summary.principal) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-400">
-        <div class="text-xs text-gray-500">累计已提领</div>
+        <div class="text-xs text-gray-500">累计已提领 (名义)</div>
         <div class="text-lg font-bold mt-1 text-purple-600">{{ fmtMoney(summary.totalWithdrawn) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-xs text-gray-500">期末账户余额</div>
-        <div class="text-lg font-bold mt-1">{{ fmtMoney(summary.futureValueAfterWithdraw) }}</div>
+        <div class="text-xs text-gray-500">期末余额 (名义数字)</div>
+        <div class="text-lg font-bold mt-1 text-blue-600">{{ fmtMoney(summary.futureValueAfterWithdraw) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+        <div class="text-xs text-gray-500">期末余额折算 (今日购买力)</div>
+        <div class="text-lg font-bold mt-1 text-red-600">{{ fmtMoney(summary.realValueAfterWithdraw) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-indigo-400">
-        <div class="text-xs text-gray-500">真实总价值 (含已领)</div>
+        <div class="text-xs text-gray-500">真实总价值 (名义含已领)</div>
         <div class="text-lg font-bold mt-1 text-indigo-600">{{ fmtMoney(summary.totalWealth) }}</div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-xs text-gray-500">净利润 (账户+已领-本金)</div>
-        <div class="text-lg font-bold mt-1" :class="summary.profit >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(summary.profit) }}</div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+        <div class="text-xs text-gray-500">真实总价值折算 (今日购买力)</div>
+        <div class="text-lg font-bold mt-1 text-yellow-600">{{ fmtMoney(summary.realTotalWealth) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-400">
+        <div class="text-xs text-gray-500">名义净利润</div>
+        <div class="text-lg font-bold mt-1" :class="summary.profit >= 0 ? 'text-green-600' : 'text-red-500'">{{ fmtMoney(summary.profit) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
         <div class="text-xs text-gray-500">综合年化 (CAGR)</div>
@@ -147,6 +160,7 @@
             <th class="px-3 py-2">提领前价值</th>
             <th class="px-3 py-2">当年提领额</th>
             <th class="px-3 py-2">年末账户余额</th>
+            <th class="px-3 py-2 text-red-200">余额 (折算购买力)</th>
             <th class="px-3 py-2">收益倍数 (含已领)</th>
             <th class="px-3 py-2">综合年化</th>
           </tr>
@@ -164,6 +178,7 @@
               <td class="px-3 py-2 text-right text-gray-500">{{ fmtMoney(yearData.futureValue) }}</td>
               <td class="px-3 py-2 text-right text-purple-600">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '-' }}</td>
               <td class="px-3 py-2 text-right font-bold text-blue-600">{{ fmtMoney(yearData.futureValueAfterWithdraw) }}</td>
+              <td class="px-3 py-2 text-right font-bold text-red-600 bg-red-50">{{ fmtMoney(yearData.realValueAfterWithdraw) }}</td>
               <td class="px-3 py-2 text-center">{{ yearData.totalReturnRatio.toFixed(2) }}倍</td>
               <td class="px-3 py-2 text-center">{{ (yearData.cagr * 100).toFixed(2) }}%</td>
             </tr>
@@ -179,6 +194,7 @@
                 <td class="px-3 py-1.5 text-right text-gray-500">{{ fmtMoney(q.futureValue) }}</td>
                 <td class="px-3 py-1.5 text-right text-purple-600">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '-' }}</td>
                 <td class="px-3 py-1.5 text-right font-semibold text-gray-700">{{ fmtMoney(q.futureValueAfterWithdraw) }}</td>
+                <td class="px-3 py-1.5 text-right font-semibold text-red-500 bg-red-50">{{ fmtMoney(q.realValueAfterWithdraw) }}</td>
                 <td class="px-3 py-1.5 text-center text-gray-600">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
                 <td class="px-3 py-1.5 text-center text-gray-600">{{ (q.cagr * 100).toFixed(2) }}%</td>
               </tr>
@@ -190,23 +206,28 @@
 
     <!-- 公式说明 -->
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">修正后计算公式说明</h3>
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明（含通货膨胀折算）</h3>
 
       <h4 class="font-semibold text-gray-800">1. 季度复利与提领基数</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>FV_raw = 上期末账户余额 × (1 + 季度修正收益率) + 当季投入</code></p>
         <p><code>提领金额 = FV_raw × 提领率（仅每年 Q4 执行）</code></p>
-        <p><code>期末账户余额 = FV_raw - 提领金额</code></p>
-        <p class="text-gray-500">提示：下一个季度的计息基数严格使用【期末账户余额】，提领拿走的部分不再参与接下来的复利计息。</p>
+        <p><code>期末账户余额（名义数字） = FV_raw - 提领金额</code></p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">2. 真实总价值与综合回报率</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">2. 通货膨胀与实际购买力折算（方案 A）</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>折算因素 (Discount Factor) = (1 + 年通胀率)^(经过年数)</code></p>
+        <p><code>期末余额 (今日购买力) = 期末账户余额 ÷ 折算因素</code></p>
+        <p><code>真实总价值 (今日购买力) = 真实总价值 ÷ 折算因素</code></p>
+        <p class="text-gray-500">提示：经过年数按照实际季度精确计算（如第 10 季度为 2 年）。“今日购买力”表达的是该笔资产相当于现在的多少钱。</p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">3. 真实总价值与综合回报率</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>真实总价值 = 期末账户余额 + 历史累计已提领额</code></p>
-        <p><code>真实净利润 = 真实总价值 - 累计投入本金</code></p>
         <p><code>总收益倍数 = 真实总价值 ÷ 累计投入本金</code></p>
         <p><code>综合年化（CAGR）= (总收益倍数)^(1/完整年数) - 1</code></p>
-        <p class="text-gray-500">提示：此处的 CAGR 计算将“已被你提领消费的现金”加回，避免了提领行为被误判为投资亏损，能科学准确地反映整个盘子的资本增长能力。</p>
       </div>
     </div>
   </div>
@@ -222,6 +243,7 @@
           initialInvestment: 0,
           monthlyInvestment: 1000,
           annualRate: 18,
+          inflationRate: 2,
           beta: 1,
           years: 30,
           startYear: currentYear,
@@ -243,8 +265,10 @@
           return {
             principal: last.principal,
             futureValueAfterWithdraw: last.futureValueAfterWithdraw,
+            realValueAfterWithdraw: last.realValueAfterWithdraw,
             totalWithdrawn: last.totalWithdrawn,
             totalWealth: last.totalWealth,
+            realTotalWealth: last.realTotalWealth,
             profit: last.profit,
             cagr: last.cagr
           };
@@ -261,6 +285,7 @@
               age: q4.age,
               futureValue: q4.futureValue,
               futureValueAfterWithdraw: q4.futureValueAfterWithdraw,
+              realValueAfterWithdraw: q4.realValueAfterWithdraw,
               principal: q4.principal,
               totalReturnRatio: q4.totalReturnRatio,
               cagr: q4.cagr,
@@ -292,7 +317,7 @@
         },
         calculate: function() {
           if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 ||
-              this.beta < 0 || this.years <= 0 || this.currentAge < 0 ||
+              this.inflationRate < 0 || this.beta < 0 || this.years <= 0 || this.currentAge < 0 ||
               this.startYear < 1900 || this.retirementAge < 0 ||
               this.withdrawRate < 0 || this.withdrawRate > 100) {
             alert('请输入合理的正数，且提领率在0-100之间！');
@@ -306,6 +331,7 @@
           var r = this.annualRate / 100;
           var baseQR = Math.pow(1 + r, 0.25) - 1;
           var qRate = baseQR * this.beta;
+          var infRate = this.inflationRate / 100; // 年通胀率
           var monthly = this.monthlyInvestment;
           var init = this.initialInvestment;
           var totalQ = this.years * 4;
@@ -339,7 +365,6 @@
             if (q === 1) {
               fvRaw = init + qInvest;
             } else {
-              // 精确取上一期【提领后的真实账户余额】作为基数
               var prevNetBalance = this.results[q - 2].futureValueAfterWithdraw;
               fvRaw = prevNetBalance * (1 + qRate) + qInvest;
             }
@@ -354,8 +379,14 @@
             // 3. 扣除提领额，得出【真正的期末账户余额】
             var fvAfterWithdraw = fvRaw - wAmount;
 
-            // 4. 计算真实总回报与 CAGR
-            var totalWealth = fvAfterWithdraw + cumWithdrawn; // 账户余额 + 已提领金额
+            // 4. 方案 A：通货膨胀折算今日购买力
+            var yearsPassed = q / 4; // 当前已过年数（含季度）
+            var discountFactor = Math.pow(1 + infRate, yearsPassed);
+            var realValueAfterWithdraw = fvAfterWithdraw / discountFactor;
+
+            // 5. 计算真实总回报与 CAGR
+            var totalWealth = fvAfterWithdraw + cumWithdrawn; // 账面总价值 (含已领)
+            var realTotalWealth = totalWealth / discountFactor; // 折算购买力的总价值
             var profit = totalWealth - cumP;
             var ratio = cumP > 0 ? totalWealth / cumP : 0;
             var cagr = 0;
@@ -369,9 +400,11 @@
               principal: cumP, 
               futureValue: fvRaw, 
               futureValueAfterWithdraw: fvAfterWithdraw,
+              realValueAfterWithdraw: realValueAfterWithdraw,
               withdrawAmount: wAmount, 
               totalWithdrawn: cumWithdrawn,
               totalWealth: totalWealth,
+              realTotalWealth: realTotalWealth,
               profit: profit,
               totalReturnRatio: ratio, 
               cagr: cagr,
@@ -398,7 +431,7 @@
                 brokenR[bp] = true;
                 self.reports.push({
                   id: id,
-                  text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数（含已领）突破 ' + bp + ' 倍，净收益 ' + self.fmtMoney(item.profit) + '，综合年化 ' + (item.cagr * 100).toFixed(2) + '%',
+                  text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数突破 ' + bp + ' 倍，账户余额名义 ' + self.fmtMoney(item.futureValueAfterWithdraw) + '（折算今日购买力约 ' + self.fmtMoney(item.realValueAfterWithdraw) + '），综合年化 ' + (item.cagr * 100).toFixed(2) + '%',
                   reportId: 'report-' + id + '-' + rc++
                 });
                 break;
@@ -426,7 +459,7 @@
                   brokenM[f][mbp] = true;
                   self.reports.push({
                     id: id,
-                    text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，' + names[f] + '突破 ' + mbp.toLocaleString() + ' 元（约' + self.fmtMoney(item[f]) + '），综合年化 ' + (item.cagr * 100).toFixed(2) + '%',
+                    text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，' + names[f] + '突破 ' + mbp.toLocaleString() + ' 元（约' + self.fmtMoney(item[f]) + '），折算今日购买力约 ' + self.fmtMoney(item.realTotalWealth) + '，综合年化 ' + (item.cagr * 100).toFixed(2) + '%',
                     reportId: 'report-' + id + '-' + rc++
                   });
                   break;
@@ -468,7 +501,7 @@
         },
         exportCSV: function() {
           if (!this.results.length) return;
-          var headers = ['年份', '季度', '年龄', '累计本金（元）', '提领前价值（元）', '当年提领金额（元）', '期末账户余额（元）', '累计已提领（元）', '真实总价值（元）', '真实净利润（元）', '收益倍数', '综合年化（%）'];
+          var headers = ['年份', '季度', '年龄', '累计本金（元）', '提领前价值（元）', '当年提领金额（元）', '期末账户余额-名义（元）', '期末余额-折算今日购买力（元）', '累计已提领（元）', '真实总价值-名义（元）', '真实总价值-折算今日购买力（元）', '真实净利润（元）', '收益倍数', '综合年化（%）'];
           var rows = this.results.map(function(item) {
             return [
               item.year, 
@@ -478,8 +511,10 @@
               item.futureValue.toFixed(2),
               item.withdrawAmount.toFixed(2),
               item.futureValueAfterWithdraw.toFixed(2),
+              item.realValueAfterWithdraw.toFixed(2),
               item.totalWithdrawn.toFixed(2),
               item.totalWealth.toFixed(2),
+              item.realTotalWealth.toFixed(2),
               item.profit.toFixed(2),
               item.totalReturnRatio.toFixed(2), 
               (item.cagr * 100).toFixed(2)
@@ -496,7 +531,7 @@
           var url = URL.createObjectURL(blob);
           var a = document.createElement('a');
           a.href = url;
-          a.download = '复利定投计算结果_' + this.startYear + '_' + this.years + '年.csv';
+          a.download = '复利定投计算结果(含通胀折算)_' + this.startYear + '_' + this.years + '年.csv';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
