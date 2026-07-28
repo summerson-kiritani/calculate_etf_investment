@@ -4,265 +4,211 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>复利定投回测计算器</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 720px;
-      margin: 20px auto;
-      padding: 0 15px 60px;
-      background: #f9f9f9;
-      color: #333;
-      word-break: break-word;
-      line-height: 1.6;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1em;
-    }
-    form {
-      background: #fff;
-      padding: 20px 25px;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-      font-size: 1rem;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: 600;
-      color: #555;
-    }
-    select[multiple] {
-      width: 100%;
-      height: 120px;
-      padding: 8px 12px;
-      font-size: 1rem;
-      margin-top: 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-      transition: border-color 0.3s ease;
-      resize: vertical;
-    }
-    select, input[type="number"] {
-      width: 100%;
-      padding: 8px 12px;
-      font-size: 1rem;
-      margin-top: 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-      transition: border-color 0.3s ease;
-    }
-    select:focus, input[type="number"]:focus {
-      border-color: #409eff;
-      outline: none;
-      box-shadow: 0 0 5px #a6c8ff;
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 24px;
-      background: #409eff;
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      user-select: none;
-      font-size: 1.1rem;
-    }
-    button:hover {
-      background: #66b1ff;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      border-radius: 6px;
-      overflow: hidden;
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
       font-size: 0.95rem;
-      margin-top: 10px;
-    }
-    thead {
-      background: #409eff;
-      color: white;
-      font-weight: 600;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-    th, td {
-      text-align: center;
-      padding: 12px 10px;
-      border-bottom: 1px solid #eee;
-      word-break: break-word;
-      vertical-align: middle;
-    }
-    tbody tr.year-color-0 {
-      background-color: #fff;
-    }
-    tbody tr.year-color-1 {
-      background-color: #f0f7ff;
-    }
-    tbody tr.highlight-row {
-      background-color: #ffeaa7 !important;
-      transition: background-color 0.3s;
-    }
-    /* 响应式 */
-    @media (max-width: 480px) {
-      body {
-        padding: 15px 12px 50px;
-      }
-      form {
-        padding: 15px 18px;
-      }
-      label {
-        margin-top: 12px;
-        font-size: 0.95rem;
-      }
-      select, input[type="number"], select[multiple] {
-        font-size: 0.9rem;
-        padding: 7px 10px;
-      }
-      button {
-        width: 100%;
-        margin-top: 15px;
-        font-size: 1rem;
-        padding: 10px 0;
-      }
-      table {
-        font-size: 0.85rem;
-      }
-      th, td {
-        padding: 8px 6px;
-      }
-    }
-    #chart {
-      width: 100%;
-      height: 320px;
-      background: #fff;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-    }
-    #multiChart {
-      width: 100%;
-      height: 320px;
-      background: #fff;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      margin-bottom: 1em;
-    }
-    .multi-summary {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-      font-size: 0.95rem;
-    }
-    .multi-summary h4 {
-      margin-top: 0;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #409eff;
-    }
-    .multi-summary p {
-      margin: 4px 0;
+      color: #1d4ed8;
     }
   </style>
 </head>
-<body>
-  <div id="app" role="main" aria-label="复利定投回测功能">
-    <h1>复利定投回测计算器</h1>
-    <form @submit.prevent="runBacktest" aria-label="回测参数表单">
-      <label for="selectData">选择回测数据（可多选，按住 Ctrl / Cmd 选择多个）:</label>
-      <select id="selectData" v-model="selectedDataNames" multiple required @change="onDataChange">
-        <option v-for="item in select" :key="item.name" :value="item.name">{{ item.name }}</option>
-      </select>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+    <!-- 顶部导航 -->
+    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
 
-      <label for="startDate">开始日期:</label>
-      <select id="startDate" v-model="selectedStartDate" required>
-        <option disabled value="">请选择开始月份</option>
-        <option v-for="item in availableDates" :key="item" :value="item">{{ item }}</option>
-      </select>
+    <!-- 标题 -->
+    <h1 class="text-2xl font-bold mt-4">复利定投回测计算器</h1>
+    <p class="text-gray-500 mt-1">基于历史数据回测定投策略收益</p>
 
-      <label for="endDate">结束日期:</label>
-      <select id="endDate" v-model="selectedEndDate" required>
-        <option disabled value="">请选择结束月份</option>
-        <option v-for="item in availableDates.slice().reverse()" :key="'end-' + item" :value="item" :disabled="isEndDateDisabled(item)">
-          {{ item }}
-        </option>
-      </select>
-
-      <label for="initialInvestment">初始投入资金（元）:</label>
-      <input id="initialInvestment" type="number" v-model.number="initialInvestment" min="0" step="0.01" required />
-
-      <label for="monthlyInvestment">每月定投金额（元）:</label>
-      <input id="monthlyInvestment" type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required />
-
-      <label for="beta">收益调整系数 β（beta）:</label>
-      <input id="beta" type="number" v-model.number="beta" min="0" step="0.01" required />
-
-      <button type="submit">开始回测</button>
-      <button type="button" v-if="results.length || Object.keys(multiResults).length" @click="exportCSV">导出CSV</button>
-    </form>
-
-    <section v-if="results.length" aria-live="polite" aria-atomic="true" style="margin-bottom: 1.5em;">
-      <h3 style="margin-top:0; margin-bottom: 10px; color: #409eff;">回测结果（单选数据）：</h3>
-      <table aria-label="回测结果表" v-if="results.length && selectedDataNames.length === 1">
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>收盘价</th>
-            <th>累计本金（元）</th>
-            <th>未来价值（元）</th>
-            <th>收益（元）</th>
-            <th>收益倍数</th>
-            <th>年化收益率（%）</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, idx) in results" :key="idx" :class="idx % 2 === 0 ? 'year-color-0' : 'year-color-1'">
-            <td>{{ item.date }}</td>
-            <td>{{ item.close.toFixed(2) }}</td>
-            <td>{{ formatCurrency(item.principal) }}</td>
-            <td>{{ formatCurrency(item.futureValue) }}</td>
-            <td>{{ formatCurrency(item.profit) }}</td>
-            <td>{{ item.returnRatio.toFixed(2) }}倍</td>
-            <td>{{ (item.cagr * 100).toFixed(2) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-if="selectedDataNames.length === 1" style="margin-top: 1em; font-weight: 600;">
-        最终年化收益率：{{ (finalCAGR * 100).toFixed(2) }}%
-      </p>
-    </section>
-
-    <div id="chart" role="img" aria-label="回测收益走势图" v-if="selectedDataNames.length === 1"></div>
-
-    <section v-if="selectedDataNames.length > 1" aria-live="polite" aria-atomic="true" style="margin-bottom: 1.5em;">
-      <h3 style="margin-top:0; margin-bottom: 10px; color: #409eff;">多数据回测未来价值对比：</h3>
-      <div id="multiChart" role="img" aria-label="多数据回测未来价值对比走势图"></div>
-
-      <div class="multi-summary" aria-label="多数据回测收益总结">
-        <div v-for="name in selectedDataNames" :key="name" style="margin-bottom: 1.2em;">
-          <h4>{{ name }}</h4>
-          <p>累计本金（元）：<strong>{{ formatCurrency(getFinalValue(name, 'principal')) }}</strong></p>
-          <p>未来价值（元）：<strong>{{ formatCurrency(getFinalValue(name, 'futureValue')) }}</strong></p>
-          <p>收益（元）：<strong>{{ formatCurrency(getFinalValue(name, 'profit')) }}</strong></p>
-          <p>收益倍数：<strong>{{ getFinalValue(name, 'returnRatio') ? getFinalValue(name, 'returnRatio').toFixed(2) + '倍' : '0.00倍' }}</strong></p>
-          <p>年化收益率（%）：<strong>{{ getFinalValue(name, 'cagr') ? (getFinalValue(name, 'cagr') * 100).toFixed(2) : '0.00' }}</strong></p>
+    <!-- 表单 -->
+    <form @submit.prevent="runBacktest" class="bg-white rounded-lg shadow p-6 mt-6">
+      <!-- 数据源选择 -->
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">选择回测数据</label>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" v-for="item in select" :key="item.name"
+            @click="toggleDataSource(item.name)"
+            :class="['px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-colors',
+              selectedDataNames.indexOf(item.name) >= 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200']">
+            {{ item.name }}
+          </button>
         </div>
       </div>
-    </section>
+
+      <!-- 日期选择 -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">开始日期</label>
+          <select v-model="selectedStartDate" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option disabled value="">请选择开始月份</option>
+            <option v-for="item in availableDates" :key="item" :value="item">{{ item }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">结束日期</label>
+          <select v-model="selectedEndDate" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option disabled value="">请选择结束月份</option>
+            <option v-for="item in availableDates.slice().reverse()" :key="'end-'+item" :value="item" :disabled="isEndDateDisabled(item)">{{ item }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 输入参数 -->
+      <div class="grid grid-cols-1 gap-4 mt-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">初始投入资金（元）</label>
+          <input type="number" v-model.number="initialInvestment" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">每月定投金额（元）</label>
+          <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">收益调整系数 β</label>
+          <input type="number" v-model.number="beta" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">开始回测</button>
+        <button type="button" v-if="results.length || Object.keys(multiResults).length" @click="exportCSV" class="bg-green-500 text-white px-6 py-2 rounded font-semibold hover:bg-green-600">导出CSV</button>
+      </div>
+    </form>
+
+    <!-- 单选结果区 -->
+    <template v-if="results.length && selectedDataNames.length === 1">
+      <!-- 摘要卡片 -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">累计本金</div>
+          <div class="text-xl font-bold">{{ fmtMoney(summary.principal) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">最终价值</div>
+          <div class="text-xl font-bold">{{ fmtMoney(summary.futureValue) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">收益</div>
+          <div class="text-xl font-bold" :class="summary.profit >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(summary.profit) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">年化收益率</div>
+          <div class="text-xl font-bold">{{ (summary.cagr * 100).toFixed(2) }}%</div>
+        </div>
+      </div>
+
+      <!-- 图表 -->
+      <div class="bg-white rounded-lg shadow p-4 mt-6">
+        <canvas id="chart" height="320"></canvas>
+      </div>
+
+      <!-- 年度汇总表 -->
+      <div class="mt-6 overflow-x-auto">
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden text-sm">
+          <thead class="bg-blue-500 text-white">
+            <tr>
+              <th class="px-3 py-2 text-left w-8"></th>
+              <th class="px-3 py-2">年份</th>
+              <th class="px-3 py-2">年末收盘</th>
+              <th class="px-3 py-2">累计本金</th>
+              <th class="px-3 py-2">未来价值</th>
+              <th class="px-3 py-2">收益倍数</th>
+              <th class="px-3 py-2">年化收益率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="yd in yearlyData">
+              <tr :key="'y-'+yd.year" @click="toggleYear(yd.year)" class="cursor-pointer hover:bg-gray-50 border-b border-gray-100 bg-white">
+                <td class="px-3 py-2 text-center text-gray-400">{{ expandedYears.has(yd.year) ? '▼' : '▶' }}</td>
+                <td class="px-3 py-2 text-center font-semibold">{{ yd.year }}</td>
+                <td class="px-3 py-2 text-right">{{ yd.close.toFixed(2) }}</td>
+                <td class="px-3 py-2 text-right">{{ fmtMoney(yd.principal) }}</td>
+                <td class="px-3 py-2 text-right">{{ fmtMoney(yd.futureValue) }}</td>
+                <td class="px-3 py-2 text-center">{{ yd.returnRatio.toFixed(2) }}倍</td>
+                <td class="px-3 py-2 text-center">{{ (yd.cagr * 100).toFixed(2) }}%</td>
+              </tr>
+              <template v-if="expandedYears.has(yd.year)">
+                <tr v-for="m in yd.months" :key="'m-'+m.date" class="bg-gray-50 text-xs border-b border-gray-100">
+                  <td class="px-3 py-1.5"></td>
+                  <td class="px-3 py-1.5 text-center">{{ m.date }}</td>
+                  <td class="px-3 py-1.5 text-right">{{ m.close.toFixed(2) }}</td>
+                  <td class="px-3 py-1.5 text-right">{{ fmtMoney(m.principal) }}</td>
+                  <td class="px-3 py-1.5 text-right">{{ fmtMoney(m.futureValue) }}</td>
+                  <td class="px-3 py-1.5 text-center">{{ m.returnRatio.toFixed(2) }}倍</td>
+                  <td class="px-3 py-1.5 text-center">{{ (m.cagr * 100).toFixed(2) }}%</td>
+                </tr>
+              </template>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
+    <!-- 多选对比区 -->
+    <template v-if="selectedDataNames.length > 1 && Object.keys(multiResults).length">
+      <!-- 对比图表 -->
+      <div class="bg-white rounded-lg shadow p-4 mt-6">
+        <canvas id="multiChart" height="320"></canvas>
+      </div>
+
+      <!-- 各数据源摘要 -->
+      <div class="mt-4 space-y-3">
+        <div v-for="name in selectedDataNames" :key="name" class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <h4 class="font-semibold text-gray-800 mb-2">{{ name }}</h4>
+          <div class="grid grid-cols-2 lg:grid-cols-5 gap-2 text-sm">
+            <div><span class="text-gray-500">本金：</span><span class="font-semibold">{{ fmtMoney(getFinalValue(name, 'principal')) }}</span></div>
+            <div><span class="text-gray-500">价值：</span><span class="font-semibold">{{ fmtMoney(getFinalValue(name, 'futureValue')) }}</span></div>
+            <div><span class="text-gray-500">收益：</span><span class="font-semibold" :class="getFinalValue(name, 'profit') >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(getFinalValue(name, 'profit')) }}</span></div>
+            <div><span class="text-gray-500">倍数：</span><span class="font-semibold">{{ getFinalValue(name, 'returnRatio') ? getFinalValue(name, 'returnRatio').toFixed(2) + '倍' : '0.00倍' }}</span></div>
+            <div><span class="text-gray-500">年化：</span><span class="font-semibold">{{ getFinalValue(name, 'cagr') ? (getFinalValue(name, 'cagr') * 100).toFixed(2) + '%' : '0.00%' }}</span></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- 公式说明 -->
+    <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
+
+      <h4 class="font-semibold text-gray-800">回测方法</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p>以历史月度收盘价模拟定投：每月按收盘价买入份额</p>
+        <p class="text-gray-500">首月用初始投入买入，之后每月用定投金额买入</p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">份额计算</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>初始份额 = 初始投入 ÷ 首月收盘价</code></p>
+        <p><code>每月新增份额 = 每月定投 ÷ 当月收盘价</code></p>
+        <p><code>累计份额 = 初始份额 + 所有新增份额</code></p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">价值计算</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>未来价值 = 累计份额 × 当月收盘价 × β</code></p>
+        <p><code>累计本金 = 初始投入 + 每月定投 × 月数</code></p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">收益计算</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>收益 = 未来价值 - 累计本金</code></p>
+        <p><code>收益倍数 = 未来价值 ÷ 累计本金</code></p>
+        <p><code>年化收益率(CAGR) = (收益倍数)^(1/年数) - 1</code></p>
+      </div>
+    </div>
   </div>
 
+  <!-- 数据文件 -->
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qqq_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qld_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/tqqq_data.js"></script>
@@ -273,8 +219,11 @@
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/zh500_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/zh1000_data.js"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    let select = [
+    var select = [
       { name: 'QQQ', data: qqqData },
       { name: 'QLD', data: qldData },
       { name: 'TQQQ', data: tqqqData },
@@ -283,31 +232,54 @@
       { name: 'BTC/USD(比特币)', data: btcusdData },
       { name: '沪深300ETF', data: hsData },
       { name: '中证500ETF', data: zh500Data },
-      { name: '中证1000ETF', data: zh1000Data },
+      { name: '中证1000ETF', data: zh1000Data }
     ];
 
     new Vue({
       el: '#app',
-      data() {
+      data: function() {
         return {
           select: select,
           selectedDataNames: [],
-          monthlyDataMap: {}, // name => sorted monthly data
+          monthlyDataMap: {},
           availableDates: [],
           selectedStartDate: '',
           selectedEndDate: '',
           initialInvestment: 10000,
           monthlyInvestment: 1000,
           beta: 1,
-          results: [], // For single selection only
+          results: [],
           finalCAGR: 0,
           chart: null,
           multiChart: null,
-          multiResults: {}, // { name: [{date, futureValue, principal, profit, ...}] }
+          multiResults: {},
+          expandedYears: new Set()
+        };
+      },
+      computed: {
+        summary: function() {
+          if (!this.results.length) return {};
+          var last = this.results[this.results.length - 1];
+          return { principal: last.principal, futureValue: last.futureValue, profit: last.profit, cagr: last.cagr };
+        },
+        yearlyData: function() {
+          var groups = _.groupBy(this.results, 'year');
+          return _.map(groups, function(months, year) {
+            var last = months[months.length - 1];
+            return {
+              year: Number(year),
+              close: last.close,
+              principal: last.principal,
+              futureValue: last.futureValue,
+              returnRatio: last.returnRatio,
+              cagr: last.cagr,
+              months: months
+            };
+          });
         }
       },
       watch: {
-        selectedDataNames(val) {
+        selectedDataNames: function() {
           this.updateMonthlyDataMap();
           this.updateAvailableDates();
           this.selectedStartDate = '';
@@ -320,56 +292,62 @@
         }
       },
       methods: {
-        formatCurrency(num) {
+        fmtMoney: function(num) {
           if (typeof num !== 'number' || isNaN(num)) return '0.00';
-          return num.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
         },
-        updateMonthlyDataMap() {
+        toggleDataSource: function(name) {
+          var idx = this.selectedDataNames.indexOf(name);
+          if (idx >= 0) {
+            this.selectedDataNames.splice(idx, 1);
+          } else {
+            this.selectedDataNames.push(name);
+          }
+          // force reactivity
+          this.selectedDataNames = this.selectedDataNames.slice();
+        },
+        toggleYear: function(year) {
+          if (this.expandedYears.has(year)) {
+            this.expandedYears.delete(year);
+          } else {
+            this.expandedYears.add(year);
+          }
+          this.expandedYears = new Set(this.expandedYears);
+        },
+        updateMonthlyDataMap: function() {
           this.monthlyDataMap = {};
-          this.selectedDataNames.forEach(name => {
-            const found = this.select.find(item => item.name === name);
+          var self = this;
+          this.selectedDataNames.forEach(function(name) {
+            var found = self.select.find(function(item) { return item.name === name; });
             if (found && found.data && found.data.length) {
-              this.monthlyDataMap[name] = found.data.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+              self.monthlyDataMap[name] = found.data.slice().sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
             }
           });
         },
-        updateAvailableDates() {
-          if (this.selectedDataNames.length === 0) {
-            this.availableDates = [];
-            return;
-          }
-          // 取多数据日期交集，保证能选的日期所有数据都有
-          const dateSets = this.selectedDataNames.map(name => new Set(this.monthlyDataMap[name].map(d => d.date)));
-          const intersection = dateSets.reduce((acc, set) => {
-            return new Set([...acc].filter(x => set.has(x)));
+        updateAvailableDates: function() {
+          if (!this.selectedDataNames.length) { this.availableDates = []; return; }
+          var self = this;
+          var dateSets = this.selectedDataNames.map(function(name) {
+            return new Set(self.monthlyDataMap[name].map(function(d) { return d.date; }));
           });
-          this.availableDates = Array.from(intersection).sort((a,b) => new Date(a) - new Date(b));
+          var intersection = dateSets.reduce(function(acc, set) {
+            return new Set(Array.from(acc).filter(function(x) { return set.has(x); }));
+          });
+          this.availableDates = Array.from(intersection).sort(function(a, b) { return new Date(a) - new Date(b); });
         },
-        isEndDateDisabled(date) {
+        isEndDateDisabled: function(date) {
           if (!this.selectedStartDate) return false;
           return new Date(date) < new Date(this.selectedStartDate);
         },
-        runBacktest() {
-          if (this.selectedDataNames.length === 0) {
-            alert('请选择至少一个回测数据');
-            return;
-          }
-          if (!this.selectedStartDate) {
-            alert('请选择开始日期');
-            return;
-          }
-          if (!this.selectedEndDate) {
-            alert('请选择结束日期');
-            return;
-          }
-          if (new Date(this.selectedEndDate) < new Date(this.selectedStartDate)) {
-            alert('结束日期不能早于开始日期');
-            return;
-          }
-          if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.beta < 0) {
-            alert('请输入合理的参数');
-            return;
-          }
+        runBacktest: function() {
+          if (!this.selectedDataNames.length) { alert('请选择至少一个回测数据'); return; }
+          if (!this.selectedStartDate) { alert('请选择开始日期'); return; }
+          if (!this.selectedEndDate) { alert('请选择结束日期'); return; }
+          if (new Date(this.selectedEndDate) < new Date(this.selectedStartDate)) { alert('结束日期不能早于开始日期'); return; }
+          if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.beta < 0) { alert('请输入合理的参数'); return; }
 
           if (this.selectedDataNames.length === 1) {
             this.runSingleBacktest(this.selectedDataNames[0]);
@@ -377,427 +355,206 @@
             this.runMultiBacktest();
           }
         },
-        runSingleBacktest(name) {
+        runSingleBacktest: function(name) {
           this.results = [];
           this.finalCAGR = 0;
+          this.expandedYears = new Set();
           this.clearChart();
 
-          const data = this.monthlyDataMap[name];
-          const startIdx = data.findIndex(d => d.date === this.selectedStartDate);
-          const endIdx = data.findIndex(d => d.date === this.selectedEndDate);
-          if (startIdx === -1 || endIdx === -1) {
-            alert('开始或结束日期数据未找到');
-            return;
-          }
-          if (endIdx < startIdx) {
-            alert('结束日期不能早于开始日期');
-            return;
-          }
+          var data = this.monthlyDataMap[name];
+          var startIdx = data.findIndex(function(d) { return d.date === this.selectedStartDate; }.bind(this));
+          var endIdx = data.findIndex(function(d) { return d.date === this.selectedEndDate; }.bind(this));
+          if (startIdx === -1 || endIdx === -1) { alert('日期数据未找到'); return; }
 
-          const startPrice = data[startIdx].close;
-          let totalShares = this.initialInvestment / startPrice;
-          let totalPrincipal = this.initialInvestment;
-          const monthlyInvestment = this.monthlyInvestment;
+          var startPrice = data[startIdx].close;
+          var totalShares = this.initialInvestment / startPrice;
+          var totalPrincipal = this.initialInvestment;
+          var monthly = this.monthlyInvestment;
+          var b = this.beta;
 
-          for (let i = startIdx; i <= endIdx; i++) {
-            const date = data[i].date;
-            const price = data[i].close;
-
+          for (var i = startIdx; i <= endIdx; i++) {
+            var price = data[i].close;
             if (i > startIdx) {
-              const sharesBought = monthlyInvestment / price;
-              totalShares += sharesBought;
-              totalPrincipal += monthlyInvestment;
+              totalShares += monthly / price;
+              totalPrincipal += monthly;
             }
-
-            const futureValue = totalShares * price * this.beta;
-            const profit = futureValue - totalPrincipal;
-            const returnRatio = totalPrincipal > 0 ? futureValue / totalPrincipal : 0;
-
-            const monthsElapsed = i - startIdx + 1;
-            const yearsElapsed = monthsElapsed / 12;
-            let cagr = 0;
-            if (returnRatio > 0 && yearsElapsed > 0) {
-              cagr = Math.pow(returnRatio, 1 / yearsElapsed) - 1;
-            }
+            var fv = totalShares * price * b;
+            var profit = fv - totalPrincipal;
+            var ratio = totalPrincipal > 0 ? fv / totalPrincipal : 0;
+            var yearsElapsed = (i - startIdx + 1) / 12;
+            var cagr = (ratio > 0 && yearsElapsed > 0) ? Math.pow(ratio, 1 / yearsElapsed) - 1 : 0;
+            var dateStr = data[i].date;
+            var year = dateStr.split('/')[0] || dateStr.split('-')[0];
 
             this.results.push({
-              date,
-              close: price,
-              principal: totalPrincipal,
-              futureValue,
-              profit,
-              returnRatio,
-              cagr
+              date: dateStr, year: year, close: price,
+              principal: totalPrincipal, futureValue: fv, profit: profit,
+              returnRatio: ratio, cagr: cagr
             });
           }
 
-          if (this.results.length > 0) {
-            this.finalCAGR = this.results[this.results.length - 1].cagr;
-          }
-
-          this.renderChart();
+          if (this.results.length) this.finalCAGR = this.results[this.results.length - 1].cagr;
+          this.$nextTick(this.renderChart);
         },
-        runMultiBacktest() {
+        runMultiBacktest: function() {
           this.multiResults = {};
           this.clearMultiChart();
 
-          const startDate = this.selectedStartDate;
-          const endDate = this.selectedEndDate;
-
-          const validSets = this.selectedDataNames.every(name => {
-            const d = this.monthlyDataMap[name];
-            return d.some(item => item.date === startDate) && d.some(item => item.date === endDate);
+          var startDate = this.selectedStartDate;
+          var endDate = this.selectedEndDate;
+          var self = this;
+          var valid = this.selectedDataNames.every(function(name) {
+            var d = self.monthlyDataMap[name];
+            return d.some(function(item) { return item.date === startDate; }) && d.some(function(item) { return item.date === endDate; });
           });
-          if (!validSets) {
-            alert('部分数据不包含选定的起止日期');
-            return;
-          }
+          if (!valid) { alert('部分数据不包含选定的起止日期'); return; }
 
-          const allDates = this.availableDates.filter(d => d >= startDate && d <= endDate);
+          this.selectedDataNames.forEach(function(name) {
+            var data = self.monthlyDataMap[name];
+            var startIdx = data.findIndex(function(d) { return d.date === startDate; });
+            var endIdx = data.findIndex(function(d) { return d.date === endDate; });
+            var startPrice = data[startIdx].close;
+            var totalShares = self.initialInvestment / startPrice;
+            var totalPrincipal = self.initialInvestment;
+            var monthly = self.monthlyInvestment;
+            var b = self.beta;
+            var resultArr = [];
 
-          this.selectedDataNames.forEach(name => {
-            const data = this.monthlyDataMap[name];
-            const startIdx = data.findIndex(d => d.date === startDate);
-            const endIdx = data.findIndex(d => d.date === endDate);
-
-            const startPrice = data[startIdx].close;
-            let totalShares = this.initialInvestment / startPrice;
-            let totalPrincipal = this.initialInvestment;
-            const monthlyInvestment = this.monthlyInvestment;
-
-            const resultArr = [];
-
-            for (let i = startIdx; i <= endIdx; i++) {
-              const date = data[i].date;
-              const price = data[i].close;
-
+            for (var i = startIdx; i <= endIdx; i++) {
+              var price = data[i].close;
               if (i > startIdx) {
-                const sharesBought = monthlyInvestment / price;
-                totalShares += sharesBought;
-                totalPrincipal += monthlyInvestment;
+                totalShares += monthly / price;
+                totalPrincipal += monthly;
               }
-
-              const futureValue = totalShares * price * this.beta;
-              const profit = futureValue - totalPrincipal;
-              const returnRatio = totalPrincipal > 0 ? futureValue / totalPrincipal : 0;
-
-              const monthsCount = i - startIdx + 1;
-              const yearsElapsed = monthsCount / 12;
-              let cagr = 0;
-              if (returnRatio > 0 && yearsElapsed > 0) {
-                cagr = Math.pow(returnRatio, 1 / yearsElapsed) - 1;
-              }
-
+              var fv = totalShares * price * b;
+              var profit = fv - totalPrincipal;
+              var ratio = totalPrincipal > 0 ? fv / totalPrincipal : 0;
+              var yearsElapsed = (i - startIdx + 1) / 12;
+              var cagr = (ratio > 0 && yearsElapsed > 0) ? Math.pow(ratio, 1 / yearsElapsed) - 1 : 0;
               resultArr.push({
-                date,
-                close: price,
-                principal: totalPrincipal,
-                futureValue,
-                profit,
-                returnRatio,
-                cagr
+                date: data[i].date, close: price,
+                principal: totalPrincipal, futureValue: fv, profit: profit,
+                returnRatio: ratio, cagr: cagr
               });
             }
-
-            this.multiResults[name] = resultArr;
+            self.multiResults[name] = resultArr;
           });
 
-          this.renderMultiChart();
+          this.$nextTick(this.renderMultiChart);
         },
-        exportCSV() {
-          if (this.selectedDataNames.length === 1) {
-            if (!this.results.length) {
-              alert('没有数据可导出！');
-              return;
+        renderChart: function() {
+          var canvas = document.getElementById('chart');
+          if (!canvas) return;
+          if (this.chart) this.chart.destroy();
+
+          var dates = this.results.map(function(r) { return r.date; });
+          var fvs = this.results.map(function(r) { return Number(r.futureValue.toFixed(2)); });
+          var principals = this.results.map(function(r) { return Number(r.principal.toFixed(2)); });
+          var profits = this.results.map(function(r) { return Number(r.profit.toFixed(2)); });
+
+          this.chart = new Chart(canvas, {
+            type: 'line',
+            data: {
+              labels: dates,
+              datasets: [
+                { label: '未来价值', data: fvs, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: false, pointRadius: 0 },
+                { label: '累计本金', data: principals, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: false, pointRadius: 0 },
+                { label: '收益', data: profits, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: false, pointRadius: 0 }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { title: { display: true, text: '回测收益走势 - ' + this.selectedDataNames[0] } },
+              scales: { x: { ticks: { maxTicksLimit: 12, maxRotation: 45 } } }
             }
-            const headers = [
-              '日期', '收盘价', '累计本金（元）', '未来价值（元）', '收益（元）', '收益倍数', '年化收益率（%）'
-            ];
-            const rows = this.results.map(item => [
-              item.date,
-              item.close.toFixed(2),
-              item.principal.toFixed(2),
-              item.futureValue.toFixed(2),
-              item.profit.toFixed(2),
-              item.returnRatio.toFixed(2),
-              (item.cagr * 100).toFixed(2)
-            ]);
-            this.downloadCSV(headers, rows, `复利定投回测结果_${this.selectedDataNames[0]}_${this.selectedStartDate}_${this.selectedEndDate}.csv`);
-          } else if (this.selectedDataNames.length > 1) {
-            if (!Object.keys(this.multiResults).length) {
-              alert('没有数据可导出！');
-              return;
+          });
+        },
+        renderMultiChart: function() {
+          var canvas = document.getElementById('multiChart');
+          if (!canvas) return;
+          if (this.multiChart) this.multiChart.destroy();
+
+          var allDates = this.availableDates.filter(function(d) { return d >= this.selectedStartDate && d <= this.selectedEndDate; }.bind(this));
+          var colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#14b8a6'];
+          var self = this;
+          var datasets = this.selectedDataNames.map(function(name, idx) {
+            var resArr = self.multiResults[name] || [];
+            var dataMap = {};
+            resArr.forEach(function(r) { dataMap[r.date] = Number(r.futureValue.toFixed(2)); });
+            return {
+              label: name,
+              data: allDates.map(function(d) { return dataMap[d] !== undefined ? dataMap[d] : null; }),
+              borderColor: colors[idx % colors.length],
+              fill: false,
+              pointRadius: 0
+            };
+          });
+
+          this.multiChart = new Chart(canvas, {
+            type: 'line',
+            data: { labels: allDates, datasets: datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { title: { display: true, text: '多数据回测未来价值对比' } },
+              scales: { x: { ticks: { maxTicksLimit: 12, maxRotation: 45 } } }
             }
-            const allDates = this.availableDates.filter(d => d >= this.selectedStartDate && d <= this.selectedEndDate);
-            const headers = ['日期'];
-            this.selectedDataNames.forEach(name => {
-              headers.push(`${name}未来价值（元）`);
-              headers.push(`${name}累计本金（元）`);
-              headers.push(`${name}收益（元）`);
-            });
-
-            const rows = allDates.map(date => {
-              const row = [date];
-              this.selectedDataNames.forEach(name => {
-                const resArr = this.multiResults[name];
-                const item = resArr.find(r => r.date === date);
-                if (item) {
-                  row.push(item.futureValue.toFixed(2));
-                  row.push(item.principal.toFixed(2));
-                  row.push(item.profit.toFixed(2));
-                } else {
-                  row.push('');
-                  row.push('');
-                  row.push('');
-                }
-              });
-              return row;
-            });
-
-            this.downloadCSV(headers, rows, `复利定投多数据回测结果_${this.selectedStartDate}_${this.selectedEndDate}.csv`);
-          }
-        },
-        downloadCSV(headers, rows, filename) {
-          function safeCSVField(field) {
-            const fieldStr = String(field);
-            if (fieldStr.includes(',') || fieldStr.includes('\n') || fieldStr.includes('"')) {
-              return `"${fieldStr.replace(/"/g, '""')}"`;
-            }
-            return fieldStr;
-          }
-          let csvContent = headers.map(safeCSVField).join(',') + '\r\n';
-          rows.forEach(row => {
-            csvContent += row.map(safeCSVField).join(',') + '\r\n';
-          });
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', filename);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        },
-        renderChart() {
-          if (!this.chart) {
-            this.chart = echarts.init(document.getElementById('chart'));
-          }
-          const dates = this.results.map(item => item.date);
-          const futureValues = this.results.map(item => Number(item.futureValue.toFixed(2)));
-          const principals = this.results.map(item => Number(item.principal.toFixed(2)));
-          const profits = this.results.map(item => Number(item.profit.toFixed(2)));
-
-          const option = {
-            title: {
-              text: `回测收益走势图 - ${this.selectedDataNames[0]}`,
-              left: 'center',
-              textStyle: {
-                fontSize: 16,
-                fontWeight: 'bold',
-                color: '#333'
-              }
-            },
-            tooltip: {
-              trigger: 'axis',
-              formatter: function(params) {
-                let res = params[0].axisValue + '<br/>';
-                params.forEach(item => {
-                  res += item.marker + item.seriesName + ': ' + item.data.toLocaleString() + '<br/>';
-                });
-                return res;
-              },
-              axisPointer: {
-                type: 'cross',
-                crossStyle: {
-                  color: '#999'
-                }
-              }
-            },
-            legend: {
-              data: ['未来价值','累计本金','收益'],
-              top: 30
-            },
-            grid: {
-              left: '3%',
-              right: '4%',
-              bottom: '10%',
-              containLabel: true
-            },
-            xAxis: {
-              type: 'category',
-              boundaryGap: false,
-              data: dates,
-              axisLabel: {
-                rotate: 45,
-                formatter: function(value) {
-                  return value.replace(/\//g, '-');
-                }
-              }
-            },
-            yAxis: {
-              type: 'value',
-              name: '金额（元）',
-              axisLabel: {
-                formatter: function(value) {
-                  if (value >= 1e6) return (value / 1e6).toFixed(1) + 'M';
-                  if (value >= 1e3) return (value / 1e3).toFixed(0) + 'k';
-                  return value;
-                }
-              }
-            },
-            series: [
-              {
-                name: '未来价值',
-                type: 'line',
-                smooth: true,
-                data: futureValues,
-                itemStyle: {
-                  color: '#409eff'
-                }
-              },
-              {
-                name: '累计本金',
-                type: 'line',
-                smooth: true,
-                data: principals,
-                itemStyle: {
-                  color: '#67c23a'
-                }
-              },
-              {
-                name: '收益',
-                type: 'line',
-                smooth: true,
-                data: profits,
-                itemStyle: {
-                  color: '#e6a23c'
-                }
-              }
-            ]
-          };
-          this.chart.setOption(option);
-          window.addEventListener('resize', () => {
-            if (this.chart) this.chart.resize();
           });
         },
-        renderMultiChart() {
-          if (!this.multiChart) {
-            this.multiChart = echarts.init(document.getElementById('multiChart'));
-          }
-          const allDates = this.availableDates.filter(d => d >= this.selectedStartDate && d <= this.selectedEndDate);
-          const colors = [
-            '#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#5a9bd4', '#e377c2', '#8c564b', '#2ca02c'
-          ];
-          const series = [];
-          this.selectedDataNames.forEach((name, idx) => {
-            const resArr = this.multiResults[name] || [];
-            const dataMap = new Map(resArr.map(r => [r.date, r.futureValue.toFixed(2)]));
-            const dataSeries = allDates.map(date => {
-              const val = dataMap.get(date);
-              return val !== undefined ? Number(val) : null;
-            });
-            series.push({
-              name: name,
-              type: 'line',
-              smooth: true,
-              data: dataSeries,
-              itemStyle: { color: colors[idx % colors.length] },
-              connectNulls: false,
-            });
-          });
-
-          const option = {
-            title: {
-              text: `多数据回测未来价值对比`,
-              left: 'center',
-              textStyle: {
-                fontSize: 16,
-                fontWeight: 'bold',
-                color: '#333'
-              }
-            },
-            tooltip: {
-              trigger: 'axis',
-              axisPointer: {
-                type: 'cross',
-                crossStyle: {
-                  color: '#999'
-                }
-              }
-            },
-            legend: {
-              data: this.selectedDataNames,
-              top: 30,
-              type: 'scroll',
-              scrollDataIndex: 0,
-              pageButtonItemGap: 4
-            },
-            grid: {
-              left: '3%',
-              right: '4%',
-              bottom: '10%',
-              containLabel: true
-            },
-            xAxis: {
-              type: 'category',
-              boundaryGap: false,
-              data: allDates,
-              axisLabel: {
-                rotate: 45,
-                formatter: function(value) {
-                  return value.replace(/\//g, '-');
-                }
-              }
-            },
-            yAxis: {
-              type: 'value',
-              name: '未来价值（元）',
-              axisLabel: {
-                formatter: function(value) {
-                  if (value >= 1e6) return (value / 1e6).toFixed(1) + 'M';
-                  if (value >= 1e3) return (value / 1e3).toFixed(0) + 'k';
-                  return value;
-                }
-              }
-            },
-            series: series
-          };
-          this.multiChart.setOption(option);
-          window.addEventListener('resize', () => {
-            if (this.multiChart) this.multiChart.resize();
-          });
-        },
-        clearChart() {
-          if (this.chart) {
-            this.chart.clear();
-          }
-        },
-        clearMultiChart() {
-          if (this.multiChart) {
-            this.multiChart.clear();
-          }
-        },
-        onDataChange() {
-          this.updateMonthlyDataMap();
-          this.updateAvailableDates();
-          this.selectedStartDate = '';
-          this.selectedEndDate = '';
-          this.results = [];
-          this.multiResults = {};
-          this.finalCAGR = 0;
-          this.clearChart();
-          this.clearMultiChart();
-        },
-        getFinalValue(name, key) {
+        clearChart: function() { if (this.chart) { this.chart.destroy(); this.chart = null; } },
+        clearMultiChart: function() { if (this.multiChart) { this.multiChart.destroy(); this.multiChart = null; } },
+        getFinalValue: function(name, key) {
           if (this.selectedDataNames.length === 1 && this.results.length && this.selectedDataNames[0] === name) {
-            // 单选时用results
             return this.results.length ? this.results[this.results.length - 1][key] : 0;
           }
           if (this.multiResults[name] && this.multiResults[name].length) {
             return this.multiResults[name][this.multiResults[name].length - 1][key];
           }
           return 0;
+        },
+        exportCSV: function() {
+          if (this.selectedDataNames.length === 1) {
+            if (!this.results.length) return;
+            var headers = ['日期', '收盘价', '累计本金（元）', '未来价值（元）', '收益（元）', '收益倍数', '年化收益率（%）'];
+            var rows = this.results.map(function(item) {
+              return [item.date, item.close.toFixed(2), item.principal.toFixed(2), item.futureValue.toFixed(2), item.profit.toFixed(2), item.returnRatio.toFixed(2), (item.cagr * 100).toFixed(2)];
+            });
+            this.downloadCSV(headers, rows, '复利定投回测结果_' + this.selectedDataNames[0] + '_' + this.selectedStartDate + '_' + this.selectedEndDate + '.csv');
+          } else if (this.selectedDataNames.length > 1) {
+            if (!Object.keys(this.multiResults).length) return;
+            var allDates = this.availableDates.filter(function(d) { return d >= this.selectedStartDate && d <= this.selectedEndDate; }.bind(this));
+            var headers = ['日期'];
+            var self = this;
+            this.selectedDataNames.forEach(function(name) {
+              headers.push(name + '未来价值（元）', name + '累计本金（元）', name + '收益（元）');
+            });
+            var rows = allDates.map(function(date) {
+              var row = [date];
+              self.selectedDataNames.forEach(function(name) {
+                var resArr = self.multiResults[name];
+                var item = resArr ? resArr.find(function(r) { return r.date === date; }) : null;
+                row.push(item ? item.futureValue.toFixed(2) : '', item ? item.principal.toFixed(2) : '', item ? item.profit.toFixed(2) : '');
+              });
+              return row;
+            });
+            this.downloadCSV(headers, rows, '复利定投多数据回测结果_' + this.selectedStartDate + '_' + this.selectedEndDate + '.csv');
+          }
+        },
+        downloadCSV: function(headers, rows, filename) {
+          function safe(f) {
+            var s = String(f);
+            return (s.indexOf(',') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('"') >= 0) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          }
+          var csv = headers.map(safe).join(',') + '\r\n';
+          rows.forEach(function(row) { csv += row.map(safe).join(',') + '\r\n'; });
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
         }
       }
     });
