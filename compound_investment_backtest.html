@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>复利定投回测计算器</title>
+  <title>专业复利定投回测与策略分析计算器</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
     .formula-section code {
@@ -17,198 +17,243 @@
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
-  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
     <!-- 顶部导航 -->
-    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm font-medium">&larr; 返回首页</a>
 
     <!-- 标题 -->
-    <h1 class="text-2xl font-bold mt-4">复利定投回测计算器</h1>
-    <p class="text-gray-500 mt-1">基于历史数据回测定投策略收益</p>
+    <div class="mt-4 border-b pb-4">
+      <h1 class="text-3xl font-bold text-gray-900">高级复利定投回测计算器</h1>
+      <p class="text-gray-500 mt-1">结合历史真实市场走势与多维定投策略参数，进行深度收益与风险回测</p>
+    </div>
 
-    <!-- 表单 -->
-    <form @submit.prevent="runBacktest" class="bg-white rounded-lg shadow p-6 mt-6">
-      <!-- 数据源选择 -->
-      <div class="mb-4">
-        <label class="block text-sm font-semibold text-gray-700 mb-2">选择回测数据</label>
+    <!-- 表单区 -->
+    <form @submit.prevent="runBacktest" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6 space-y-6">
+      <!-- 1. 数据源选择 -->
+      <div>
+        <label class="block text-sm font-bold text-gray-700 mb-2">选择回测标的（可多选）</label>
         <div class="flex flex-wrap gap-2">
           <button type="button" v-for="item in select" :key="item.name"
             @click="toggleDataSource(item.name)"
-            :class="['px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-colors',
-              selectedDataNames.indexOf(item.name) >= 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200']">
+            :class="['px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-150',
+              selectedDataNames.indexOf(item.name) >= 0 ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200']">
             {{ item.name }}
           </button>
         </div>
       </div>
 
-      <!-- 日期选择 -->
-      <div class="grid grid-cols-2 gap-4">
+      <!-- 2. 日期区间与定投频率 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-gray-700">开始日期</label>
+          <label class="block text-sm font-semibold text-gray-700">开始月份</label>
           <select v-model="selectedStartDate" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none">
             <option disabled value="">请选择开始月份</option>
             <option v-for="item in availableDates" :key="item" :value="item">{{ item }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700">结束日期</label>
+          <label class="block text-sm font-semibold text-gray-700">结束月份</label>
           <select v-model="selectedEndDate" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none">
             <option disabled value="">请选择结束月份</option>
             <option v-for="item in availableDates.slice().reverse()" :key="'end-'+item" :value="item" :disabled="isEndDateDisabled(item)">{{ item }}</option>
           </select>
         </div>
-      </div>
-
-      <!-- 输入参数 -->
-      <div class="grid grid-cols-1 gap-4 mt-4">
         <div>
-          <label class="block text-sm font-semibold text-gray-700">初始投入资金（元）</label>
-          <input type="number" v-model.number="initialInvestment" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">每月定投金额（元）</label>
-          <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">收益调整系数 β</label>
-          <input type="number" v-model.number="beta" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-sm font-semibold text-gray-700">定投频率</label>
+          <select v-model="investmentFrequency" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option value="monthly">每月定投</option>
+            <option value="quarterly">每季定投 (3/6/9/12月)</option>
+            <option value="yearly">每年定投 (每年1月)</option>
+          </select>
         </div>
       </div>
 
-      <div class="mt-6 flex gap-3">
-        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">开始回测</button>
-        <button type="button" v-if="results.length || Object.keys(multiResults).length" @click="exportCSV" class="bg-green-500 text-white px-6 py-2 rounded font-semibold hover:bg-green-600">导出CSV</button>
+      <!-- 3. 金额与高级策略参数 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">初始投入本金（元）</label>
+          <input type="number" v-model.number="initialInvestment" min="0" step="100" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">每期定投金额（元）</label>
+          <input type="number" v-model.number="periodInvestment" min="0" step="100" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">每年定投增加（%）</label>
+          <input type="number" v-model.number="annualIncreaseRate" min="0" max="100" step="1"
+            placeholder="例如 5"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">杠杆/调整系数 β</label>
+          <input type="number" v-model.number="beta" min="0" step="0.1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+
+      <!-- 4. 对比基准设置 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">对比基准：固定年化收益率 (%) [可选]</label>
+          <input type="number" v-model.number="benchmarkRate" step="0.1" placeholder="例如 4.5 (可填年化无风险利率)"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div class="flex items-end">
+          <p class="text-xs text-gray-500 pb-2">设置基准收益后，系统将在图表中画出相同投入下以固定年化复利增长的对比曲线。</p>
+        </div>
+      </div>
+
+      <!-- 按钮区 -->
+      <div class="pt-2 flex flex-wrap gap-3">
+        <button type="submit" class="bg-blue-600 text-white px-8 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition shadow">开始策略回测</button>
+        <button type="button" v-if="results.length || Object.keys(multiResults).length" @click="exportCSV" class="bg-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-emerald-700 transition shadow">导出数据 CSV</button>
       </div>
     </form>
 
-    <!-- 单选结果区 -->
+    <!-- 单选数据结果展示区 -->
     <template v-if="results.length && selectedDataNames.length === 1">
-      <!-- 摘要卡片 -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-sm text-gray-500">累计本金</div>
-          <div class="text-xl font-bold">{{ fmtMoney(summary.principal) }}</div>
+      <!-- 核心指标统计卡片 -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+          <div class="text-xs text-gray-500">累计总投入本金</div>
+          <div class="text-xl font-bold mt-1">{{ fmtMoney(summary.principal) }}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-sm text-gray-500">最终价值</div>
-          <div class="text-xl font-bold">{{ fmtMoney(summary.futureValue) }}</div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-indigo-500">
+          <div class="text-xs text-gray-500">最终账户价值</div>
+          <div class="text-xl font-bold mt-1">{{ fmtMoney(summary.futureValue) }}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-sm text-gray-500">收益</div>
-          <div class="text-xl font-bold" :class="summary.profit >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(summary.profit) }}</div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
+          <div class="text-xs text-gray-500">累计绝对收益</div>
+          <div class="text-xl font-bold mt-1" :class="summary.profit >= 0 ? 'text-red-500' : 'text-green-500'">
+            {{ summary.profit >= 0 ? '+' : '' }}{{ fmtMoney(summary.profit) }}
+          </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-sm text-gray-500">年化收益率</div>
-          <div class="text-xl font-bold">{{ (summary.cagr * 100).toFixed(2) }}%</div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-emerald-500">
+          <div class="text-xs text-gray-500">年化收益率 (CAGR)</div>
+          <div class="text-xl font-bold mt-1 text-emerald-600">{{ (summary.cagr * 100).toFixed(2) }}%</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-amber-500">
+          <div class="text-xs text-gray-500">区间最大回撤 (MaxDD)</div>
+          <div class="text-xl font-bold mt-1 text-amber-600">{{ (summary.maxDrawdown * 100).toFixed(2) }}%</div>
         </div>
       </div>
 
-      <!-- 图表 -->
-      <div class="bg-white rounded-lg shadow p-4 mt-6">
-        <canvas id="chart" height="320"></canvas>
+      <!-- 主回测图表 -->
+      <div class="bg-white rounded-xl shadow-sm p-5 mt-6 border border-gray-100">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-gray-800">资产价值与本金增长走势</h3>
+          <span class="text-xs text-gray-400">蓝色：回测资产价值 | 绿虚线：本金投入 | 橙线：固定基准</span>
+        </div>
+        <div class="relative h-80">
+          <canvas id="chart"></canvas>
+        </div>
       </div>
 
-      <!-- 年度汇总表 -->
-      <div class="mt-6 overflow-x-auto">
-        <table class="w-full bg-white rounded-lg shadow overflow-hidden text-sm">
-          <thead class="bg-blue-500 text-white">
-            <tr>
-              <th class="px-3 py-2 text-left w-8"></th>
-              <th class="px-3 py-2">年份</th>
-              <th class="px-3 py-2">年末收盘</th>
-              <th class="px-3 py-2">累计本金</th>
-              <th class="px-3 py-2">未来价值</th>
-              <th class="px-3 py-2">收益倍数</th>
-              <th class="px-3 py-2">年化收益率</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="yd in yearlyData">
-              <tr :key="'y-'+yd.year" @click="toggleYear(yd.year)" class="cursor-pointer hover:bg-gray-50 border-b border-gray-100 bg-white">
-                <td class="px-3 py-2 text-center text-gray-400">{{ expandedYears.has(yd.year) ? '▼' : '▶' }}</td>
-                <td class="px-3 py-2 text-center font-semibold">{{ yd.year }}</td>
-                <td class="px-3 py-2 text-right">{{ yd.close.toFixed(2) }}</td>
-                <td class="px-3 py-2 text-right">{{ fmtMoney(yd.principal) }}</td>
-                <td class="px-3 py-2 text-right">{{ fmtMoney(yd.futureValue) }}</td>
-                <td class="px-3 py-2 text-center">{{ yd.returnRatio.toFixed(2) }}倍</td>
-                <td class="px-3 py-2 text-center">{{ (yd.cagr * 100).toFixed(2) }}%</td>
+      <!-- 明细表格 -->
+      <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center">
+          <span>年度及月度收益表现明细</span>
+          <span class="text-xs text-gray-400 font-normal">点击年份可展开/收起月度数据</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-blue-600 text-white">
+              <tr>
+                <th class="px-3 py-2.5 text-left w-8"></th>
+                <th class="px-3 py-2.5 text-center">时间</th>
+                <th class="px-3 py-2.5 text-right">标的价格</th>
+                <th class="px-3 py-2.5 text-right">累计本金</th>
+                <th class="px-3 py-2.5 text-right">资产价值</th>
+                <th class="px-3 py-2.5 text-center">收益倍数</th>
+                <th class="px-3 py-2.5 text-center">年化收益率</th>
               </tr>
-              <template v-if="expandedYears.has(yd.year)">
-                <tr v-for="m in yd.months" :key="'m-'+m.date" class="bg-gray-50 text-xs border-b border-gray-100">
-                  <td class="px-3 py-1.5"></td>
-                  <td class="px-3 py-1.5 text-center">{{ m.date }}</td>
-                  <td class="px-3 py-1.5 text-right">{{ m.close.toFixed(2) }}</td>
-                  <td class="px-3 py-1.5 text-right">{{ fmtMoney(m.principal) }}</td>
-                  <td class="px-3 py-1.5 text-right">{{ fmtMoney(m.futureValue) }}</td>
-                  <td class="px-3 py-1.5 text-center">{{ m.returnRatio.toFixed(2) }}倍</td>
-                  <td class="px-3 py-1.5 text-center">{{ (m.cagr * 100).toFixed(2) }}%</td>
+            </thead>
+            <tbody>
+              <template v-for="yd in yearlyData">
+                <tr :key="'y-'+yd.year" @click="toggleYear(yd.year)" class="cursor-pointer hover:bg-blue-50/50 border-b border-gray-100 font-semibold bg-gray-50/30">
+                  <td class="px-3 py-2 text-center text-gray-400">{{ expandedYears.has(yd.year) ? '▼' : '▶' }}</td>
+                  <td class="px-3 py-2 text-center">{{ yd.year }} 年末</td>
+                  <td class="px-3 py-2 text-right">{{ yd.close.toFixed(2) }}</td>
+                  <td class="px-3 py-2 text-right">{{ fmtMoney(yd.principal) }}</td>
+                  <td class="px-3 py-2 text-right text-blue-600">{{ fmtMoney(yd.futureValue) }}</td>
+                  <td class="px-3 py-2 text-center">{{ yd.returnRatio.toFixed(2) }}倍</td>
+                  <td class="px-3 py-2 text-center" :class="yd.cagr >= 0 ? 'text-red-500':'text-green-500'">{{ (yd.cagr * 100).toFixed(2) }}%</td>
                 </tr>
+                <template v-if="expandedYears.has(yd.year)">
+                  <tr v-for="m in yd.months" :key="'m-'+m.date" class="bg-white text-xs border-b border-gray-100 hover:bg-gray-50">
+                    <td class="px-3 py-1.5"></td>
+                    <td class="px-3 py-1.5 text-center text-gray-500">{{ m.date }}</td>
+                    <td class="px-3 py-1.5 text-right">{{ m.close.toFixed(2) }}</td>
+                    <td class="px-3 py-1.5 text-right">{{ fmtMoney(m.principal) }}</td>
+                    <td class="px-3 py-1.5 text-right">{{ fmtMoney(m.futureValue) }}</td>
+                    <td class="px-3 py-1.5 text-center">{{ m.returnRatio.toFixed(2) }}倍</td>
+                    <td class="px-3 py-1.5 text-center">{{ (m.cagr * 100).toFixed(2) }}%</td>
+                  </tr>
+                </template>
               </template>
-            </template>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </template>
 
-    <!-- 多选对比区 -->
+    <!-- 多标的对比显示区 -->
     <template v-if="selectedDataNames.length > 1 && Object.keys(multiResults).length">
-      <!-- 对比图表 -->
-      <div class="bg-white rounded-lg shadow p-4 mt-6">
-        <canvas id="multiChart" height="320"></canvas>
+      <!-- 多资产走势对比图表 -->
+      <div class="bg-white rounded-xl shadow-sm p-5 mt-8 border border-gray-100">
+        <h3 class="font-bold text-gray-800 mb-4">多资产组合回测走势对比</h3>
+        <div class="relative h-80">
+          <canvas id="multiChart"></canvas>
+        </div>
       </div>
 
-      <!-- 各数据源摘要 -->
-      <div class="mt-4 space-y-3">
-        <div v-for="name in selectedDataNames" :key="name" class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <h4 class="font-semibold text-gray-800 mb-2">{{ name }}</h4>
-          <div class="grid grid-cols-2 lg:grid-cols-5 gap-2 text-sm">
-            <div><span class="text-gray-500">本金：</span><span class="font-semibold">{{ fmtMoney(getFinalValue(name, 'principal')) }}</span></div>
-            <div><span class="text-gray-500">价值：</span><span class="font-semibold">{{ fmtMoney(getFinalValue(name, 'futureValue')) }}</span></div>
-            <div><span class="text-gray-500">收益：</span><span class="font-semibold" :class="getFinalValue(name, 'profit') >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(getFinalValue(name, 'profit')) }}</span></div>
-            <div><span class="text-gray-500">倍数：</span><span class="font-semibold">{{ getFinalValue(name, 'returnRatio') ? getFinalValue(name, 'returnRatio').toFixed(2) + '倍' : '0.00倍' }}</span></div>
-            <div><span class="text-gray-500">年化：</span><span class="font-semibold">{{ getFinalValue(name, 'cagr') ? (getFinalValue(name, 'cagr') * 100).toFixed(2) + '%' : '0.00%' }}</span></div>
+      <!-- 摘要卡片列表 -->
+      <div class="mt-6 space-y-3">
+        <div v-for="name in selectedDataNames" :key="name" class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h4 class="font-bold text-gray-800 text-base">{{ name }}</h4>
+            <div class="text-xs text-gray-400 mt-0.5">回测数据分析</div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm w-full md:w-auto">
+            <div><span class="text-gray-400 text-xs block">投入本金</span><span class="font-semibold">{{ fmtMoney(getFinalValue(name, 'principal')) }}</span></div>
+            <div><span class="text-gray-400 text-xs block">最终价值</span><span class="font-semibold text-blue-600">{{ fmtMoney(getFinalValue(name, 'futureValue')) }}</span></div>
+            <div><span class="text-gray-400 text-xs block">累计收益</span><span class="font-semibold" :class="getFinalValue(name, 'profit') >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(getFinalValue(name, 'profit')) }}</span></div>
+            <div><span class="text-gray-400 text-xs block">收益倍数</span><span class="font-semibold">{{ getFinalValue(name, 'returnRatio') ? getFinalValue(name, 'returnRatio').toFixed(2) + '倍' : '0.00倍' }}</span></div>
+            <div><span class="text-gray-400 text-xs block">年化收益率</span><span class="font-semibold text-emerald-600">{{ getFinalValue(name, 'cagr') ? (getFinalValue(name, 'cagr') * 100).toFixed(2) + '%' : '0.00%' }}</span></div>
           </div>
         </div>
       </div>
     </template>
 
-    <!-- 公式说明 -->
-    <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
-
-      <h4 class="font-semibold text-gray-800">回测方法</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p>以历史月度收盘价模拟定投：每月按收盘价买入份额</p>
-        <p class="text-gray-500">首月用初始投入买入，之后每月用定投金额买入</p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">份额计算</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>初始份额 = 初始投入 ÷ 首月收盘价</code></p>
-        <p><code>每月新增份额 = 每月定投 ÷ 当月收盘价</code></p>
-        <p><code>累计份额 = 初始份额 + 所有新增份额</code></p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">价值计算</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>未来价值 = 累计份额 × 当月收盘价 × β</code></p>
-        <p><code>累计本金 = 初始投入 + 每月定投 × 月数</code></p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">收益计算</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>收益 = 未来价值 - 累计本金</code></p>
-        <p><code>收益倍数 = 未来价值 ÷ 累计本金</code></p>
-        <p><code>年化收益率(CAGR) = (收益倍数)^(1/年数) - 1</code></p>
+    <!-- 公式与算理说明 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section border border-gray-100">
+      <h3 class="text-lg font-bold text-blue-600 mb-4 text-center">核心算法与策略公式说明</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-semibold text-gray-800">1. 动态份额计算</h4>
+          <div class="mt-1 space-y-1 text-xs">
+            <p>首期购买份额: <code>初始份额 = 初始投入 ÷ 首期收盘价</code></p>
+            <p>每期定投新增: <code>新增份额 = 当期定投金额 ÷ 当期收盘价</code></p>
+            <p>递增定投规则: <code>第 N 年定投额 = 基础定投额 × (1 + 递增率)^(N-1)</code></p>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-800">2. 收益与评估指标</h4>
+          <div class="mt-1 space-y-1 text-xs">
+            <p>期末价值: <code>未来价值 = 累计份额 × 当期收盘价 × β</code></p>
+            <p>年化收益率 (CAGR): <code>(未来价值 ÷ 累计本金)^(1 ÷ 年数) - 1</code></p>
+            <p>最大回撤 (MaxDD): <code>(历史最高价值 - 当前价值) ÷ 历史最高价值</code></p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- 数据文件 -->
+  <!-- 历史数据引用脚本 -->
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qqq_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qld_data.js"></script>
   <script src="https://summerson-kiritani.github.io/calculate_etf_investment/tqqq_data.js"></script>
@@ -222,17 +267,18 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
   <script>
     var select = [
-      { name: 'QQQ', data: qqqData },
-      { name: 'QLD', data: qldData },
-      { name: 'TQQQ', data: tqqqData },
-      { name: 'SPY', data: spyData },
-      { name: 'XAU/USD(黄金)', data: xauusdData },
-      { name: 'BTC/USD(比特币)', data: btcusdData },
-      { name: '沪深300ETF', data: hsData },
-      { name: '中证500ETF', data: zh500Data },
-      { name: '中证1000ETF', data: zh1000Data }
+      { name: 'QQQ', data: typeof qqqData !== 'undefined' ? qqqData : [] },
+      { name: 'QLD', data: typeof qldData !== 'undefined' ? qldData : [] },
+      { name: 'TQQQ', data: typeof tqqqData !== 'undefined' ? tqqqData : [] },
+      { name: 'SPY', data: typeof spyData !== 'undefined' ? spyData : [] },
+      { name: 'XAU/USD(黄金)', data: typeof xauusdData !== 'undefined' ? xauusdData : [] },
+      { name: 'BTC/USD(比特币)', data: typeof btcusdData !== 'undefined' ? btcusdData : [] },
+      { name: '沪深300ETF', data: typeof hsData !== 'undefined' ? hsData : [] },
+      { name: '中证500ETF', data: typeof zh500Data !== 'undefined' ? zh500Data : [] },
+      { name: '中证1000ETF', data: typeof zh1000Data !== 'undefined' ? zh1000Data : [] }
     ];
 
     new Vue({
@@ -245,9 +291,15 @@
           availableDates: [],
           selectedStartDate: '',
           selectedEndDate: '',
+          
+          // 定投高级参数
           initialInvestment: 10000,
-          monthlyInvestment: 1000,
+          periodInvestment: 1000,
+          investmentFrequency: 'monthly', // monthly, quarterly, yearly
+          annualIncreaseRate: 0, // 每年定投金额递增率 (%)
           beta: 1,
+          benchmarkRate: null, // 对比基准年化 (%)
+
           results: [],
           finalCAGR: 0,
           chart: null,
@@ -260,7 +312,23 @@
         summary: function() {
           if (!this.results.length) return {};
           var last = this.results[this.results.length - 1];
-          return { principal: last.principal, futureValue: last.futureValue, profit: last.profit, cagr: last.cagr };
+          var maxDrawdown = 0;
+          var peak = 0;
+
+          // 计算整个生命周期最大回撤
+          this.results.forEach(function(r) {
+            if (r.futureValue > peak) peak = r.futureValue;
+            var dd = peak > 0 ? (peak - r.futureValue) / peak : 0;
+            if (dd > maxDrawdown) maxDrawdown = dd;
+          });
+
+          return { 
+            principal: last.principal, 
+            futureValue: last.futureValue, 
+            profit: last.profit, 
+            cagr: last.cagr,
+            maxDrawdown: maxDrawdown 
+          };
         },
         yearlyData: function() {
           var groups = _.groupBy(this.results, 'year');
@@ -306,7 +374,6 @@
           } else {
             this.selectedDataNames.push(name);
           }
-          // force reactivity
           this.selectedDataNames = this.selectedDataNames.slice();
         },
         toggleYear: function(year) {
@@ -331,7 +398,7 @@
           if (!this.selectedDataNames.length) { this.availableDates = []; return; }
           var self = this;
           var dateSets = this.selectedDataNames.map(function(name) {
-            return new Set(self.monthlyDataMap[name].map(function(d) { return d.date; }));
+            return new Set((self.monthlyDataMap[name] || []).map(function(d) { return d.date; }));
           });
           var intersection = dateSets.reduce(function(acc, set) {
             return new Set(Array.from(acc).filter(function(x) { return set.has(x); }));
@@ -342,12 +409,81 @@
           if (!this.selectedStartDate) return false;
           return new Date(date) < new Date(this.selectedStartDate);
         },
+        isInvestMonth: function(monthIndex) {
+          if (this.investmentFrequency === 'monthly') return true;
+          if (this.investmentFrequency === 'quarterly') return monthIndex % 3 === 0;
+          if (this.investmentFrequency === 'yearly') return monthIndex % 12 === 0;
+          return true;
+        },
+        calculateBacktestForDataset: function(data) {
+          var startIdx = data.findIndex(function(d) { return d.date === this.selectedStartDate; }.bind(this));
+          var endIdx = data.findIndex(function(d) { return d.date === this.selectedEndDate; }.bind(this));
+          if (startIdx === -1 || endIdx === -1) return [];
+
+          var startPrice = data[startIdx].close;
+          var totalShares = this.initialInvestment / startPrice;
+          var totalPrincipal = this.initialInvestment;
+          var currentBaseInvestment = this.periodInvestment;
+          var b = this.beta;
+          
+          var benchmarkValue = this.initialInvestment;
+          var hasBenchmark = this.benchmarkRate !== null && !isNaN(this.benchmarkRate);
+          var monthlyBenchmarkRate = hasBenchmark ? Math.pow(1 + (this.benchmarkRate / 100), 1 / 12) - 1 : 0;
+
+          var resList = [];
+
+          for (var i = startIdx; i <= endIdx; i++) {
+            var elapsedMonths = i - startIdx;
+            var price = data[i].close;
+            var dateStr = data[i].date;
+            var monthInYear = elapsedMonths % 12;
+
+            // 每满一年，若设置了递增率，增加定投金额
+            if (elapsedMonths > 0 && monthInYear === 0 && this.annualIncreaseRate > 0) {
+              currentBaseInvestment *= (1 + this.annualIncreaseRate / 100);
+            }
+
+            // 非首月且满足投款频率时投款
+            if (elapsedMonths > 0) {
+              if (hasBenchmark) {
+                benchmarkValue *= (1 + monthlyBenchmarkRate);
+              }
+
+              if (this.isInvestMonth(elapsedMonths)) {
+                totalShares += currentBaseInvestment / price;
+                totalPrincipal += currentBaseInvestment;
+                if (hasBenchmark) {
+                  benchmarkValue += currentBaseInvestment;
+                }
+              }
+            }
+
+            var fv = totalShares * price * b;
+            var profit = fv - totalPrincipal;
+            var ratio = totalPrincipal > 0 ? fv / totalPrincipal : 0;
+            var yearsElapsed = (elapsedMonths + 1) / 12;
+            var cagr = (ratio > 0 && yearsElapsed > 0) ? Math.pow(ratio, 1 / yearsElapsed) - 1 : 0;
+            var year = dateStr.split('/')[0] || dateStr.split('-')[0];
+
+            resList.push({
+              date: dateStr,
+              year: year,
+              close: price,
+              principal: totalPrincipal,
+              futureValue: fv,
+              profit: profit,
+              returnRatio: ratio,
+              cagr: cagr,
+              benchmarkValue: hasBenchmark ? benchmarkValue : null
+            });
+          }
+
+          return resList;
+        },
         runBacktest: function() {
           if (!this.selectedDataNames.length) { alert('请选择至少一个回测数据'); return; }
-          if (!this.selectedStartDate) { alert('请选择开始日期'); return; }
-          if (!this.selectedEndDate) { alert('请选择结束日期'); return; }
+          if (!this.selectedStartDate || !this.selectedEndDate) { alert('请选择完整起止日期'); return; }
           if (new Date(this.selectedEndDate) < new Date(this.selectedStartDate)) { alert('结束日期不能早于开始日期'); return; }
-          if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.beta < 0) { alert('请输入合理的参数'); return; }
 
           if (this.selectedDataNames.length === 1) {
             this.runSingleBacktest(this.selectedDataNames[0]);
@@ -362,36 +498,7 @@
           this.clearChart();
 
           var data = this.monthlyDataMap[name];
-          var startIdx = data.findIndex(function(d) { return d.date === this.selectedStartDate; }.bind(this));
-          var endIdx = data.findIndex(function(d) { return d.date === this.selectedEndDate; }.bind(this));
-          if (startIdx === -1 || endIdx === -1) { alert('日期数据未找到'); return; }
-
-          var startPrice = data[startIdx].close;
-          var totalShares = this.initialInvestment / startPrice;
-          var totalPrincipal = this.initialInvestment;
-          var monthly = this.monthlyInvestment;
-          var b = this.beta;
-
-          for (var i = startIdx; i <= endIdx; i++) {
-            var price = data[i].close;
-            if (i > startIdx) {
-              totalShares += monthly / price;
-              totalPrincipal += monthly;
-            }
-            var fv = totalShares * price * b;
-            var profit = fv - totalPrincipal;
-            var ratio = totalPrincipal > 0 ? fv / totalPrincipal : 0;
-            var yearsElapsed = (i - startIdx + 1) / 12;
-            var cagr = (ratio > 0 && yearsElapsed > 0) ? Math.pow(ratio, 1 / yearsElapsed) - 1 : 0;
-            var dateStr = data[i].date;
-            var year = dateStr.split('/')[0] || dateStr.split('-')[0];
-
-            this.results.push({
-              date: dateStr, year: year, close: price,
-              principal: totalPrincipal, futureValue: fv, profit: profit,
-              returnRatio: ratio, cagr: cagr
-            });
-          }
+          this.results = this.calculateBacktestForDataset(data);
 
           if (this.results.length) this.finalCAGR = this.results[this.results.length - 1].cagr;
           this.$nextTick(this.renderChart);
@@ -400,44 +507,10 @@
           this.multiResults = {};
           this.clearMultiChart();
 
-          var startDate = this.selectedStartDate;
-          var endDate = this.selectedEndDate;
           var self = this;
-          var valid = this.selectedDataNames.every(function(name) {
-            var d = self.monthlyDataMap[name];
-            return d.some(function(item) { return item.date === startDate; }) && d.some(function(item) { return item.date === endDate; });
-          });
-          if (!valid) { alert('部分数据不包含选定的起止日期'); return; }
-
           this.selectedDataNames.forEach(function(name) {
             var data = self.monthlyDataMap[name];
-            var startIdx = data.findIndex(function(d) { return d.date === startDate; });
-            var endIdx = data.findIndex(function(d) { return d.date === endDate; });
-            var startPrice = data[startIdx].close;
-            var totalShares = self.initialInvestment / startPrice;
-            var totalPrincipal = self.initialInvestment;
-            var monthly = self.monthlyInvestment;
-            var b = self.beta;
-            var resultArr = [];
-
-            for (var i = startIdx; i <= endIdx; i++) {
-              var price = data[i].close;
-              if (i > startIdx) {
-                totalShares += monthly / price;
-                totalPrincipal += monthly;
-              }
-              var fv = totalShares * price * b;
-              var profit = fv - totalPrincipal;
-              var ratio = totalPrincipal > 0 ? fv / totalPrincipal : 0;
-              var yearsElapsed = (i - startIdx + 1) / 12;
-              var cagr = (ratio > 0 && yearsElapsed > 0) ? Math.pow(ratio, 1 / yearsElapsed) - 1 : 0;
-              resultArr.push({
-                date: data[i].date, close: price,
-                principal: totalPrincipal, futureValue: fv, profit: profit,
-                returnRatio: ratio, cagr: cagr
-              });
-            }
-            self.multiResults[name] = resultArr;
+            self.multiResults[name] = self.calculateBacktestForDataset(data);
           });
 
           this.$nextTick(this.renderMultiChart);
@@ -450,23 +523,25 @@
           var dates = this.results.map(function(r) { return r.date; });
           var fvs = this.results.map(function(r) { return Number(r.futureValue.toFixed(2)); });
           var principals = this.results.map(function(r) { return Number(r.principal.toFixed(2)); });
-          var profits = this.results.map(function(r) { return Number(r.profit.toFixed(2)); });
+          
+          var datasets = [
+            { label: '回测资产总价值', data: fvs, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.05)', fill: true, pointRadius: 0, borderWidth: 2 },
+            { label: '累计投入本金', data: principals, borderColor: '#10b981', borderDash: [4, 4], fill: false, pointRadius: 0, borderWidth: 2 }
+          ];
+
+          if (this.results[0] && this.results[0].benchmarkValue !== null) {
+            var benchmarks = this.results.map(function(r) { return Number(r.benchmarkValue.toFixed(2)); });
+            datasets.push({ label: '固定年化基准价值', data: benchmarks, borderColor: '#f59e0b', fill: false, pointRadius: 0, borderWidth: 1.5 });
+          }
 
           this.chart = new Chart(canvas, {
             type: 'line',
-            data: {
-              labels: dates,
-              datasets: [
-                { label: '未来价值', data: fvs, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: false, pointRadius: 0 },
-                { label: '累计本金', data: principals, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: false, pointRadius: 0 },
-                { label: '收益', data: profits, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: false, pointRadius: 0 }
-              ]
-            },
+            data: { labels: dates, datasets: datasets },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { title: { display: true, text: '回测收益走势 - ' + this.selectedDataNames[0] } },
-              scales: { x: { ticks: { maxTicksLimit: 12, maxRotation: 45 } } }
+              plugins: { legend: { display: true, position: 'top' } },
+              scales: { x: { ticks: { maxTicksLimit: 12, maxRotation: 0 } } }
             }
           });
         },
@@ -476,8 +551,9 @@
           if (this.multiChart) this.multiChart.destroy();
 
           var allDates = this.availableDates.filter(function(d) { return d >= this.selectedStartDate && d <= this.selectedEndDate; }.bind(this));
-          var colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#14b8a6'];
+          var colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#14b8a6'];
           var self = this;
+          
           var datasets = this.selectedDataNames.map(function(name, idx) {
             var resArr = self.multiResults[name] || [];
             var dataMap = {};
@@ -487,7 +563,8 @@
               data: allDates.map(function(d) { return dataMap[d] !== undefined ? dataMap[d] : null; }),
               borderColor: colors[idx % colors.length],
               fill: false,
-              pointRadius: 0
+              pointRadius: 0,
+              borderWidth: 2
             };
           });
 
@@ -497,8 +574,8 @@
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { title: { display: true, text: '多数据回测未来价值对比' } },
-              scales: { x: { ticks: { maxTicksLimit: 12, maxRotation: 45 } } }
+              plugins: { legend: { display: true, position: 'top' } },
+              scales: { x: { ticks: { maxTicksLimit: 12, maxRotation: 0 } } }
             }
           });
         },
@@ -506,7 +583,7 @@
         clearMultiChart: function() { if (this.multiChart) { this.multiChart.destroy(); this.multiChart = null; } },
         getFinalValue: function(name, key) {
           if (this.selectedDataNames.length === 1 && this.results.length && this.selectedDataNames[0] === name) {
-            return this.results.length ? this.results[this.results.length - 1][key] : 0;
+            return this.results[this.results.length - 1][key];
           }
           if (this.multiResults[name] && this.multiResults[name].length) {
             return this.multiResults[name][this.multiResults[name].length - 1][key];
@@ -520,14 +597,14 @@
             var rows = this.results.map(function(item) {
               return [item.date, item.close.toFixed(2), item.principal.toFixed(2), item.futureValue.toFixed(2), item.profit.toFixed(2), item.returnRatio.toFixed(2), (item.cagr * 100).toFixed(2)];
             });
-            this.downloadCSV(headers, rows, '复利定投回测结果_' + this.selectedDataNames[0] + '_' + this.selectedStartDate + '_' + this.selectedEndDate + '.csv');
+            this.downloadCSV(headers, rows, '定投回测结果_' + this.selectedDataNames[0] + '.csv');
           } else if (this.selectedDataNames.length > 1) {
             if (!Object.keys(this.multiResults).length) return;
             var allDates = this.availableDates.filter(function(d) { return d >= this.selectedStartDate && d <= this.selectedEndDate; }.bind(this));
             var headers = ['日期'];
             var self = this;
             this.selectedDataNames.forEach(function(name) {
-              headers.push(name + '未来价值（元）', name + '累计本金（元）', name + '收益（元）');
+              headers.push(name + '资产价值', name + '累计本金', name + '收益');
             });
             var rows = allDates.map(function(date) {
               var row = [date];
@@ -538,7 +615,7 @@
               });
               return row;
             });
-            this.downloadCSV(headers, rows, '复利定投多数据回测结果_' + this.selectedStartDate + '_' + this.selectedEndDate + '.csv');
+            this.downloadCSV(headers, rows, '多标的定投回测结果.csv');
           }
         },
         downloadCSV: function(headers, rows, filename) {
