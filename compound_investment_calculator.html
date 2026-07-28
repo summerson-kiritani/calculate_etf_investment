@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>复利定投计算器（含通胀折算版）</title>
+  <title>复利定投计算器（含通胀折算与多方案对比版）</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
     .formula-section code {
@@ -14,12 +14,26 @@
       font-size: 0.95rem;
       color: #1d4ed8;
     }
+    /* 抽屉平滑过渡 */
+    .drawer-slide-enter-active, .drawer-slide-leave-active {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .drawer-slide-enter, .drawer-slide-leave-to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen">
-  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
-    <!-- 顶部导航 -->
-    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+<body class="bg-gray-50 text-gray-800 min-h-screen relative overflow-x-hidden">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8 pb-24">
+    <!-- 顶部导航与历史记录入口 -->
+    <div class="flex justify-between items-center">
+      <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+      <button @click="showDrawer = true" class="relative bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-1.5 rounded-lg shadow-sm text-sm font-medium flex items-center gap-2">
+        <span>📜 方案对比与历史</span>
+        <span v-if="history.length" class="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">{{ history.length }}</span>
+      </button>
+    </div>
 
     <!-- 标题 -->
     <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
@@ -27,6 +41,13 @@
 
     <!-- 表单 -->
     <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
+      <!-- 方案别名输入 -->
+      <div class="mb-4 pb-4 border-b border-gray-100 flex items-center gap-3">
+        <label class="text-sm font-bold text-gray-700 whitespace-nowrap">🏷️ 方案标签/备注：</label>
+        <input type="text" v-model="planName" placeholder="例如：稳健型投资、激进方案、养老准备" 
+          class="w-full md:w-64 px-3 py-1.5 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-gray-700">初始投入资金（元）</label>
@@ -94,7 +115,7 @@
         </div>
       </div>
       <div class="mt-6 flex gap-3">
-        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600 transition">计算</button>
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600 transition">计算并保存方案</button>
         <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-500 text-white px-6 py-2 rounded font-semibold hover:bg-green-600 transition">导出CSV</button>
       </div>
     </form>
@@ -204,6 +225,171 @@
       </table>
     </div>
 
+    <!-- 方案对比视图区（勾选 2 个或以上时在下方自动展开） -->
+    <div v-if="selectedPlans.length >= 2" class="mt-10 bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            📊 方案多维对比视图 
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full">已选 {{ selectedPlans.length }} / 4 个方案</span>
+          </h2>
+          <p class="text-xs text-gray-500 mt-1">对比包含不同收益率、通胀率及投领策略对终局资产的影响</p>
+        </div>
+        <button @click="selectedPlanIds = []" class="text-xs text-gray-400 hover:text-red-500">取消对比</button>
+      </div>
+
+      <!-- 对比卡片网格 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div v-for="(plan, idx) in selectedPlans" :key="plan.id"
+          :class="['rounded-xl border p-4 relative flex flex-col justify-between transition-all duration-200 shadow-sm', themeClasses[idx % themeClasses.length]]">
+          
+          <div>
+            <!-- 头部方案名称 -->
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded-md" :class="themeBadgeClasses[idx % themeBadgeClasses.length]">
+                方案 {{ idx + 1 }}
+              </span>
+              <span class="text-xs text-gray-400">{{ plan.createdAt }}</span>
+            </div>
+            <h3 class="font-bold text-gray-800 text-base mb-3 truncate">{{ plan.name }}</h3>
+
+            <!-- 输入参数摘要（高亮差异性） -->
+            <div class="bg-white bg-opacity-70 rounded-lg p-2.5 text-xs space-y-1 text-gray-600 mb-4 border border-gray-100">
+              <div class="flex justify-between">
+                <span>月定投:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('monthlyInvestment')}">￥{{ plan.inputs.monthlyInvestment }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>预期年化:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('annualRate')}">{{ plan.inputs.annualRate }}%</span>
+              </div>
+              <div class="flex justify-between">
+                <span>通货膨胀率:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('inflationRate')}">{{ plan.inputs.inflationRate }}%</span>
+              </div>
+              <div class="flex justify-between">
+                <span>投资年限 / 退休年龄:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('years') || isDiff('retirementAge')}">{{ plan.inputs.years }}年 / {{ plan.inputs.retirementAge }}岁</span>
+              </div>
+              <div class="flex justify-between">
+                <span>提领率:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('withdrawRate')}">{{ plan.inputs.withdrawRate }}%</span>
+              </div>
+            </div>
+
+            <!-- 核心输出对比（带胜者徽章 👑） -->
+            <div class="space-y-3">
+              <!-- 累计本金 -->
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">累计本金</span>
+                <span class="font-semibold text-gray-700">￥{{ fmtMoney(plan.summary.principal) }}</span>
+              </div>
+
+              <!-- 期末余额 (名义) -->
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">期末余额(名义)</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="isWinner(plan, 'futureValueAfterWithdraw')" class="text-xs" title="该项最高">👑</span>
+                  <span class="font-bold" :class="isWinner(plan, 'futureValueAfterWithdraw') ? 'text-blue-600 text-sm' : 'text-gray-800'">
+                    ￥{{ fmtMoney(plan.summary.futureValueAfterWithdraw) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- 购买力折算 (终局购买力) -->
+              <div class="bg-red-50 p-2 rounded-lg flex justify-between items-center text-xs">
+                <span class="text-red-700 font-medium">今日购买力</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="isWinner(plan, 'realValueAfterWithdraw')" class="text-xs" title="购买力保留最高">👑</span>
+                  <span class="font-extrabold text-red-600">￥{{ fmtMoney(plan.summary.realValueAfterWithdraw) }}</span>
+                </div>
+              </div>
+
+              <!-- 真实总价值（含已提领） -->
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">总资产(含已领)</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="isWinner(plan, 'totalWealth')" class="text-xs" title="创造总财富最高">👑</span>
+                  <span class="font-bold text-gray-800">￥{{ fmtMoney(plan.summary.totalWealth) }}</span>
+                </div>
+              </div>
+
+              <!-- 年化收益 CAGR -->
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">综合年化(CAGR)</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="isWinner(plan, 'cagr')" class="text-xs">👑</span>
+                  <span class="font-bold text-green-600">{{ (plan.summary.cagr * 100).toFixed(2) }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+            <button @click="loadPlan(plan)" class="text-xs text-blue-600 hover:underline">加载此方案到表单</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧历史记录与方案选择抽屉 -->
+    <transition name="drawer-slide">
+      <div v-if="showDrawer" class="fixed inset-0 z-50 flex justify-end">
+        <!-- 遮罩层 -->
+        <div @click="showDrawer = false" class="fixed inset-0 bg-black bg-opacity-40"></div>
+
+        <!-- 抽屉主体 -->
+        <div class="relative w-full max-w-md bg-white h-full shadow-2xl z-10 flex flex-col justify-between">
+          <div>
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 class="font-bold text-gray-800 text-lg">方案历史与对比</h3>
+              <button @click="showDrawer = false" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+
+            <!-- 提示说明 -->
+            <div class="p-4 bg-blue-50 text-blue-800 text-xs flex justify-between items-center">
+              <span>💡 勾选 2 ~ 4 个方案即可开启横向对比视图</span>
+              <span class="font-bold">{{ selectedPlanIds.length }}/4</span>
+            </div>
+
+            <!-- 历史列表 -->
+            <div class="p-4 space-y-3 overflow-y-auto max-h-96">
+              <div v-if="!history.length" class="text-center py-8 text-gray-400 text-sm">
+                暂无历史方案，点击“计算并保存方案”即可添加
+              </div>
+              <div v-for="item in history" :key="item.id"
+                :class="['border rounded-lg p-3 transition-all', selectedPlanIds.includes(item.id) ? 'border-blue-500 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-gray-300']">
+                
+                <div class="flex items-start justify-between gap-2">
+                  <label class="flex items-center gap-2 cursor-pointer flex-1">
+                    <input type="checkbox" :value="item.id" v-model="selectedPlanIds" :disabled="!selectedPlanIds.includes(item.id) && selectedPlanIds.length >= 4" class="rounded text-blue-500" />
+                    <span class="font-bold text-sm text-gray-800">{{ item.name }}</span>
+                  </label>
+                  <button @click="deleteHistory(item.id)" class="text-xs text-red-400 hover:text-red-600">删除</button>
+                </div>
+
+                <div class="mt-2 text-xs text-gray-500 space-y-0.5 ml-6">
+                  <div>投入: ￥{{ item.inputs.monthlyInvestment }}/月 | 年化: {{ item.inputs.annualRate }}% | 通胀: {{ item.inputs.inflationRate }}%</div>
+                  <div class="font-semibold text-blue-600">期末购买力: ￥{{ fmtMoney(item.summary.realValueAfterWithdraw) }}</div>
+                  <div class="text-gray-400 text-min font-mono">{{ item.createdAt }}</div>
+                </div>
+
+                <div class="mt-2 text-right ml-6">
+                  <button @click="loadPlan(item); showDrawer = false;" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded">载入此方案</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部操作按钮 -->
+          <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-between gap-2">
+            <button @click="clearAllHistory" class="text-xs text-red-500 hover:underline">清空所有历史</button>
+            <button @click="showDrawer = false" class="bg-blue-500 text-white text-xs px-4 py-2 rounded font-semibold">确认并查看对比</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- 公式说明 -->
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
       <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明（含通货膨胀折算）</h3>
@@ -240,6 +426,7 @@
       data() {
         var currentYear = new Date().getFullYear();
         return {
+          planName: '',
           initialInvestment: 0,
           monthlyInvestment: 1000,
           annualRate: 18,
@@ -255,8 +442,32 @@
           results: [],
           reports: [],
           selectedReportId: null,
-          expandedYears: new Set()
+          expandedYears: new Set(),
+          
+          // 对比与历史新增数据
+          showDrawer: false,
+          history: [],
+          selectedPlanIds: [],
+          themeClasses: [
+            'bg-blue-50/40 border-blue-200', 
+            'bg-purple-50/40 border-purple-200', 
+            'bg-green-50/40 border-green-200', 
+            'bg-amber-50/40 border-amber-200'
+          ],
+          themeBadgeClasses: [
+            'bg-blue-100 text-blue-700', 
+            'bg-purple-100 text-purple-700', 
+            'bg-green-100 text-green-700', 
+            'bg-amber-100 text-amber-700'
+          ]
         };
+      },
+      mounted() {
+        // 恢复历史记录
+        var local = localStorage.getItem('compound_calc_history');
+        if (local) {
+          try { this.history = JSON.parse(local); } catch (e) {}
+        }
       },
       computed: {
         summary: function() {
@@ -293,6 +504,12 @@
               quarters: quarters
             };
           });
+        },
+        selectedPlans: function() {
+          var self = this;
+          return this.selectedPlanIds.map(function(id) {
+            return _.find(self.history, { id: id });
+          }).filter(Boolean);
         }
       },
       methods: {
@@ -331,7 +548,7 @@
           var r = this.annualRate / 100;
           var baseQR = Math.pow(1 + r, 0.25) - 1;
           var qRate = baseQR * this.beta;
-          var infRate = this.inflationRate / 100; // 年通胀率
+          var infRate = this.inflationRate / 100;
           var monthly = this.monthlyInvestment;
           var init = this.initialInvestment;
           var totalQ = this.years * 4;
@@ -341,7 +558,7 @@
           var wRate = this.withdrawRate / 100;
           
           var cumP = init;
-          var cumWithdrawn = 0; // 累计已提领现金
+          var cumWithdrawn = 0;
 
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
@@ -360,7 +577,6 @@
 
             cumP = q === 1 ? init + qInvest : cumP + qInvest;
 
-            // 1. 计算计息与投入后的【提领前价值】
             var fvRaw;
             if (q === 1) {
               fvRaw = init + qInvest;
@@ -369,24 +585,19 @@
               fvRaw = prevNetBalance * (1 + qRate) + qInvest;
             }
 
-            // 2. 判断提领（退休年 Q4 执行）
             var wAmount = 0;
             if (isRetired && quarter === 4) {
               wAmount = fvRaw * wRate;
             }
             cumWithdrawn += wAmount;
 
-            // 3. 扣除提领额，得出【真正的期末账户余额】
             var fvAfterWithdraw = fvRaw - wAmount;
-
-            // 4. 方案 A：通货膨胀折算今日购买力
-            var yearsPassed = q / 4; // 当前已过年数（含季度）
+            var yearsPassed = q / 4;
             var discountFactor = Math.pow(1 + infRate, yearsPassed);
             var realValueAfterWithdraw = fvAfterWithdraw / discountFactor;
 
-            // 5. 计算真实总回报与 CAGR
-            var totalWealth = fvAfterWithdraw + cumWithdrawn; // 账面总价值 (含已领)
-            var realTotalWealth = totalWealth / discountFactor; // 折算购买力的总价值
+            var totalWealth = fvAfterWithdraw + cumWithdrawn;
+            var realTotalWealth = totalWealth / discountFactor;
             var profit = totalWealth - cumP;
             var ratio = cumP > 0 ? totalWealth / cumP : 0;
             var cagr = 0;
@@ -413,7 +624,7 @@
             });
           }
 
-          // 收益与资产突破报告（基于真实总资产与账户净资产）
+          // 报告生成逻辑
           var returnBPs = this.genReturnBPs();
           var moneyBPs = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
           var brokenR = {};
@@ -423,8 +634,6 @@
 
           this.results.forEach(function(item) {
             var id = 'row-' + item.year + '-' + item.quarter + '-' + item.index;
-            
-            // 回报倍数突破
             for (var i = 0; i < returnBPs.length; i++) {
               var bp = returnBPs[i];
               if (item.totalReturnRatio >= bp && !brokenR[bp]) {
@@ -438,7 +647,6 @@
               }
             }
 
-            // 资金突破
             var fields = ['principal', 'totalWealth', 'profit'];
             var names = { principal: '累计本金', totalWealth: '真实总资产(含已领)', profit: '累计净利润' };
             fields.forEach(function(f) {
@@ -473,7 +681,83 @@
             var bp = b.id.replace('row-', '').split('-').map(Number);
             return ap[0] !== bp[0] ? ap[0] - bp[0] : ap[1] - bp[1];
           });
+
+          // 保存当前方案至历史列表
+          this.saveCurrentPlan();
         },
+        saveCurrentPlan: function() {
+          var now = new Date();
+          var timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + (now.getMinutes()<10?'0':'')+now.getMinutes();
+          var pName = this.planName.trim() || ('方案 ' + (this.history.length + 1) + ' (' + this.annualRate + '%/年)');
+          
+          var planObj = {
+            id: 'plan_' + Date.now(),
+            name: pName,
+            createdAt: timeStr,
+            inputs: {
+              initialInvestment: this.initialInvestment,
+              monthlyInvestment: this.monthlyInvestment,
+              annualRate: this.annualRate,
+              inflationRate: this.inflationRate,
+              beta: this.beta,
+              years: this.years,
+              retirementAge: this.retirementAge,
+              withdrawRate: this.withdrawRate,
+              investmentMode: this.investmentMode,
+              continueInvestAfterRetirement: this.continueInvestAfterRetirement
+            },
+            summary: Object.assign({}, this.summary)
+          };
+
+          this.history.unshift(planObj);
+          // 默认选中新产生的方案
+          if (this.selectedPlanIds.length < 4) {
+            this.selectedPlanIds.push(planObj.id);
+          }
+          localStorage.setItem('compound_calc_history', JSON.stringify(this.history));
+        },
+        deleteHistory: function(id) {
+          this.history = this.history.filter(function(h) { return h.id !== id; });
+          this.selectedPlanIds = this.selectedPlanIds.filter(function(i) { return i !== id; });
+          localStorage.setItem('compound_calc_history', JSON.stringify(this.history));
+        },
+        clearAllHistory: function() {
+          if (confirm('确定清空所有历史方案记录吗？')) {
+            this.history = [];
+            this.selectedPlanIds = [];
+            localStorage.removeItem('compound_calc_history');
+          }
+        },
+        loadPlan: function(plan) {
+          var inp = plan.inputs;
+          this.planName = plan.name;
+          this.initialInvestment = inp.initialInvestment;
+          this.monthlyInvestment = inp.monthlyInvestment;
+          this.annualRate = inp.annualRate;
+          this.inflationRate = inp.inflationRate;
+          this.beta = inp.beta;
+          this.years = inp.years;
+          this.retirementAge = inp.retirementAge;
+          this.withdrawRate = inp.withdrawRate;
+          this.investmentMode = inp.investmentMode;
+          this.continueInvestAfterRetirement = inp.continueInvestAfterRetirement;
+          this.calculate();
+        },
+
+        // 视觉技巧辅助：高亮参数差异
+        isDiff: function(field) {
+          if (this.selectedPlans.length < 2) return false;
+          var firstVal = this.selectedPlans[0].inputs[field];
+          return this.selectedPlans.some(function(p) { return p.inputs[field] !== firstVal; });
+        },
+
+        // 视觉技巧辅助：判断指标胜者 (👑)
+        isWinner: function(plan, metric) {
+          if (this.selectedPlans.length < 2) return false;
+          var maxVal = Math.max.apply(Math, this.selectedPlans.map(function(p) { return p.summary[metric] || 0; }));
+          return plan.summary[metric] === maxVal;
+        },
+
         genReturnBPs: function() {
           var base = [2, 10, 50, 100, 500, 1000];
           var ext = [];
