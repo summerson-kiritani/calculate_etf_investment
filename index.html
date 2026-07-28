@@ -3,114 +3,81 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>计算器导航页面（Vue 2 版）</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-  <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 0 20px;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1.5em;
-      color: #409eff;
-    }
-    nav {
-      background: #fff;
-      padding: 20px 30px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    li + li {
-      margin-top: 12px;
-    }
-    a {
-      display: block;
-      padding: 12px 16px;
-      background: #409eff;
-      color: #fff;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: background 0.3s ease;
-      user-select: none;
-    }
-    a:hover {
-      background: #66b1ff;
-    }
-    footer {
-      text-align: center;
-      margin-top: 40px;
-      font-size: 0.9em;
-      color: #888;
-    }
-  </style>
+  <title>ETF 投资计算工具箱</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
 </head>
-<body>
-  <div id="app">
-    <h1>计算器导航页面</h1>
-    <nav>
-      <ul>
-        <li v-for="item in navItems" :key="item.file">
-          <a :href="baseUrl + item.file" target="_blank" rel="noopener noreferrer">
-            {{ item.name }} ({{ item.file }})
-          </a>
-        </li>
-      </ul>
-    </nav>
-    <h1>站外链接</h1>
-    <nav>
-      <ul>
-        <li v-for="item in externalLinks" :key="item.url">
-          <a :href="item.url" target="_blank" rel="noopener noreferrer">
-            {{ item.name }} ({{ item.url }})
-          </a>
-        </li>
-      </ul>
-    </nav>
-    <footer>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+  <div id="app" class="flex-1">
+    <!-- 标题栏 -->
+    <header class="max-w-5xl mx-auto px-4 pt-8 pb-4">
+      <h1 class="text-2xl font-bold">ETF 投资计算工具箱</h1>
+      <p class="text-gray-500 mt-1">一站式 ETF 投资计算与回测工具</p>
+    </header>
+
+    <!-- 卡片网格 -->
+    <main class="max-w-5xl mx-auto px-4 pb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <a v-for="item in navItems" :key="item.file"
+           :href="baseUrl + item.file"
+           target="_blank" rel="noopener noreferrer"
+           class="block bg-white rounded-lg shadow hover:shadow-md border-l-4 border-blue-400 p-5 transition-shadow duration-200 no-underline">
+          <h2 class="text-lg font-semibold text-gray-800">{{ item.name }}</h2>
+          <p class="text-sm text-gray-500 mt-1">{{ item.desc }}</p>
+        </a>
+      </div>
+    </main>
+
+    <!-- 站外链接 -->
+    <section class="max-w-5xl mx-auto px-4 pb-8">
+      <div class="border-t border-gray-200 pt-6">
+        <h2 class="text-lg font-semibold mb-3">外部资源</h2>
+        <ul class="space-y-2">
+          <li v-for="link in externalLinks" :key="link.url">
+            <a :href="link.url" target="_blank" rel="noopener noreferrer"
+               class="text-blue-600 hover:text-blue-800 hover:underline">
+              {{ link.name }}
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="text-center text-gray-400 text-sm py-6">
       &copy; 2025 Summerson Kiritani
     </footer>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script>
     new Vue({
-      el: "#app",
+      el: '#app',
       data: {
-        baseUrl: "https://summerson-kiritani.github.io/calculate_etf_investment/",
+        baseUrl: 'https://summerson-kiritani.github.io/calculate_etf_investment/',
         navItems: [
-          { name: "主页", file: "index.html" },
-          { name: "资产配置计算器", file: "asset_allocation_calculator.html" },
-          { name: "资产再平衡计算器", file: "asset_rebalancing_calculator.html" },
-          { name: "复利定投计算器", file: "compound_investment_calculator.html" },
-          { name: "复利定投回测计算器", file: "compound_investment_backtest.html" },
-          { name: "复利定投资产提领计算器", file: "compound_investment_simulator.html" },
-          { name: "折价投资计算器", file: "discount_investment_calculator.html" },
-          { name: "投资收益率计算器", file: "investment_profit_rate_calculator.html" },
-          { name: "杠杆计算器", file: "leverage_calculator.html" },
-          { name: "贷款与投资对比计算器", file: "loan_vs_investment_calculator.html" },
-          { name: "维持率 & LTV 计算器", file: "retention_and_ltv_calculator.html" },
-          { name: "净孖展比率计算器", file: "wealth_portfolio_lending_calculator.html" },
-          { name: "混合信贷率计算器", file: "mixed_ltv_calculator.html" },
-          { name: "投资组合 Beta 计算器", file: "investment_portfolio_beta_calculator.html" },
-          { name: "模拟涨跌计算器", file: "stock_change_sequence_calculator.html" },
+          { name: '主页', file: 'index.html', desc: 'ETF 投资计算工具箱' },
+          { name: '资产配置计算器', file: 'asset_allocation_calculator.html', desc: '按比例分配不同资产类别的投资金额' },
+          { name: '资产再平衡计算器', file: 'asset_rebalancing_calculator.html', desc: '计算资产偏离目标比例后的再平衡方案' },
+          { name: '复利定投计算器', file: 'compound_investment_calculator.html', desc: '计算定期定额投资的复利收益与提领' },
+          { name: '复利定投回测计算器', file: 'compound_investment_backtest.html', desc: '基于历史数据回测定投策略收益' },
+          { name: '复利定投资产提领计算器', file: 'compound_investment_simulator.html', desc: '模拟定投积累后的资产提领方案' },
+          { name: '折价投资计算器', file: 'discount_investment_calculator.html', desc: '计算折价买入的投资成本与收益' },
+          { name: '投资收益率计算器', file: 'investment_profit_rate_calculator.html', desc: '计算投资的总收益率与年化收益率' },
+          { name: '杠杆计算器', file: 'leverage_calculator.html', desc: '计算杠杆交易后的盈亏金额' },
+          { name: '贷款与投资对比计算器', file: 'loan_vs_investment_calculator.html', desc: '对比贷款投资与直接投资的差异' },
+          { name: '维持率 & LTV 计算器', file: 'retention_and_ltv_calculator.html', desc: '计算融资账户维持率与贷款价值比' },
+          { name: '净孖展比率计算器', file: 'wealth_portfolio_lending_calculator.html', desc: '计算投资组合净孖展比率' },
+          { name: '混合信贷率计算器', file: 'mixed_ltv_calculator.html', desc: '计算多品种混合持仓的信贷率' },
+          { name: '投资组合 Beta 计算器', file: 'investment_portfolio_beta_calculator.html', desc: '计算投资组合相对于基准的 Beta 系数' },
+          { name: '模拟涨跌计算器', file: 'stock_change_sequence_calculator.html', desc: '模拟股票价格的随机涨跌序列' }
         ],
-        // 站外 link
         externalLinks: [
-          { name: "QQQ/QLD 回测工具", url: "https://clec-strategy-backtest.vercel.app" },
-          { name: "Investing.com 香港 - 股市報價 & 財經新聞", url: "https://hk.investing.com" },
-          { name: "雪球 - 聪明的投资者都在这里", url: "https://xueqiu.com" },
+          { name: 'QQQ/QLD 回测工具', url: 'https://clec-strategy-backtest.vercel.app' },
+          { name: 'Investing.com 香港 - 股市報價 & 財經新聞', url: 'https://hk.investing.com' },
+          { name: '雪球 - 聪明的投资者都在这里', url: 'https://xueqiu.com' }
         ]
-      },
+      }
     });
   </script>
 </body>
