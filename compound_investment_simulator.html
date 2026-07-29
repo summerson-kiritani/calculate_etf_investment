@@ -64,14 +64,14 @@
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="text-gray-400 font-semibold">INIT:</span>
                 <span v-for="item in sc.assets" :key="item.symbol" class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs font-medium">
-                  {{ item.symbol === 'CUSTOM' ? item.customName : item.symbol }} {{ item.initWeight }}%
+                  {{ item.symbol }} {{ item.initWeight }}%
                 </span>
                 <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-xs font-medium">现金 {{ getCashWeight(sc, 'init') }}%</span>
               </div>
               <div class="flex items-center gap-1.5 flex-wrap" v-if="sc.dca.enabled">
                 <span class="text-gray-400 font-semibold">DCA:</span>
                 <span v-for="item in sc.assets" :key="'dca-'+item.symbol" class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-xs font-medium">
-                  {{ item.symbol === 'CUSTOM' ? item.customName : item.symbol }} {{ item.dcaWeight }}%
+                  {{ item.symbol }} {{ item.dcaWeight }}%
                 </span>
               </div>
             </div>
@@ -325,23 +325,19 @@
                 <div class="space-y-3">
                   <div v-for="(ast, aIdx) in activeScenario.assets" :key="aIdx" class="bg-gray-50 p-2.5 rounded-lg border text-xs space-y-2">
                     <div class="flex justify-between items-center gap-2">
-                      <select v-model="ast.symbol" @change="onSymbolChange(ast)" class="font-bold text-gray-800 border rounded px-1.5 py-1 bg-white outline-none">
+                      <select v-model="ast.symbol" class="font-bold text-gray-800 border rounded px-1.5 py-1 bg-white outline-none">
                         <option value="QQQ">QQQ (1x 纳指)</option>
                         <option value="QLD">QLD (2x 杠杆纳指)</option>
                         <option value="TQQQ">TQQQ (3x 杠杆纳指)</option>
                         <option value="SPY">SPY (标普500)</option>
-                        <option value="TLT">TLT (20年期美债)</option>
-                        <option value="GLD">GLD (黄金)</option>
-                        <option value="CUSTOM">自定义标的...</option>
+                        <option value="XAU/USD">XAU/USD (黄金)</option>
+                        <option value="BTC/USD">BTC/USD (比特币)</option>
+                        <option value="HS300">沪深300ETF</option>
+                        <option value="ZZ500">中证500ETF</option>
+                        <option value="ZZ1000">中证1000ETF</option>
                       </select>
                       <span class="font-bold text-blue-600">{{ ast.initWeight }}%</span>
                       <button @click="removeAssetFromScenario(aIdx)" class="text-red-400 hover:text-red-600">✕</button>
-                    </div>
-
-                    <div v-if="ast.symbol === 'CUSTOM'" class="grid grid-cols-3 gap-1 bg-white p-2 rounded border">
-                      <input type="text" v-model="ast.customName" placeholder="名称" class="border rounded px-1 text-xs" />
-                      <input type="number" v-model.number="ast.customRate" placeholder="年化%" class="border rounded px-1 text-xs" />
-                      <input type="number" v-model.number="ast.customBeta" placeholder="Beta" class="border rounded px-1 text-xs" />
                     </div>
 
                     <input type="range" v-model.number="ast.initWeight" min="0" max="100" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
@@ -405,39 +401,69 @@
 
   </div>
 
-  <!-- 历史基准回报数据库与固定 Beta 数据 (1999–2025) -->
+  <!-- 外部月度历史数据 -->
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qqq_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/qld_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/tqqq_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/spy_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/xauusd_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/btcusd_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/hs_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/zh500_data.js"></script>
+  <script src="https://summerson-kiritani.github.io/calculate_etf_investment/zh1000_data.js"></script>
+
   <script>
-    var historicalData = {
-      1999: { QQQ: 1.019, QLD: 2.10, TQQQ: 3.20, SPY: 0.203, TLT: -0.09, GLD: 0.01 },
-      2000: { QQQ: -0.368, QLD: -0.65, TQQQ: -0.88, SPY: -0.091, TLT: 0.15, GLD: -0.03 },
-      2001: { QQQ: -0.327, QLD: -0.60, TQQQ: -0.80, SPY: -0.119, TLT: 0.04, GLD: 0.01 },
-      2002: { QQQ: -0.376, QLD: -0.68, TQQQ: -0.85, SPY: -0.221, TLT: 0.16, GLD: 0.24 },
-      2003: { QQQ: 0.497, QLD: 1.10, TQQQ: 1.80, SPY: 0.287, TLT: 0.02, GLD: 0.19 },
-      2004: { QQQ: 0.104, QLD: 0.20, TQQQ: 0.32, SPY: 0.109, TLT: 0.07, GLD: 0.05 },
-      2005: { QQQ: 0.016, QLD: 0.02, TQQQ: 0.02, SPY: 0.049, TLT: 0.06, GLD: 0.18 },
-      2006: { QQQ: 0.071, QLD: 0.13, TQQQ: 0.20, SPY: 0.158, TLT: 0.01, GLD: 0.23 },
-      2007: { QQQ: 0.190, QLD: 0.38, TQQQ: 0.60, SPY: 0.055, TLT: 0.10, GLD: 0.31 },
-      2008: { QQQ: -0.419, QLD: -0.72, TQQQ: -0.92, SPY: -0.370, TLT: 0.34, GLD: 0.05 },
-      2009: { QQQ: 0.547, QLD: 1.25, TQQQ: 2.10, SPY: 0.265, TLT: -0.21, GLD: 0.24 },
-      2010: { QQQ: 0.192, QLD: 0.38, TQQQ: 0.58, SPY: 0.151, TLT: 0.09, GLD: 0.29 },
-      2011: { QQQ: 0.034, QLD: 0.04, TQQQ: 0.02, SPY: 0.021, TLT: 0.34, GLD: 0.10 },
-      2012: { QQQ: 0.181, QLD: 0.36, TQQQ: 0.56, SPY: 0.160, TLT: 0.02, GLD: 0.07 },
-      2013: { QQQ: 0.366, QLD: 0.82, TQQQ: 1.40, SPY: 0.324, TLT: -0.13, GLD: -0.28 },
-      2014: { QQQ: 0.192, QLD: 0.38, TQQQ: 0.58, SPY: 0.137, TLT: 0.27, GLD: -0.02 },
-      2015: { QQQ: 0.097, QLD: 0.17, TQQQ: 0.26, SPY: 0.014, TLT: -0.02, GLD: -0.10 },
-      2016: { QQQ: 0.071, QLD: 0.12, TQQQ: 0.18, SPY: 0.120, TLT: 0.01, GLD: 0.08 },
-      2017: { QQQ: 0.327, QLD: 0.71, TQQQ: 1.18, SPY: 0.218, TLT: 0.09, GLD: 0.13 },
-      2018: { QQQ: -0.001, QLD: -0.06, TQQQ: -0.19, SPY: -0.044, TLT: -0.02, GLD: -0.02 },
-      2019: { QQQ: 0.391, QLD: 0.88, TQQQ: 1.42, SPY: 0.315, TLT: 0.14, GLD: 0.18 },
-      2020: { QQQ: 0.486, QLD: 1.08, TQQQ: 1.85, SPY: 0.184, TLT: 0.18, GLD: 0.25 },
-      2021: { QQQ: 0.274, QLD: 0.58, TQQQ: 0.83, SPY: 0.287, TLT: -0.04, GLD: -0.04 },
-      2022: { QQQ: -0.326, QLD: -0.60, TQQQ: -0.79, SPY: -0.181, TLT: -0.31, GLD: -0.01 },
-      2023: { QQQ: 0.548, QLD: 1.22, TQQQ: 1.98, SPY: 0.263, TLT: 0.03, GLD: 0.13 },
-      2024: { QQQ: 0.250, QLD: 0.52, TQQQ: 0.82, SPY: 0.240, TLT: -0.04, GLD: 0.27 },
-      2025: { QQQ: 0.180, QLD: 0.36, TQQQ: 0.55, SPY: 0.150, TLT: 0.02, GLD: 0.10 }
+    // 数据源定义（对齐 backtest 页面）
+    var dataSources = {
+      QQQ: { name: 'QQQ', data: typeof qqqData !== 'undefined' ? qqqData : [] },
+      QLD: { name: 'QLD', data: typeof qldData !== 'undefined' ? qldData : [] },
+      TQQQ: { name: 'TQQQ', data: typeof tqqqData !== 'undefined' ? tqqqData : [] },
+      SPY: { name: 'SPY', data: typeof spyData !== 'undefined' ? spyData : [] },
+      'XAU/USD': { name: 'XAU/USD(黄金)', data: typeof xauusdData !== 'undefined' ? xauusdData : [] },
+      'BTC/USD': { name: 'BTC/USD(比特币)', data: typeof btcusdData !== 'undefined' ? btcusdData : [] },
+      HS300: { name: '沪深300ETF', data: typeof hsData !== 'undefined' ? hsData : [] },
+      ZZ500: { name: '中证500ETF', data: typeof zh500Data !== 'undefined' ? zh500Data : [] },
+      ZZ1000: { name: '中证1000ETF', data: typeof zh1000Data !== 'undefined' ? zh1000Data : [] }
     };
 
-    var assetBetas = { QQQ: 1.0, QLD: 2.0, TQQQ: 3.0, SPY: 1.0, TLT: 0.1, GLD: 0.0 };
+    // 从月度收盘价推导年度收益率（输出年份优先结构，兼容旧格式）
+    function buildAnnualReturns(sources) {
+      var bySymbol = {};
+      var allYears = new Set();
+      Object.keys(sources).forEach(function(symbol) {
+        var monthly = sources[symbol].data;
+        if (!monthly || !monthly.length) return;
+        var sorted = monthly.slice().sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+        var byYear = {};
+        sorted.forEach(function(d) {
+          var y = d.date.split('/')[0] || d.date.split('-')[0];
+          if (!byYear[y]) byYear[y] = [];
+          byYear[y].push(d);
+        });
+        bySymbol[symbol] = {};
+        Object.keys(byYear).sort().forEach(function(year) {
+          var items = byYear[year];
+          var first = items[0].close;
+          var last = items[items.length - 1].close;
+          var rate = first > 0 ? (last - first) / first : 0;
+          bySymbol[symbol][Number(year)] = rate;
+          allYears.add(Number(year));
+        });
+      });
+      var result = {};
+      Array.from(allYears).sort().forEach(function(year) {
+        result[year] = {};
+        Object.keys(bySymbol).forEach(function(symbol) {
+          if (bySymbol[symbol][year] !== undefined) {
+            result[year][symbol] = bySymbol[symbol][year];
+          }
+        });
+      });
+      return result;
+    }
+
+    var historicalData = buildAnnualReturns(dataSources);
+    var assetBetas = { QQQ: 1.0, QLD: 2.0, TQQQ: 3.0, SPY: 1.0, 'XAU/USD': 0.0, 'BTC/USD': 0.8, HS300: 0.8, ZZ500: 0.9, ZZ1000: 1.0 };
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
@@ -558,11 +584,6 @@
           this.activeScenario.assets.splice(aIdx, 1);
         },
         onSymbolChange: function(ast) {
-          if (ast.symbol === 'CUSTOM') {
-            ast.customName = '自定义标的';
-            ast.customRate = 8.0;
-            ast.customBeta = 1.0;
-          }
         },
         fmtMoney: function(num) {
           if (typeof num !== 'number' || isNaN(num)) return '$0';
@@ -585,8 +606,7 @@
             // 持仓数量
             var assetHoldings = {};
             sc.assets.forEach(function(a) {
-              var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
-              assetHoldings[key] = sc.initialCapital * (a.initWeight / 100);
+              assetHoldings[a.symbol] = sc.initialCapital * (a.initWeight / 100);
             });
             var cashHolding = sc.initialCapital * (this.getCashWeight(sc, 'init') / 100);
 
@@ -603,8 +623,7 @@
                 totalInvested += sc.dca.amount;
                 yearCF -= sc.dca.amount;
                 sc.assets.forEach(function(a) {
-                  var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
-                  assetHoldings[key] += sc.dca.amount * (a.dcaWeight / 100);
+                  assetHoldings[a.symbol] += sc.dca.amount * (a.dcaWeight / 100);
                 });
                 cashHolding += sc.dca.amount * (this.getCashWeight(sc, 'dca') / 100);
               }
@@ -615,14 +634,13 @@
               var totalAssetValBeforeValuation = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
 
               sc.assets.forEach(function(a) {
-                var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
-                var rate = a.symbol === 'CUSTOM' ? (a.customRate / 100) : (yearRates[a.symbol] || 0.08);
-                var beta = a.symbol === 'CUSTOM' ? (a.customBeta || 1.0) : (assetBetas[a.symbol] || 0);
+                var rate = yearRates[a.symbol] || 0;
+                var beta = assetBetas[a.symbol] || 0;
 
-                var weight = totalAssetValBeforeValuation > 0 ? (assetHoldings[key] / totalAssetValBeforeValuation) : 0;
+                var weight = totalAssetValBeforeValuation > 0 ? (assetHoldings[a.symbol] / totalAssetValBeforeValuation) : 0;
                 currentBetaWeighted += weight * beta;
 
-                assetHoldings[key] *= (1 + rate);
+                assetHoldings[a.symbol] *= (1 + rate);
               });
 
               cashHolding *= (1 + (sc.cashAnnualRate / 100));
@@ -648,8 +666,7 @@
               // 4. 再平衡
               if (sc.rebalanceStrategy === 'annual' && totalAssets > 0) {
                 sc.assets.forEach(function(a) {
-                  var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
-                  assetHoldings[key] = totalAssets * (a.initWeight / 100);
+                  assetHoldings[a.symbol] = totalAssets * (a.initWeight / 100);
                 });
                 cashHolding = totalAssets * (this.getCashWeight(sc, 'init') / 100);
               }
