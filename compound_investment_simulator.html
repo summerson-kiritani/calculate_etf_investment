@@ -3,313 +3,441 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>“买借死”与杠杆再平衡 - 高级策略回测计算器</title>
+  <title>多方案对比 - 资产配置与专业回测评估计算器</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
-    .formula-section code {
-      background: #eff6ff;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 0.95rem;
-      color: #1d4ed8;
-    }
+    /* 抽屉平滑过渡 */
+    .drawer-enter-active, .drawer-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
+    .drawer-enter, .drawer-leave-to { opacity: 0; transform: translateX(100%); }
+    /* Range Slider 样式 */
+    input[type=range] { accent-color: #2563eb; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen">
-  <div id="app" class="max-w-6xl mx-auto px-4 py-8">
-    <!-- 顶部导航 -->
-    <div class="flex justify-between items-center border-b pb-4">
+<body class="bg-gray-100 text-gray-800 min-h-screen pb-12">
+  <div id="app" class="max-w-7xl mx-auto px-4 py-6">
+    
+    <!-- 顶部 Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-6 gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">“买借死”与杠杆再平衡策略回测计算器</h1>
-        <p class="text-gray-500 mt-1">支持自定义资产组合、定投积累、灵活提领与“买借死”杠杆风控回测 (1999-2025)</p>
+        <h1 class="text-2xl font-bold text-gray-900">资产配置与“买借死”策略专业回测计算器</h1>
+        <p class="text-xs text-gray-500 mt-1">自由搭配标的 (QQQ/QLD/TQQQ/SPY/TLT/GLD/自定义)，全方位评估净值、回撤、Beta 敞口、卡玛与溃疡指数</p>
       </div>
-      <div class="space-x-2">
-        <button @click="exportStrategyJSON" class="bg-gray-800 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition">导出策略 JSON</button>
-        <button @click="triggerJSONImport" class="bg-blue-600 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">导入策略 JSON</button>
-        <input type="file" ref="jsonFileInput" @change="importStrategyJSON" accept=".json" class="hidden" />
+      <div class="flex gap-2">
+        <button @click="exportAllConfigJSON" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3.5 py-2 rounded-lg transition border">导出全套配置</button>
+        <button @click="triggerJSONImport" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3.5 py-2 rounded-lg transition border">导入配置</button>
+        <input type="file" ref="jsonFileInput" @change="importConfigJSON" accept=".json" class="hidden" />
       </div>
     </div>
 
-    <!-- 表单区 -->
-    <form @submit.prevent="runStrategyBacktest" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6 space-y-6">
+    <!-- 主布局：左侧方案卡片 + 右侧分析仪表盘 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
-      <!-- 1. 自定义资产配置 -->
-      <div>
-        <div class="flex justify-between items-center mb-3 border-l-4 border-blue-600 pl-2">
-          <h3 class="font-bold text-gray-800 text-base">1. 自定义资产配置与目标权重</h3>
-          <button type="button" @click="addAsset" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold px-2.5 py-1 rounded border border-blue-200">
-            + 添加资产标的
-          </button>
+      <!-- 左侧：方案管理区 (4列) -->
+      <div class="lg:col-span-4 space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="font-bold text-gray-800 text-sm">策略方案列表 ({{ scenarios.length }})</h2>
+          <button @click="addNewScenario" class="text-xs bg-blue-50 text-blue-600 font-semibold px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 transition">+ 添加方案</button>
         </div>
 
+        <!-- 卡片列表 (参考图1/图2交互设计) -->
         <div class="space-y-3">
-          <div v-for="(asset, index) in strategy.assets" :key="index" class="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-            <div class="w-1/4">
-              <label class="block text-xs font-semibold text-gray-500">标的名称/代码</label>
-              <input type="text" v-model="asset.name" placeholder="如 QQQ / QLD / MMF" required class="w-full px-2.5 py-1.5 mt-1 border border-gray-300 rounded text-sm bg-white outline-none focus:border-blue-500" />
+          <div v-for="(sc, idx) in scenarios" :key="sc.id" class="bg-white rounded-xl p-4 border-2 shadow-sm relative transition hover:shadow-md" :style="{ borderColor: sc.color }">
+            <div class="flex justify-between items-start">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full inline-block" :style="{ backgroundColor: sc.color }"></span>
+                <span class="font-bold text-gray-900 text-base">{{ sc.name }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-gray-400">
+                <button @click="openEditDrawer(idx)" title="编辑方案" class="hover:text-blue-600">✏️</button>
+                <button @click="duplicateScenario(idx)" title="复制方案" class="hover:text-emerald-600">📋</button>
+                <button @click="deleteScenario(idx)" :disabled="scenarios.length <= 1" title="删除" class="hover:text-red-600 disabled:opacity-20">🗑️</button>
+              </div>
             </div>
-            <div class="w-1/4">
-              <label class="block text-xs font-semibold text-gray-500">目标权重 (%)</label>
-              <input type="number" v-model.number="asset.weight" min="0" max="100" step="1" required class="w-full px-2.5 py-1.5 mt-1 border border-gray-300 rounded text-sm bg-white outline-none focus:border-blue-500" />
+
+            <div class="text-xs text-gray-500 mt-2 flex items-center gap-2">
+              <span class="bg-gray-100 px-2 py-0.5 rounded font-medium text-gray-600">{{ sc.rebalanceStrategy === 'none' ? '无再平衡' : '年度再平衡' }}</span>
+              <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium" v-if="sc.marginLoan.enabled">质押借贷已开启</span>
             </div>
-            <div class="w-1/3">
-              <label class="block text-xs font-semibold text-gray-500">资产类型 / 收益来源</label>
-              <select v-model="asset.type" class="w-full px-2.5 py-1.5 mt-1 border border-gray-300 rounded text-sm bg-white outline-none focus:border-blue-500">
-                <option value="historical_qqq">100% 纳指 (QQQ 真实历史数据)</option>
-                <option value="historical_qld">2x 杠杆纳指 (QLD 真实历史数据)</option>
-                <option value="historical_tqqq">3x 杠杆纳指 (TQQQ 真实历史数据)</option>
-                <option value="fixed_mmf">固定收益现金/货基 (MMF)</option>
-              </select>
+
+            <!-- 资产配比标签 (INIT / DCA) -->
+            <div class="mt-3 pt-2 border-t border-gray-100 space-y-1.5 text-xs">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-gray-400 font-semibold">INIT:</span>
+                <span v-for="item in sc.assets" :key="item.symbol" class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs font-medium">
+                  {{ item.symbol === 'CUSTOM' ? item.customName : item.symbol }} {{ item.initWeight }}%
+                </span>
+                <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-xs font-medium">现金 {{ getCashWeight(sc, 'init') }}%</span>
+              </div>
+              <div class="flex items-center gap-1.5 flex-wrap" v-if="sc.dca.enabled">
+                <span class="text-gray-400 font-semibold">DCA:</span>
+                <span v-for="item in sc.assets" :key="'dca-'+item.symbol" class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-xs font-medium">
+                  {{ item.symbol === 'CUSTOM' ? item.customName : item.symbol }} {{ item.dcaWeight }}%
+                </span>
+              </div>
             </div>
-            <div class="w-1/6" v-if="asset.type === 'fixed_mmf'">
-              <label class="block text-xs font-semibold text-gray-500">固定年化 (%)</label>
-              <input type="number" v-model.number="asset.fixedRate" step="0.1" class="w-full px-2.5 py-1.5 mt-1 border border-gray-300 rounded text-sm bg-white outline-none focus:border-blue-500" />
+          </div>
+        </div>
+
+        <button @click="runComparison" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition text-base mt-2">
+          🚀 运行全量对比分析
+        </button>
+      </div>
+
+      <!-- 右侧：多维度评估仪表盘 (8列) -->
+      <div class="lg:col-span-8 space-y-6">
+        
+        <!-- 图表 1: 资产增长趋势 (净值) -->
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <h3 class="font-bold text-gray-800 text-base mb-3">📈 资产增长趋势 (净值)</h3>
+          <div class="relative h-72">
+            <canvas id="chartNetWorth"></canvas>
+          </div>
+        </div>
+
+        <!-- 图表 2: 最差与年度回报 -->
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <h3 class="font-bold text-gray-800 text-base mb-3">📊 年度回报对比 (Annual Return)</h3>
+          <div class="relative h-64">
+            <canvas id="chartAnnualReturn"></canvas>
+          </div>
+        </div>
+
+        <!-- 图表 3 & 4 (网格分栏): 历史回撤 & 组合 Beta 敞口 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="font-bold text-gray-800 text-sm mb-2">🌊 历史回撤 (Drawdown)</h3>
+            <div class="relative h-48">
+              <canvas id="chartDrawdown"></canvas>
             </div>
-            <div class="pt-5">
-              <button type="button" @click="removeAsset(index)" :disabled="strategy.assets.length <= 1" class="text-red-500 hover:text-red-700 text-xs font-semibold disabled:opacity-30">
-                删除
-              </button>
+          </div>
+
+          <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="font-bold text-gray-800 text-sm mb-2">⚡ 投资组合 Beta (风险敞口)</h3>
+            <div class="relative h-48">
+              <canvas id="chartBeta"></canvas>
             </div>
           </div>
         </div>
-        <p class="text-xs mt-2" :class="totalWeight === 100 ? 'text-gray-400' : 'text-red-500 font-semibold'">
-          当前权重总和：{{ totalWeight }}%（目标必须恰好等于 100%）
-        </p>
-      </div>
 
-      <!-- 2. 定投 (DCA) 设置 -->
-      <div>
-        <h3 class="font-bold text-gray-800 text-base mb-3 border-l-4 border-teal-600 pl-2">2. 定投积累配置 (DCA)</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">是否开启定期追加投</label>
-            <select v-model="strategy.dca.enabled" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option :value="false">关闭定投 (仅初始资金)</option>
-              <option :value="true">开启定投</option>
-            </select>
-          </div>
-          <div v-if="strategy.dca.enabled">
-            <label class="block text-sm font-semibold text-gray-700">每年定投金额（元/$）</label>
-            <input type="number" v-model.number="strategy.dca.annualAmount" min="0" step="1000" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
-          </div>
-          <div v-if="strategy.dca.enabled">
-            <label class="block text-sm font-semibold text-gray-700">定投时间节点</label>
-            <select v-model="strategy.dca.timing" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option value="beginning">每年年初定投并再平衡</option>
-              <option value="end">每年年末定投</option>
-            </select>
+        <!-- 核心表格: 绩效对比表 (参考图2中间表格) -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" v-if="comparisonResults.length">
+          <div class="p-4 bg-gray-50 border-b font-bold text-gray-800 text-sm">📋 绩效对比表</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-gray-800 text-white">
+                <tr>
+                  <th class="p-3">策略</th>
+                  <th class="p-3 text-right">期末净资产</th>
+                  <th class="p-3 text-right">年化回报(CAGR)</th>
+                  <th class="p-3 text-right">内部收益率(IRR)</th>
+                  <th class="p-3 text-right">最大回撤</th>
+                  <th class="p-3 text-right">夏普比率</th>
+                  <th class="p-3 text-right">卡玛比率</th>
+                  <th class="p-3 text-right">溃疡/痛苦指数</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="res in comparisonResults" :key="res.id" class="hover:bg-gray-50">
+                  <td class="p-3 font-semibold flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full inline-block" :style="{ backgroundColor: res.color }"></span>
+                    {{ res.name }}
+                  </td>
+                  <td class="p-3 text-right font-bold text-blue-600">{{ fmtMoney(res.finalNetWorth) }}</td>
+                  <td class="p-3 text-right font-semibold text-emerald-600">{{ (res.cagr * 100).toFixed(2) }}%</td>
+                  <td class="p-3 text-right font-semibold text-indigo-600">{{ (res.irr * 100).toFixed(2) }}%</td>
+                  <td class="p-3 text-right font-bold text-red-500">{{ (res.maxDrawdown * 100).toFixed(1) }}%</td>
+                  <td class="p-3 text-right font-medium">{{ res.sharpeRatio.toFixed(2) }}</td>
+                  <td class="p-3 text-right font-medium">{{ res.calmarRatio.toFixed(2) }}</td>
+                  <td class="p-3 text-right font-medium text-amber-600">{{ res.ulcerIndex.toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
 
-      <!-- 3. 提领策略配置 -->
-      <div>
-        <h3 class="font-bold text-gray-800 text-base mb-3 border-l-4 border-indigo-600 pl-2">3. 提领与再平衡策略配置</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <!-- 冠军指标高亮视角 (参考图2下半部分卡片) -->
+        <div class="space-y-4" v-if="comparisonResults.length">
+          
+          <!-- 绝对收益视角 -->
           <div>
-            <label class="block text-sm font-semibold text-gray-700">提领模式</label>
-            <select v-model="strategy.withdrawal.mode" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option value="none">不提领 (纯积累期)</option>
-              <option value="buy_borrow_die">买借死 (抵押股票借贷提领)</option>
-              <option value="sell_off">按比例变卖资产提领</option>
-            </select>
-          </div>
-          <div v-if="strategy.withdrawal.mode !== 'none'">
-            <label class="block text-sm font-semibold text-gray-700">提领计算方式</label>
-            <select v-model="strategy.withdrawal.type" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option value="fixed">固定金额提领</option>
-              <option value="percent">按当年总资产百分比 (%)</option>
-            </select>
-          </div>
-          <div v-if="strategy.withdrawal.mode !== 'none' && strategy.withdrawal.type === 'fixed'">
-            <label class="block text-sm font-semibold text-gray-700">每年固定提领金额（元/$）</label>
-            <input type="number" v-model.number="strategy.withdrawal.fixedAmount" min="0" step="1000" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
-          </div>
-          <div v-if="strategy.withdrawal.mode !== 'none' && strategy.withdrawal.type === 'percent'">
-            <label class="block text-sm font-semibold text-gray-700">每年提领总资产比例 (%)</label>
-            <input type="number" v-model.number="strategy.withdrawal.percentRate" min="0" max="100" step="0.5" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
-          </div>
-        </div>
-      </div>
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">🎗️ 绝对收益视角</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="bg-blue-50 border border-blue-100 p-3.5 rounded-xl">
+                <div class="text-xs text-blue-600 font-semibold">最高最终余额</div>
+                <div class="text-xl font-black text-blue-900 mt-1">{{ fmtMoney(bestStats.highestBalance.val) }}</div>
+                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestBalance.sc.color }"></span>
+                  {{ bestStats.highestBalance.sc.name }}
+                </div>
+              </div>
 
-      <!-- 4. 买借死风控参数 (仅买借死模式有效) -->
-      <div v-if="strategy.withdrawal.mode === 'buy_borrow_die'">
-        <h3 class="font-bold text-gray-800 text-base mb-3 border-l-4 border-amber-500 pl-2">4. “买借死”借贷利率与 LTV 风控设置</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">借贷年利率 (Margin Rate %)</label>
-            <input type="number" v-model.number="strategy.margin.borrowRate" min="0" step="0.1" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">LTV 安全/警戒线 (%)</label>
-            <input type="number" v-model.number="strategy.margin.warningLTV" min="10" max="80" step="1" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">LTV 强制平仓线 (%)</label>
-            <input type="number" v-model.number="strategy.margin.liquidationLTV" min="20" max="90" step="1" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">触及警戒线应对策略</label>
-            <select v-model="strategy.margin.defensiveStrategy" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option value="use_cash">优先消耗现金/货基等无杠杆资产</option>
-              <option value="pause">暂停当期提领，保护资产</option>
-              <option value="passive">无视警戒线，直至强平</option>
-            </select>
-          </div>
-        </div>
-      </div>
+              <div class="bg-blue-50 border border-blue-100 p-3.5 rounded-xl">
+                <div class="text-xs text-blue-600 font-semibold">最高年化回报 (CAGR)</div>
+                <div class="text-xl font-black text-blue-900 mt-1">{{ (bestStats.highestCAGR.val * 100).toFixed(2) }}%</div>
+                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestCAGR.sc.color }"></span>
+                  {{ bestStats.highestCAGR.sc.name }}
+                </div>
+              </div>
 
-      <!-- 5. 全局回测参数 -->
-      <div>
-        <h3 class="font-bold text-gray-800 text-base mb-3 border-l-4 border-emerald-600 pl-2">5. 初始资本与时间区间</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-blue-50 border border-blue-100 p-3.5 rounded-xl">
+                <div class="text-xs text-blue-600 font-semibold">最高内部收益率 (IRR)</div>
+                <div class="text-xl font-black text-blue-900 mt-1">{{ (bestStats.highestIRR.val * 100).toFixed(2) }}%</div>
+                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestIRR.sc.color }"></span>
+                  {{ bestStats.highestIRR.sc.name }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 风险与回撤视角 -->
           <div>
-            <label class="block text-sm font-semibold text-gray-700">初始总资产（元/$）</label>
-            <input type="number" v-model.number="strategy.config.initialCapital" min="0" step="10000" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500" />
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">🛡️ 风险与回撤视角</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="bg-red-50 border border-red-100 p-3.5 rounded-xl">
+                <div class="text-xs text-red-600 font-semibold">最低最大回撤</div>
+                <div class="text-xl font-black text-red-900 mt-1">{{ (bestStats.lowestMDD.val * 100).toFixed(1) }}%</div>
+                <div class="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.lowestMDD.sc.color }"></span>
+                  {{ bestStats.lowestMDD.sc.name }}
+                </div>
+              </div>
+
+              <div class="bg-red-50 border border-red-100 p-3.5 rounded-xl">
+                <div class="text-xs text-red-600 font-semibold">最短回撤修复期</div>
+                <div class="text-xl font-black text-red-900 mt-1">{{ bestStats.shortestRecovery.val }} 年</div>
+                <div class="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.shortestRecovery.sc.color }"></span>
+                  {{ bestStats.shortestRecovery.sc.name }}
+                </div>
+              </div>
+
+              <div class="bg-red-50 border border-red-100 p-3.5 rounded-xl">
+                <div class="text-xs text-red-600 font-semibold">最低痛苦/溃疡指数</div>
+                <div class="text-xl font-black text-red-900 mt-1">{{ bestStats.lowestUlcer.val.toFixed(2) }}</div>
+                <div class="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.lowestUlcer.sc.color }"></span>
+                  {{ bestStats.lowestUlcer.sc.name }}
+                </div>
+              </div>
+            </div>
           </div>
+
+          <!-- 风险收益对比视角 -->
           <div>
-            <label class="block text-sm font-semibold text-gray-700">开始年份</label>
-            <select v-model="strategy.config.startYear" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option v-for="y in availableYears" :key="y" :value="y">{{ y }} 年</option>
-            </select>
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">⚖️ 风险收益对比视角</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl">
+                <div class="text-xs text-emerald-600 font-semibold">最高夏普比率</div>
+                <div class="text-xl font-black text-emerald-900 mt-1">{{ bestStats.highestSharpe.val.toFixed(2) }}</div>
+                <div class="text-xs text-emerald-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestSharpe.sc.color }"></span>
+                  {{ bestStats.highestSharpe.sc.name }}
+                </div>
+              </div>
+
+              <div class="bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl">
+                <div class="text-xs text-emerald-600 font-semibold">最高卡玛比率 (收益/风险)</div>
+                <div class="text-xl font-black text-emerald-900 mt-1">{{ bestStats.highestCalmar.val.toFixed(2) }}</div>
+                <div class="text-xs text-emerald-500 mt-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestCalmar.sc.color }"></span>
+                  {{ bestStats.highestCalmar.sc.name }}
+                </div>
+              </div>
+            </div>
           </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 侧边抽屉：编辑方案 -->
+    <transition name="drawer">
+      <div v-if="editingScenarioIndex !== null" class="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-40 flex justify-end">
+        <div class="bg-white w-full max-w-md h-full shadow-2xl flex flex-col justify-between overflow-y-auto p-6 space-y-6">
+          
           <div>
-            <label class="block text-sm font-semibold text-gray-700">结束年份</label>
-            <select v-model="strategy.config.endYear" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg outline-none focus:border-blue-500">
-              <option v-for="y in availableYears" :key="'end-'+y" :value="y" :disabled="y < strategy.config.startYear">{{ y }} 年</option>
-            </select>
+            <div class="flex justify-between items-center border-b pb-3">
+              <h3 class="text-lg font-bold text-gray-900">← 编辑方案参数</h3>
+              <button @click="closeEditDrawer" class="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+
+            <div class="space-y-4 mt-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-700">方案名称</label>
+                <input type="text" v-model="activeScenario.name" class="w-full px-3 py-2 mt-1 border rounded-lg text-sm outline-none focus:border-blue-500" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">图表颜色</label>
+                <div class="flex gap-2">
+                  <button v-for="c in colorPalette" :key="c" @click="activeScenario.color = c" class="w-6 h-6 rounded-full border-2" :style="{ backgroundColor: c, borderColor: activeScenario.color === c ? '#000' : 'transparent' }"></button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700">资产策略</label>
+                <select v-model="activeScenario.rebalanceStrategy" class="w-full px-3 py-2 mt-1 border rounded-lg text-sm outline-none focus:border-blue-500">
+                  <option value="none">无再平衡 (买入持有)</option>
+                  <option value="annual">年度再平衡</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-gray-700">$ 初始资金</label>
+                  <input type="number" v-model.number="activeScenario.initialCapital" min="0" step="1000" class="w-full px-3 py-2 mt-1 border rounded-lg text-sm outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-gray-700">% 现金收益率 (%)</label>
+                  <input type="number" v-model.number="activeScenario.cashAnnualRate" step="0.5" class="w-full px-3 py-2 mt-1 border rounded-lg text-sm outline-none focus:border-blue-500" />
+                </div>
+              </div>
+
+              <!-- 定投设置 -->
+              <div class="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-xs font-bold text-gray-800">📈 定投设置 (DCA)</span>
+                  <input type="checkbox" v-model="activeScenario.dca.enabled" class="rounded text-blue-600" />
+                </div>
+                <div v-if="activeScenario.dca.enabled" class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-gray-500">每年定投金额</label>
+                    <input type="number" v-model.number="activeScenario.dca.amount" min="0" step="500" class="w-full px-2.5 py-1.5 mt-1 border rounded text-xs bg-white" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-500">频率</label>
+                    <select v-model="activeScenario.dca.frequency" class="w-full px-2.5 py-1.5 mt-1 border rounded text-xs bg-white">
+                      <option value="annual">每年年初</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 标的选择与持仓/定投 Slider -->
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="text-xs font-bold text-gray-700">⏱️ 目标持仓 (INIT Weight)</label>
+                  <button @click="addAssetToScenario" class="text-xs text-blue-600 font-semibold hover:underline">+ 增加标的</button>
+                </div>
+                <div class="space-y-3">
+                  <div v-for="(ast, aIdx) in activeScenario.assets" :key="aIdx" class="bg-gray-50 p-2.5 rounded-lg border text-xs space-y-2">
+                    <div class="flex justify-between items-center gap-2">
+                      <select v-model="ast.symbol" @change="onSymbolChange(ast)" class="font-bold text-gray-800 border rounded px-1.5 py-1 bg-white outline-none">
+                        <option value="QQQ">QQQ (1x 纳指)</option>
+                        <option value="QLD">QLD (2x 杠杆纳指)</option>
+                        <option value="TQQQ">TQQQ (3x 杠杆纳指)</option>
+                        <option value="SPY">SPY (标普500)</option>
+                        <option value="TLT">TLT (20年期美债)</option>
+                        <option value="GLD">GLD (黄金)</option>
+                        <option value="CUSTOM">自定义标的...</option>
+                      </select>
+                      <span class="font-bold text-blue-600">{{ ast.initWeight }}%</span>
+                      <button @click="removeAssetFromScenario(aIdx)" class="text-red-400 hover:text-red-600">✕</button>
+                    </div>
+
+                    <div v-if="ast.symbol === 'CUSTOM'" class="grid grid-cols-3 gap-1 bg-white p-2 rounded border">
+                      <input type="text" v-model="ast.customName" placeholder="名称" class="border rounded px-1 text-xs" />
+                      <input type="number" v-model.number="ast.customRate" placeholder="年化%" class="border rounded px-1 text-xs" />
+                      <input type="number" v-model.number="ast.customBeta" placeholder="Beta" class="border rounded px-1 text-xs" />
+                    </div>
+
+                    <input type="range" v-model.number="ast.initWeight" min="0" max="100" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                    
+                    <div v-if="activeScenario.dca.enabled" class="pt-1 border-t flex justify-between items-center">
+                      <span class="text-gray-500">DCA 比例: {{ ast.dcaWeight }}%</span>
+                      <input type="range" v-model.number="ast.dcaWeight" min="0" max="100" class="w-1/2 h-1 bg-purple-200 rounded-lg cursor-pointer" />
+                    </div>
+                  </div>
+                </div>
+                <div class="text-right text-xs text-gray-400 mt-1">剩余现金: <span class="font-bold text-gray-700">{{ getCashWeight(activeScenario, 'init') }}%</span></div>
+              </div>
+
+              <!-- 资产质押融资 / 买借死 -->
+              <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-xs font-bold text-amber-900">🏛️ 资产质押融资 / 买借死</span>
+                  <input type="checkbox" v-model="activeScenario.marginLoan.enabled" class="rounded text-amber-600" />
+                </div>
+
+                <div v-if="activeScenario.marginLoan.enabled" class="space-y-3 text-xs">
+                  <div>
+                    <label class="block text-gray-700 font-semibold">贷款年利率 (%)</label>
+                    <input type="number" v-model.number="activeScenario.marginLoan.borrowRate" min="0" step="0.1" class="w-full px-2.5 py-1.5 mt-1 border rounded bg-white" />
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-gray-700 font-semibold">警戒 LTV (%)</label>
+                      <input type="number" v-model.number="activeScenario.marginLoan.warningLTV" min="10" max="80" class="w-full px-2.5 py-1.5 mt-1 border rounded bg-white" />
+                    </div>
+                    <div>
+                      <label class="block text-gray-700 font-semibold">清算强平 LTV (%)</label>
+                      <input type="number" v-model.number="activeScenario.marginLoan.liquidationLTV" min="20" max="90" class="w-full px-2.5 py-1.5 mt-1 border rounded bg-white" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-gray-700 font-semibold">年度提领现金方式</label>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                      <select v-model="activeScenario.marginLoan.withdrawType" class="border rounded px-2 py-1 bg-white">
+                        <option value="percent">总资产百分比 (%)</option>
+                        <option value="fixed">固定金额 ($)</option>
+                      </select>
+                      <input type="number" v-model.number="activeScenario.marginLoan.withdrawValue" min="0" class="border rounded px-2 py-1 bg-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div class="pt-2 flex gap-3">
-        <button type="submit" class="bg-blue-600 text-white px-8 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition shadow">执行策略回测</button>
-        <button type="button" v-if="results.length" @click="exportCSV" class="bg-emerald-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-emerald-700 transition shadow">导出数据 CSV</button>
-      </div>
-    </form>
-
-    <!-- 回测结果展示区 -->
-    <template v-if="results.length">
-      <!-- 核心指标统计 -->
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-8">
-        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
-          <div class="text-xs text-gray-500">期末净资产 (Net Worth)</div>
-          <div class="text-xl font-bold mt-1" :class="summary.finalNetWorth >= 0 ? 'text-gray-900' : 'text-red-600'">{{ fmtMoney(summary.finalNetWorth) }}</div>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-teal-500">
-          <div class="text-xs text-gray-500">累计投入资金 (初始+定投)</div>
-          <div class="text-xl font-bold mt-1 text-teal-600">{{ fmtMoney(summary.totalInvested) }}</div>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-indigo-500">
-          <div class="text-xs text-gray-500">累计已提领现金</div>
-          <div class="text-xl font-bold mt-1 text-indigo-600">{{ fmtMoney(summary.totalWithdrawn) }}</div>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-amber-500">
-          <div class="text-xs text-gray-500">期末总债务 (Margin Debt)</div>
-          <div class="text-xl font-bold mt-1 text-amber-600">{{ fmtMoney(summary.finalDebt) }}</div>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-emerald-500">
-          <div class="text-xs text-gray-500">最高 LTV 峰值 / 年化 CAGR</div>
-          <div class="text-xl font-bold mt-1 text-emerald-600">
-            <span v-if="strategy.withdrawal.mode === 'buy_borrow_die'" :class="summary.maxLTV > strategy.margin.warningLTV / 100 ? 'text-red-500' : ''">
-              {{ (summary.maxLTV * 100).toFixed(1) }}% |
-            </span>
-            {{ (summary.cagr * 100).toFixed(2) }}%
+          <div class="pt-4 border-t">
+            <button @click="closeEditDrawer" class="w-full bg-gray-900 hover:bg-black text-white font-bold py-2.5 rounded-xl transition">✓ 保存修改</button>
           </div>
-        </div>
-      </div>
 
-      <!-- 资产与债务走势图 -->
-      <div class="bg-white rounded-xl shadow-sm p-5 mt-6 border border-gray-100">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-gray-800">总资产、总债务与净资产走势</h3>
-          <span class="text-xs text-gray-400">蓝线：股票总市值 | 绿线：净资产 | 橙虚线：Margin 债务</span>
-        </div>
-        <div class="relative h-80">
-          <canvas id="wealthChart"></canvas>
         </div>
       </div>
+    </transition>
 
-      <!-- LTV 风险监控图 -->
-      <div v-if="strategy.withdrawal.mode === 'buy_borrow_die'" class="bg-white rounded-xl shadow-sm p-5 mt-6 border border-gray-100">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-gray-800">LTV (借贷比例) 风险监控图</h3>
-          <span class="text-xs text-gray-400">黄虚线：警戒线 ({{ strategy.margin.warningLTV }}%) | 红虚线：平仓线 ({{ strategy.margin.liquidationLTV }}%)</span>
-        </div>
-        <div class="relative h-60">
-          <canvas id="ltvChart"></canvas>
-        </div>
-      </div>
-
-      <!-- 逐年明细表格 -->
-      <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-4 bg-gray-50 border-b font-bold text-gray-700">年度策略回测运行明细</div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-800 text-white">
-              <tr>
-                <th class="px-3 py-2.5 text-center">年份</th>
-                <th class="px-3 py-2.5 text-right" v-for="a in strategy.assets" :key="a.name">{{ a.name }} 市值</th>
-                <th class="px-3 py-2.5 text-right">总资产价值</th>
-                <th class="px-3 py-2.5 text-right">累计债务</th>
-                <th class="px-3 py-2.5 text-right">净资产</th>
-                <th class="px-3 py-2.5 text-center" v-if="strategy.withdrawal.mode === 'buy_borrow_die'">LTV (%)</th>
-                <th class="px-3 py-2.5 text-right">当年定投投入</th>
-                <th class="px-3 py-2.5 text-right">当年提领现金</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in results" :key="item.year" class="border-b border-gray-100 hover:bg-gray-50">
-                <td class="px-3 py-2 text-center font-semibold">{{ item.year }}</td>
-                <td class="px-3 py-2 text-right" v-for="(v, idx) in item.assetValues" :key="idx">{{ fmtMoney(v) }}</td>
-                <td class="px-3 py-2 text-right font-medium text-blue-600">{{ fmtMoney(item.totalAssetValue) }}</td>
-                <td class="px-3 py-2 text-right text-amber-600">{{ fmtMoney(item.debt) }}</td>
-                <td class="px-3 py-2 text-right font-bold" :class="item.netWorth >= 0 ? 'text-gray-900' : 'text-red-600'">{{ fmtMoney(item.netWorth) }}</td>
-                <td v-if="strategy.withdrawal.mode === 'buy_borrow_die'" class="px-3 py-2 text-center font-semibold" :class="item.ltv > strategy.margin.warningLTV / 100 ? 'text-red-500' : 'text-emerald-600'">
-                  {{ (item.ltv * 100).toFixed(1) }}%
-                </td>
-                <td class="px-3 py-2 text-right text-teal-600">{{ fmtMoney(item.dcaIn) }}</td>
-                <td class="px-3 py-2 text-right text-indigo-600">{{ fmtMoney(item.withdrawn) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </template>
   </div>
 
-  <!-- 历史标的年度收益率数据 (1999-2025) -->
+  <!-- 历史基准回报数据库与固定 Beta 数据 (1999–2025) -->
   <script>
-    var historicalReturns = {
-      1999: { qqq: 1.019, qld: 2.10, tqqq: 3.20 },
-      2000: { qqq: -0.368, qld: -0.65, tqqq: -0.88 },
-      2001: { qqq: -0.327, qld: -0.60, tqqq: -0.80 },
-      2002: { qqq: -0.376, qld: -0.68, tqqq: -0.85 },
-      2003: { qqq: 0.497, qld: 1.10, tqqq: 1.80 },
-      2004: { qqq: 0.104, qld: 0.20, tqqq: 0.32 },
-      2005: { qqq: 0.016, qld: 0.02, tqqq: 0.02 },
-      2006: { qqq: 0.071, qld: 0.13, tqqq: 0.20 },
-      2007: { qqq: 0.190, qld: 0.38, tqqq: 0.60 },
-      2008: { qqq: -0.419, qld: -0.72, tqqq: -0.92 },
-      2009: { qqq: 0.547, qld: 1.25, tqqq: 2.10 },
-      2010: { qqq: 0.192, qld: 0.38, tqqq: 0.58 },
-      2011: { qqq: 0.034, qld: 0.04, tqqq: 0.02 },
-      2012: { qqq: 0.181, qld: 0.36, tqqq: 0.56 },
-      2013: { qqq: 0.366, qld: 0.82, tqqq: 1.40 },
-      2014: { qqq: 0.192, qld: 0.38, tqqq: 0.58 },
-      2015: { qqq: 0.097, qld: 0.17, tqqq: 0.26 },
-      2016: { qqq: 0.071, qld: 0.12, tqqq: 0.18 },
-      2017: { qqq: 0.327, qld: 0.71, tqqq: 1.18 },
-      2018: { qqq: -0.001, qld: -0.06, tqqq: -0.19 },
-      2019: { qqq: 0.391, qld: 0.88, tqqq: 1.42 },
-      2020: { qqq: 0.486, qld: 1.08, tqqq: 1.85 },
-      2021: { qqq: 0.274, qld: 0.58, tqqq: 0.83 },
-      2022: { qqq: -0.326, qld: -0.60, tqqq: -0.79 },
-      2023: { qqq: 0.548, qld: 1.22, tqqq: 1.98 },
-      2024: { qqq: 0.250, qld: 0.52, tqqq: 0.82 },
-      2025: { qqq: 0.180, qld: 0.36, tqqq: 0.55 }
+    var historicalData = {
+      1999: { QQQ: 1.019, QLD: 2.10, TQQQ: 3.20, SPY: 0.203, TLT: -0.09, GLD: 0.01 },
+      2000: { QQQ: -0.368, QLD: -0.65, TQQQ: -0.88, SPY: -0.091, TLT: 0.15, GLD: -0.03 },
+      2001: { QQQ: -0.327, QLD: -0.60, TQQQ: -0.80, SPY: -0.119, TLT: 0.04, GLD: 0.01 },
+      2002: { QQQ: -0.376, QLD: -0.68, TQQQ: -0.85, SPY: -0.221, TLT: 0.16, GLD: 0.24 },
+      2003: { QQQ: 0.497, QLD: 1.10, TQQQ: 1.80, SPY: 0.287, TLT: 0.02, GLD: 0.19 },
+      2004: { QQQ: 0.104, QLD: 0.20, TQQQ: 0.32, SPY: 0.109, TLT: 0.07, GLD: 0.05 },
+      2005: { QQQ: 0.016, QLD: 0.02, TQQQ: 0.02, SPY: 0.049, TLT: 0.06, GLD: 0.18 },
+      2006: { QQQ: 0.071, QLD: 0.13, TQQQ: 0.20, SPY: 0.158, TLT: 0.01, GLD: 0.23 },
+      2007: { QQQ: 0.190, QLD: 0.38, TQQQ: 0.60, SPY: 0.055, TLT: 0.10, GLD: 0.31 },
+      2008: { QQQ: -0.419, QLD: -0.72, TQQQ: -0.92, SPY: -0.370, TLT: 0.34, GLD: 0.05 },
+      2009: { QQQ: 0.547, QLD: 1.25, TQQQ: 2.10, SPY: 0.265, TLT: -0.21, GLD: 0.24 },
+      2010: { QQQ: 0.192, QLD: 0.38, TQQQ: 0.58, SPY: 0.151, TLT: 0.09, GLD: 0.29 },
+      2011: { QQQ: 0.034, QLD: 0.04, TQQQ: 0.02, SPY: 0.021, TLT: 0.34, GLD: 0.10 },
+      2012: { QQQ: 0.181, QLD: 0.36, TQQQ: 0.56, SPY: 0.160, TLT: 0.02, GLD: 0.07 },
+      2013: { QQQ: 0.366, QLD: 0.82, TQQQ: 1.40, SPY: 0.324, TLT: -0.13, GLD: -0.28 },
+      2014: { QQQ: 0.192, QLD: 0.38, TQQQ: 0.58, SPY: 0.137, TLT: 0.27, GLD: -0.02 },
+      2015: { QQQ: 0.097, QLD: 0.17, TQQQ: 0.26, SPY: 0.014, TLT: -0.02, GLD: -0.10 },
+      2016: { QQQ: 0.071, QLD: 0.12, TQQQ: 0.18, SPY: 0.120, TLT: 0.01, GLD: 0.08 },
+      2017: { QQQ: 0.327, QLD: 0.71, TQQQ: 1.18, SPY: 0.218, TLT: 0.09, GLD: 0.13 },
+      2018: { QQQ: -0.001, QLD: -0.06, TQQQ: -0.19, SPY: -0.044, TLT: -0.02, GLD: -0.02 },
+      2019: { QQQ: 0.391, QLD: 0.88, TQQQ: 1.42, SPY: 0.315, TLT: 0.14, GLD: 0.18 },
+      2020: { QQQ: 0.486, QLD: 1.08, TQQQ: 1.85, SPY: 0.184, TLT: 0.18, GLD: 0.25 },
+      2021: { QQQ: 0.274, QLD: 0.58, TQQQ: 0.83, SPY: 0.287, TLT: -0.04, GLD: -0.04 },
+      2022: { QQQ: -0.326, QLD: -0.60, TQQQ: -0.79, SPY: -0.181, TLT: -0.31, GLD: -0.01 },
+      2023: { QQQ: 0.548, QLD: 1.22, TQQQ: 1.98, SPY: 0.263, TLT: 0.03, GLD: 0.13 },
+      2024: { QQQ: 0.250, QLD: 0.52, TQQQ: 0.82, SPY: 0.240, TLT: -0.04, GLD: 0.27 },
+      2025: { QQQ: 0.180, QLD: 0.36, TQQQ: 0.55, SPY: 0.150, TLT: 0.02, GLD: 0.10 }
     };
+
+    var assetBetas = { QQQ: 1.0, QLD: 2.0, TQQQ: 3.0, SPY: 1.0, TLT: 0.1, GLD: 0.0 };
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
@@ -320,340 +448,360 @@
       el: '#app',
       data: function() {
         return {
-          availableYears: Object.keys(historicalReturns).map(Number).sort(function(a, b) { return a - b; }),
-          strategy: {
-            assets: [
-              { name: 'QQQ (1x)', weight: 40, type: 'historical_qqq', fixedRate: 0 },
-              { name: 'QLD (2x)', weight: 30, type: 'historical_qld', fixedRate: 0 },
-              { name: 'MMF 现金', weight: 30, type: 'fixed_mmf', fixedRate: 4.5 }
-            ],
-            dca: {
-              enabled: false,
-              annualAmount: 20000,
-              timing: 'beginning'
+          colorPalette: ['#2563eb', '#f97316', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4'],
+          editingScenarioIndex: null,
+          chartInstances: {},
+          scenarios: [
+            {
+              id: 703,
+              name: '方案 703: 年度再平衡',
+              color: '#2563eb',
+              rebalanceStrategy: 'annual',
+              initialCapital: 100000,
+              cashAnnualRate: 2.0,
+              dca: { enabled: true, amount: 6000, frequency: 'annual' },
+              assets: [
+                { symbol: 'QQQ', initWeight: 70, dcaWeight: 70 },
+                { symbol: 'QLD', initWeight: 0, dcaWeight: 0 }
+              ],
+              marginLoan: { enabled: false, borrowRate: 5.0, warningLTV: 45, liquidationLTV: 65, withdrawType: 'percent', withdrawValue: 0 }
             },
-            withdrawal: {
-              mode: 'buy_borrow_die',
-              type: 'fixed',
-              fixedAmount: 40000,
-              percentRate: 4.0
-            },
-            margin: {
-              borrowRate: 5.5,
-              warningLTV: 45,
-              liquidationLTV: 65,
-              defensiveStrategy: 'use_cash'
-            },
-            config: {
-              initialCapital: 1000000,
-              startYear: 1999,
-              endYear: 2025
+            {
+              id: 433,
+              name: '方案 433: 买借死高杠杆',
+              color: '#f97316',
+              rebalanceStrategy: 'annual',
+              initialCapital: 100000,
+              cashAnnualRate: 2.0,
+              dca: { enabled: true, amount: 6000, frequency: 'annual' },
+              assets: [
+                { symbol: 'QQQ', initWeight: 40, dcaWeight: 40 },
+                { symbol: 'QLD', initWeight: 30, dcaWeight: 30 }
+              ],
+              marginLoan: { enabled: true, borrowRate: 5.0, warningLTV: 40, liquidationLTV: 60, withdrawType: 'percent', withdrawValue: 3 }
             }
-          },
-          results: [],
-          wealthChart: null,
-          ltvChart: null
+          ],
+          comparisonResults: []
         };
       },
       computed: {
-        totalWeight: function() {
-          return this.strategy.assets.reduce(function(sum, a) { return sum + (Number(a.weight) || 0); }, 0);
+        activeScenario: function() {
+          if (this.editingScenarioIndex === null) return null;
+          return this.scenarios[this.editingScenarioIndex];
         },
-        summary: function() {
-          if (!this.results.length) return {};
-          var last = this.results[this.results.length - 1];
-          var maxLTV = 0;
-          var totalWithdrawn = 0;
-          var totalInvested = this.strategy.config.initialCapital;
+        // 计算全维度冠军卡片
+        bestStats: function() {
+          if (!this.comparisonResults.length) return {};
+          var res = this.comparisonResults;
 
-          this.results.forEach(function(r) {
-            if (r.ltv > maxLTV) maxLTV = r.ltv;
-            totalWithdrawn += r.withdrawn;
-            totalInvested += r.dcaIn;
-          });
+          var highestBal = res.reduce(function(p, c){ return c.finalNetWorth > p.val ? {val: c.finalNetWorth, sc: c} : p; }, {val: -Infinity});
+          var highestCAGR = res.reduce(function(p, c){ return c.cagr > p.val ? {val: c.cagr, sc: c} : p; }, {val: -Infinity});
+          var highestIRR = res.reduce(function(p, c){ return c.irr > p.val ? {val: c.irr, sc: c} : p; }, {val: -Infinity});
+          
+          var lowestMDD = res.reduce(function(p, c){ return c.maxDrawdown < p.val ? {val: c.maxDrawdown, sc: c} : p; }, {val: Infinity});
+          var shortestRec = res.reduce(function(p, c){ return c.maxRecoveryYears < p.val ? {val: c.maxRecoveryYears, sc: c} : p; }, {val: Infinity});
+          var lowestUlcer = res.reduce(function(p, c){ return c.ulcerIndex < p.val ? {val: c.ulcerIndex, sc: c} : p; }, {val: Infinity});
 
-          var years = this.strategy.config.endYear - this.strategy.config.startYear + 1;
-          var ratio = last.netWorth > 0 ? (last.netWorth / totalInvested) : 0;
-          var cagr = ratio > 0 ? Math.pow(ratio, 1 / years) - 1 : -1;
+          var highestSharpe = res.reduce(function(p, c){ return c.sharpeRatio > p.val ? {val: c.sharpeRatio, sc: c} : p; }, {val: -Infinity});
+          var highestCalmar = res.reduce(function(p, c){ return c.calmarRatio > p.val ? {val: c.calmarRatio, sc: c} : p; }, {val: -Infinity});
 
           return {
-            finalNetWorth: last.netWorth,
-            finalDebt: last.debt,
-            totalWithdrawn: totalWithdrawn,
-            totalInvested: totalInvested,
-            maxLTV: maxLTV,
-            cagr: cagr
+            highestBalance: highestBal,
+            highestCAGR: highestCAGR,
+            highestIRR: highestIRR,
+            lowestMDD: lowestMDD,
+            shortestRecovery: shortestRec,
+            lowestUlcer: lowestUlcer,
+            highestSharpe: highestSharpe,
+            highestCalmar: highestCalmar
           };
         }
       },
       methods: {
-        addAsset: function() {
-          this.strategy.assets.push({
-            name: '新资产 ' + (this.strategy.assets.length + 1),
-            weight: 0,
-            type: 'historical_qqq',
-            fixedRate: 3.0
-          });
+        getCashWeight: function(sc, type) {
+          if (!sc) return 100;
+          var key = type === 'init' ? 'initWeight' : 'dcaWeight';
+          var sum = sc.assets.reduce(function(s, a) { return s + (Number(a[key]) || 0); }, 0);
+          return Math.max(0, 100 - sum);
         },
-        removeAsset: function(index) {
-          this.strategy.assets.splice(index, 1);
+        addNewScenario: function() {
+          var id = Math.floor(Math.random()*800 + 100);
+          var newSc = JSON.parse(JSON.stringify(this.scenarios[0]));
+          newSc.id = id;
+          newSc.name = '方案 ' + id + ': 新配置';
+          newSc.color = this.colorPalette[this.scenarios.length % this.colorPalette.length];
+          this.scenarios.push(newSc);
+        },
+        duplicateScenario: function(idx) {
+          var sc = JSON.parse(JSON.stringify(this.scenarios[idx]));
+          sc.id = Math.floor(Math.random()*800 + 100);
+          sc.name += ' (副本)';
+          this.scenarios.splice(idx + 1, 0, sc);
+        },
+        deleteScenario: function(idx) {
+          if (this.scenarios.length > 1) {
+            this.scenarios.splice(idx, 1);
+          }
+        },
+        openEditDrawer: function(idx) {
+          this.editingScenarioIndex = idx;
+        },
+        closeEditDrawer: function() {
+          this.editingScenarioIndex = null;
+        },
+        addAssetToScenario: function() {
+          if (!this.activeScenario) return;
+          this.activeScenario.assets.push({ symbol: 'SPY', initWeight: 0, dcaWeight: 0 });
+        },
+        removeAssetFromScenario: function(aIdx) {
+          if (!this.activeScenario) return;
+          this.activeScenario.assets.splice(aIdx, 1);
+        },
+        onSymbolChange: function(ast) {
+          if (ast.symbol === 'CUSTOM') {
+            ast.customName = '自定义标的';
+            ast.customRate = 8.0;
+            ast.customBeta = 1.0;
+          }
         },
         fmtMoney: function(num) {
-          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          if (typeof num !== 'number' || isNaN(num)) return '$0';
           var abs = Math.abs(num);
-          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
-          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
-          return num.toFixed(2);
+          if (abs >= 100000000) return '$' + (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return '$' + (num / 10000).toFixed(2) + '万';
+          return '$' + num.toFixed(0);
         },
-        getReturnForAsset: function(asset, year) {
-          var data = historicalReturns[year] || { qqq: 0.08, qld: 0.16, tqqq: 0.24 };
-          if (asset.type === 'historical_qqq') return data.qqq;
-          if (asset.type === 'historical_qld') return data.qld;
-          if (asset.type === 'historical_tqqq') return data.tqqq;
-          if (asset.type === 'fixed_mmf') return (asset.fixedRate || 0) / 100;
-          return 0;
-        },
-        runStrategyBacktest: function() {
-          if (this.totalWeight !== 100) {
-            alert('资产配置目标权重之和必须恰好等于 100%');
-            return;
-          }
 
-          var start = this.strategy.config.startYear;
-          var end = this.strategy.config.endYear;
-          var initCap = this.strategy.config.initialCapital;
+        // 全量策略对比计算中心
+        runComparison: function() {
+          var years = Object.keys(historicalData).map(Number).sort(function(a,b){ return a-b; });
+          var allResults = [];
 
-          // 初始各资产金额
-          var currentAssetValues = this.strategy.assets.map(function(a) {
-            return initCap * (a.weight / 100);
-          });
+          this.scenarios.forEach(function(sc) {
+            var cashFlows = [-sc.initialCapital];
+            var totalInvested = sc.initialCapital;
+            var debt = 0;
 
-          var debt = 0;
-          var res = [];
-
-          for (var y = start; y <= end; y++) {
-            var dcaAddedThisYear = 0;
-
-            // 1. 年初定投逻辑
-            if (this.strategy.dca.enabled && this.strategy.dca.timing === 'beginning') {
-              dcaAddedThisYear = this.strategy.dca.annualAmount;
-              for (var i = 0; i < currentAssetValues.length; i++) {
-                currentAssetValues[i] += dcaAddedThisYear * (this.strategy.assets[i].weight / 100);
-              }
-            }
-
-            // 2. 各资产根据当年市场收益增长
-            for (var i = 0; i < currentAssetValues.length; i++) {
-              var ret = this.getReturnForAsset(this.strategy.assets[i], y);
-              currentAssetValues[i] *= (1 + ret);
-            }
-
-            // 债务计息
-            if (debt > 0) {
-              debt *= (1 + (this.strategy.margin.borrowRate / 100));
-            }
-
-            // 年末定投逻辑
-            if (this.strategy.dca.enabled && this.strategy.dca.timing === 'end') {
-              dcaAddedThisYear = this.strategy.dca.annualAmount;
-              for (var i = 0; i < currentAssetValues.length; i++) {
-                currentAssetValues[i] += dcaAddedThisYear * (this.strategy.assets[i].weight / 100);
-              }
-            }
-
-            var totalAssetVal = currentAssetValues.reduce(function(sum, v) { return sum + v; }, 0);
-            var currentLTV = totalAssetVal > 0 ? (debt / totalAssetVal) : 0;
-            var actualWithdrawn = 0;
-
-            // 3. 计算本期目标提领金额 (固定金额 vs 百分比)
-            var targetWithdrawal = 0;
-            if (this.strategy.withdrawal.mode !== 'none') {
-              if (this.strategy.withdrawal.type === 'fixed') {
-                targetWithdrawal = this.strategy.withdrawal.fixedAmount;
-              } else {
-                targetWithdrawal = totalAssetVal * (this.strategy.withdrawal.percentRate / 100);
-              }
-            }
-
-            // 4. 风控与“买借死”提领处理
-            var warningThreshold = this.strategy.margin.warningLTV / 100;
-            var liquidationThreshold = this.strategy.margin.liquidationLTV / 100;
-
-            // 强平检查
-            if (this.strategy.withdrawal.mode === 'buy_borrow_die' && currentLTV >= liquidationThreshold) {
-              var targetDebt = totalAssetVal * warningThreshold;
-              var payAmount = debt - targetDebt;
-              debt -= payAmount;
-              totalAssetVal -= payAmount;
-              var scale = totalAssetVal > 0 ? (totalAssetVal / (totalAssetVal + payAmount)) : 0;
-              currentAssetValues = currentAssetValues.map(function(v) { return v * scale; });
-            }
-
-            // 执行提领
-            if (this.strategy.withdrawal.mode === 'buy_borrow_die') {
-              currentLTV = totalAssetVal > 0 ? (debt / totalAssetVal) : 0;
-              if (currentLTV >= warningThreshold) {
-                if (this.strategy.margin.defensiveStrategy === 'use_cash') {
-                  // 寻找 MMF/现金类无杠杆资产优先扣除
-                  var cashIndex = this.strategy.assets.findIndex(function(a) { return a.type === 'fixed_mmf'; });
-                  if (cashIndex !== -1 && currentAssetValues[cashIndex] >= targetWithdrawal) {
-                    currentAssetValues[cashIndex] -= targetWithdrawal;
-                    actualWithdrawn = targetWithdrawal;
-                  } else {
-                    debt += targetWithdrawal;
-                    actualWithdrawn = targetWithdrawal;
-                  }
-                } else if (this.strategy.margin.defensiveStrategy === 'pause') {
-                  actualWithdrawn = 0; // 暂停提领
-                } else {
-                  debt += targetWithdrawal;
-                  actualWithdrawn = targetWithdrawal;
-                }
-              } else {
-                debt += targetWithdrawal;
-                actualWithdrawn = targetWithdrawal;
-              }
-            } else if (this.strategy.withdrawal.mode === 'sell_off') {
-              actualWithdrawn = targetWithdrawal;
-              if (totalAssetVal >= targetWithdrawal) {
-                var withdrawScale = (totalAssetVal - targetWithdrawal) / totalAssetVal;
-                currentAssetValues = currentAssetValues.map(function(v) { return v * withdrawScale; });
-              } else {
-                currentAssetValues = currentAssetValues.map(function() { return 0; });
-              }
-            }
-
-            // 5. 执行组合再平衡 (按照配置的目标权重重新归位)
-            var finalTotalAsset = currentAssetValues.reduce(function(sum, v) { return sum + v; }, 0);
-            if (finalTotalAsset > 0) {
-              for (var i = 0; i < currentAssetValues.length; i++) {
-                currentAssetValues[i] = finalTotalAsset * (this.strategy.assets[i].weight / 100);
-              }
-            }
-
-            var netWorth = finalTotalAsset - debt;
-            var finalLTV = finalTotalAsset > 0 ? (debt / finalTotalAsset) : 0;
-
-            res.push({
-              year: y,
-              assetValues: currentAssetValues.slice(),
-              totalAssetValue: finalTotalAsset,
-              debt: debt,
-              netWorth: netWorth,
-              ltv: finalLTV,
-              dcaIn: dcaAddedThisYear,
-              withdrawn: actualWithdrawn
+            // 持仓数量
+            var assetHoldings = {};
+            sc.assets.forEach(function(a) {
+              var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
+              assetHoldings[key] = sc.initialCapital * (a.initWeight / 100);
             });
-          }
+            var cashHolding = sc.initialCapital * (this.getCashWeight(sc, 'init') / 100);
 
-          this.results = res;
-          this.$nextTick(function() {
-            this.renderWealthChart();
-            this.renderLTVChart();
+            var timeline = [];
+            var peakNetWorth = -Infinity;
+            var squaredDrawdownsSum = 0;
+            var currentRecoveryYears = 0;
+            var maxRecoveryYears = 0;
+
+            years.forEach(function(y) {
+              // 1. 定投投入
+              var yearCF = 0;
+              if (sc.dca.enabled && sc.dca.amount > 0) {
+                totalInvested += sc.dca.amount;
+                yearCF -= sc.dca.amount;
+                sc.assets.forEach(function(a) {
+                  var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
+                  assetHoldings[key] += sc.dca.amount * (a.dcaWeight / 100);
+                });
+                cashHolding += sc.dca.amount * (this.getCashWeight(sc, 'dca') / 100);
+              }
+
+              // 2. 增长收益
+              var yearRates = historicalData[y] || {};
+              var currentBetaWeighted = 0;
+              var totalAssetValBeforeValuation = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
+
+              sc.assets.forEach(function(a) {
+                var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
+                var rate = a.symbol === 'CUSTOM' ? (a.customRate / 100) : (yearRates[a.symbol] || 0.08);
+                var beta = a.symbol === 'CUSTOM' ? (a.customBeta || 1.0) : (assetBetas[a.symbol] || 0);
+
+                var weight = totalAssetValBeforeValuation > 0 ? (assetHoldings[key] / totalAssetValBeforeValuation) : 0;
+                currentBetaWeighted += weight * beta;
+
+                assetHoldings[key] *= (1 + rate);
+              });
+
+              cashHolding *= (1 + (sc.cashAnnualRate / 100));
+              if (debt > 0) debt *= (1 + (sc.marginLoan.borrowRate / 100));
+
+              var totalAssets = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
+              var curLTV = totalAssets > 0 ? (debt / totalAssets) : 0;
+
+              // 3. 买借死与提领
+              if (sc.marginLoan.enabled) {
+                if (curLTV >= sc.marginLoan.liquidationLTV / 100) {
+                  var payoff = debt - (totalAssets * (sc.marginLoan.warningLTV / 100));
+                  debt -= payoff;
+                  totalAssets -= payoff;
+                }
+                var wAmt = sc.marginLoan.withdrawType === 'percent' ? (totalAssets * (sc.marginLoan.withdrawValue / 100)) : sc.marginLoan.withdrawValue;
+                debt += wAmt;
+                yearCF += wAmt;
+              }
+
+              cashFlows.push(yearCF);
+
+              // 4. 再平衡
+              if (sc.rebalanceStrategy === 'annual' && totalAssets > 0) {
+                sc.assets.forEach(function(a) {
+                  var key = a.symbol === 'CUSTOM' ? a.customName : a.symbol;
+                  assetHoldings[key] = totalAssets * (a.initWeight / 100);
+                });
+                cashHolding = totalAssets * (this.getCashWeight(sc, 'init') / 100);
+              }
+
+              var finalNetWorth = (Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding) - debt;
+
+              // 回撤与溃疡指数计算
+              if (finalNetWorth > peakNetWorth) {
+                peakNetWorth = finalNetWorth;
+                currentRecoveryYears = 0;
+              } else {
+                currentRecoveryYears++;
+                if (currentRecoveryYears > maxRecoveryYears) maxRecoveryYears = currentRecoveryYears;
+              }
+
+              var ddPercent = peakNetWorth > 0 ? Math.min(0, (finalNetWorth - peakNetWorth) / peakNetWorth) : 0;
+              squaredDrawdownsSum += Math.pow(ddPercent * 100, 2);
+
+              var prevNW = timeline.length > 0 ? timeline[timeline.length - 1].netWorth : sc.initialCapital;
+              var annualReturn = prevNW > 0 ? (finalNetWorth - prevNW) / prevNW : 0;
+
+              timeline.push({
+                year: y,
+                netWorth: finalNetWorth,
+                annualReturn: annualReturn,
+                drawdown: ddPercent,
+                beta: currentBetaWeighted
+              });
+            }.bind(this));
+
+            var lastNetWorth = timeline[timeline.length - 1].netWorth;
+            var cagr = Math.pow(Math.max(0, lastNetWorth) / totalInvested, 1 / years.length) - 1;
+            
+            // 计算最大回撤
+            var maxDrawdown = Math.abs(timeline.reduce(function(m, t){ return t.drawdown < m ? t.drawdown : m; }, 0));
+            var ulcerIndex = Math.sqrt(squaredDrawdownsSum / years.length);
+
+            // 夏普与卡玛比率
+            var returnsArr = timeline.map(function(t){ return t.annualReturn; });
+            var avgRet = returnsArr.reduce(function(s,v){return s+v;}, 0) / returnsArr.length;
+            var stdDev = Math.sqrt(returnsArr.reduce(function(s,v){ return s + Math.pow(v - avgRet, 2); }, 0) / returnsArr.length);
+            var sharpeRatio = stdDev > 0 ? (cagr - 0.02) / stdDev : 0;
+            var calmarRatio = maxDrawdown > 0 ? cagr / maxDrawdown : 0;
+
+            // 估算 IRR
+            var irr = cagr; // 近似简易估算
+
+            allResults.push({
+              id: sc.id,
+              name: sc.name,
+              color: sc.color,
+              finalNetWorth: lastNetWorth,
+              totalInvested: totalInvested,
+              cagr: cagr,
+              irr: irr,
+              maxDrawdown: maxDrawdown,
+              maxRecoveryYears: maxRecoveryYears,
+              sharpeRatio: sharpeRatio,
+              calmarRatio: calmarRatio,
+              ulcerIndex: ulcerIndex,
+              timeline: timeline
+            });
           }.bind(this));
+
+          this.comparisonResults = allResults;
+          this.$nextTick(this.renderAllCharts);
         },
-        renderWealthChart: function() {
-          var canvas = document.getElementById('wealthChart');
-          if (!canvas) return;
-          if (this.wealthChart) this.wealthChart.destroy();
 
-          var years = this.results.map(function(r) { return r.year; });
-          var stocks = this.results.map(function(r) { return Number(r.totalAssetValue.toFixed(2)); });
-          var debts = this.results.map(function(r) { return Number(r.debt.toFixed(2)); });
-          var netWorths = this.results.map(function(r) { return Number(r.netWorth.toFixed(2)); });
+        // 渲染四个分析图表 (对标图片1 & 2)
+        renderAllCharts: function() {
+          if (!this.comparisonResults.length) return;
+          var years = this.comparisonResults[0].timeline.map(function(t){ return t.year; });
 
-          this.wealthChart = new Chart(canvas, {
+          // 销毁旧实例
+          Object.values(this.chartInstances).forEach(function(c){ if(c) c.destroy(); });
+          this.chartInstances = {};
+
+          // 1. 资产增长趋势 (净值)
+          this.chartInstances.netWorth = new Chart(document.getElementById('chartNetWorth'), {
             type: 'line',
             data: {
               labels: years,
-              datasets: [
-                { label: '总资产价值', data: stocks, borderColor: '#2563eb', fill: false, borderWidth: 2, pointRadius: 0 },
-                { label: '净资产 (Net Worth)', data: netWorths, borderColor: '#10b981', fill: false, borderWidth: 2, pointRadius: 0 },
-                { label: 'Margin 债务', data: debts, borderColor: '#f59e0b', borderDash: [4, 4], fill: false, borderWidth: 1.5, pointRadius: 0 }
-              ]
+              datasets: this.comparisonResults.map(function(res) {
+                return { label: res.name, data: res.timeline.map(function(t){ return Math.round(t.netWorth); }), borderColor: res.color, borderWidth: 2, pointRadius: 0 };
+              })
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+
+          // 2. 年度回报对比 (Bar Chart)
+          this.chartInstances.annualReturn = new Chart(document.getElementById('chartAnnualReturn'), {
+            type: 'bar',
+            data: {
+              labels: years,
+              datasets: this.comparisonResults.map(function(res) {
+                return { label: res.name, data: res.timeline.map(function(t){ return (t.annualReturn * 100).toFixed(1); }), backgroundColor: res.color };
+              })
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+
+          // 3. 历史回撤
+          this.chartInstances.drawdown = new Chart(document.getElementById('chartDrawdown'), {
+            type: 'line',
+            data: {
+              labels: years,
+              datasets: this.comparisonResults.map(function(res) {
+                return { label: res.name, data: res.timeline.map(function(t){ return (t.drawdown * 100).toFixed(1); }), borderColor: res.color, borderWidth: 1.5, pointRadius: 0 };
+              })
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+
+          // 4. Beta 风险敞口
+          this.chartInstances.beta = new Chart(document.getElementById('chartBeta'), {
+            type: 'line',
+            data: {
+              labels: years,
+              datasets: this.comparisonResults.map(function(res) {
+                return { label: res.name, data: res.timeline.map(function(t){ return t.beta.toFixed(2); }), borderColor: res.color, borderWidth: 1.5, pointRadius: 0 };
+              })
             },
             options: { responsive: true, maintainAspectRatio: false }
           });
         },
-        renderLTVChart: function() {
-          var canvas = document.getElementById('ltvChart');
-          if (!canvas) return;
-          if (this.ltvChart) this.ltvChart.destroy();
 
-          var years = this.results.map(function(r) { return r.year; });
-          var ltvs = this.results.map(function(r) { return Number((r.ltv * 100).toFixed(2)); });
-          var warningLine = Array(years.length).fill(this.strategy.margin.warningLTV);
-          var liqLine = Array(years.length).fill(this.strategy.margin.liquidationLTV);
-
-          this.ltvChart = new Chart(canvas, {
-            type: 'line',
-            data: {
-              labels: years,
-              datasets: [
-                { label: '实际 LTV (%)', data: ltvs, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, borderWidth: 2 },
-                { label: '警戒线 (%)', data: warningLine, borderColor: '#f59e0b', borderDash: [4, 4], fill: false, pointRadius: 0 },
-                { label: '平仓线 (%)', data: liqLine, borderColor: '#ef4444', borderDash: [2, 2], fill: false, pointRadius: 0 }
-              ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
-          });
-        },
-        exportStrategyJSON: function() {
-          var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.strategy, null, 2));
+        exportAllConfigJSON: function() {
+          var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.scenarios, null, 2));
           var a = document.createElement('a');
           a.setAttribute("href", dataStr);
-          a.setAttribute("download", "strategy_config.json");
+          a.setAttribute("download", "scenarios_pro_config.json");
           document.body.appendChild(a);
           a.click();
           a.remove();
         },
-        triggerJSONImport: function() {
-          this.$refs.jsonFileInput.click();
-        },
-        importStrategyJSON: function(e) {
+        triggerJSONImport: function() { this.$refs.jsonFileInput.click(); },
+        importConfigJSON: function(e) {
           var file = e.target.files[0];
           if (!file) return;
           var reader = new FileReader();
           var self = this;
           reader.onload = function(evt) {
             try {
-              var obj = JSON.parse(evt.target.result);
-              self.strategy = obj;
-              alert('策略配置导入成功！');
-            } catch (err) {
-              alert('JSON 格式不正确');
-            }
+              self.scenarios = JSON.parse(evt.target.result);
+              self.runComparison();
+            } catch (err) { alert('JSON 格式不正确'); }
           };
           reader.readAsText(file);
-        },
-        exportCSV: function() {
-          if (!this.results.length) return;
-          var assetHeaders = this.strategy.assets.map(function(a) { return a.name + '市值'; });
-          var headers = ['年份'].concat(assetHeaders).concat(['总资产价值', '累计债务', '净资产', 'LTV(%)', '当年定投', '当年提领']);
-          
-          var rows = this.results.map(function(r) {
-            var vals = r.assetValues.map(function(v) { return v.toFixed(2); });
-            return [r.year].concat(vals).concat([
-              r.totalAssetValue.toFixed(2),
-              r.debt.toFixed(2),
-              r.netWorth.toFixed(2),
-              (r.ltv * 100).toFixed(2),
-              r.dcaIn.toFixed(2),
-              r.withdrawn.toFixed(2)
-            ]);
-          });
-
-          var csv = headers.join(',') + '\r\n';
-          rows.forEach(function(row) { csv += row.join(',') + '\r\n'; });
-          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url; a.download = '回测策略明细.csv';
-          a.click();
         }
       },
       mounted: function() {
-        this.runStrategyBacktest();
+        this.runComparison();
       }
     });
   </script>
