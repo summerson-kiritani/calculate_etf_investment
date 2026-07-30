@@ -3,348 +3,241 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>信贷与定投收益计算器（韩信点兵）</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <title>信贷与定投收益计算器</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 700px;
-      margin: 20px auto;
-      padding: 0 15px;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1em;
-    }
-    form {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: 600;
-    }
-    input[type="number"], select {
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 1em;
-      margin-top: 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      background: #409eff;
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    button:hover {
-      background: #66b1ff;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 2em;
-      font-size: 0.9em;
-    }
-    th, td {
-      text-align: center;
-      padding: 12px 8px;
-      border-bottom: 1px solid #eee;
-    }
-    th {
-      background: #409eff;
-      color: white;
-      font-weight: 600;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .formula {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      line-height: 1.5em;
-      font-family: "Courier New", Courier, monospace;
-      white-space: pre-wrap;
-      font-size: 0.95em;
-    }
-    .warning {
-      color: #d9534f;
-      font-weight: bold;
-      margin-top: 10px;
-      text-align: center;
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
     }
   </style>
 </head>
-<body>
-  <div id="app">
-    <h1>信贷与定投收益计算器（韩信点兵）</h1>
-    <form @submit.prevent="calculate">
-      <label for="loanPrincipal">贷款本金（元）</label>
-      <input id="loanPrincipal" type="number" v-model.number="loanPrincipalInput" min="1" step="1" required />
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
+    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">信贷与定投收益计算器</h1>
+    <p class="text-gray-500 mt-1">对比贷款一次性投资 vs 每月定投的收益差异</p>
 
-      <label for="loanRate">贷款年利率（%）</label>
-      <input id="loanRate" type="number" v-model.number="loanRate" min="0" step="0.01" required />
-
-      <label for="loanTermMonths">贷款期限（月）</label>
-      <div style="display:flex; align-items:center;">
-        <input
-          id="loanTermMonths"
-          type="number"
-          v-model.number="loanTermMonths"
-          min="1"
-          step="1"
-          required
-          style="flex:1; margin-right:8px;"
-        />
-        <span>{{ (loanTermMonths / 12).toFixed(2) }} 年</span>
+    <!-- 输入表单 -->
+    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">贷款本金（元）</label>
+          <input type="number" v-model.number="loanPrincipalInput" min="1" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">贷款年利率（%）</label>
+          <input type="number" v-model.number="loanRate" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">贷款期限（月）<span class="text-xs text-gray-400 font-normal ml-1">{{ (loanTermMonths / 12).toFixed(2) }} 年</span></label>
+          <input type="number" v-model.number="loanTermMonths" min="1" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">每月可用还款金额（元）</label>
+          <input type="number" v-model.number="monthlyCashFlow" min="1" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">基金年化收益率（%）</label>
+          <input type="number" v-model.number="fundRate" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">一次性投入系数 beta</label>
+          <input type="number" v-model.number="lumpSumBeta" min="0" max="1" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold text-gray-700">还款方式</label>
+          <select v-model="repaymentMethod" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option value="equalPrincipalAndInterest">等额本息</option>
+            <option value="interestFirst">先息后本</option>
+          </select>
+        </div>
       </div>
-
-      <label for="monthlyCashFlow">每月可用还款金额（元）</label>
-      <input id="monthlyCashFlow" type="number" v-model.number="monthlyCashFlow" min="1" step="1" required />
-
-      <label for="fundRate">基金年化收益率（%）</label>
-      <input id="fundRate" type="number" v-model.number="fundRate" min="0" step="0.01" required />
-
-      <label for="lumpSumBeta">一次性投入时选择的beta</label>
-      <input id="lumpSumBeta" type="number" v-model.number="lumpSumBeta" min="0" max="1" step="0.01" required />
-
-      <label for="repaymentMethod">还款方式</label>
-      <select id="repaymentMethod" v-model="repaymentMethod" required>
-        <option value="equalPrincipalAndInterest">等额本息</option>
-        <option value="interestFirst">先息后本</option>
-      </select>
-
-      <button type="submit">计算</button>
+      <button type="submit" class="w-full mt-4 bg-blue-500 text-white py-2 rounded font-semibold hover:bg-blue-600">计算</button>
     </form>
 
-    <div v-if="calculated">
-      <table>
-        <thead>
-          <tr>
-            <th>项目</th>
-            <th>数值</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>贷款本金</td>
-            <td>{{ formatNumber(loanPrincipalInput) }} 元</td>
-          </tr>
-          <tr>
-            <td>贷款期限（月）</td>
-            <td>{{ totalMonths }} 月</td>
-          </tr>
-          <tr>
-            <td>月利率</td>
-            <td>{{ (monthlyLoanRate * 100).toFixed(4) }} %</td>
-          </tr>
-          <tr>
-            <td>每月应还款额（本金+利息）</td>
-            <td>{{ formatNumber(monthlyRepayment) }} 元</td>
-          </tr>
-          <tr>
-            <td>每月可用还款金额</td>
-            <td>{{ formatNumber(monthlyCashFlow) }} 元</td>
-          </tr>
-          <tr v-if="monthlyCashFlow < monthlyRepayment" class="warning">
-            <td colspan="2">警告：每月可用还款金额不足以支付贷款月还款！</td>
-          </tr>
-          <tr>
-            <td>贷款总还款额</td>
-            <td>{{ formatNumber(totalLoanRepayment) }} 元</td>
-          </tr>
-          <tr>
-            <td>贷款总利息</td>
-            <td>{{ formatNumber(totalLoanRepayment - loanPrincipalInput) }} 元</td>
-          </tr>
-          <tr>
-            <td>还款方式</td>
-            <td>{{ repaymentMethodLabel }}</td>
-          </tr>
-          <tr>
-            <td>一次性投入系数 beta</td>
-            <td>{{ lumpSumBeta.toFixed(2) }}</td>
-          </tr>
-          <tr>
-            <td>贷款方案一次性投入基金{{ loanTerm.toFixed(2) }}年后价值</td>
-            <td>{{ formatNumber(fundValueLumpSum) }} 元</td>
-          </tr>
-          <tr>
-            <td>贷款方案净收益（基金价值 - 总还款）</td>
-            <td>{{ formatNumber(netProfitLumpSum) }} 元</td>
-          </tr>
-          <tr>
-            <td>闲置资金（未投资部分）</td>
-            <td>{{ formatNumber(idleCapital) }} 元</td>
-          </tr>
-          <tr>
-            <td>每月定投基金{{ loanTerm.toFixed(2) }}年后价值</td>
-            <td>{{ formatNumber(fundValueMonthly) }} 元</td>
-          </tr>
-          <tr>
-            <td>每月定投累计投入本金</td>
-            <td>{{ formatNumber(totalMonthlyInvestment) }} 元</td>
-          </tr>
-          <tr>
-            <td>每月定投方案净收益</td>
-            <td>{{ formatNumber(netProfitMonthly) }} 元</td>
-          </tr>
-          <tr style="font-weight: bold; background: #f0f9ff;">
-            <td>净收益差额（贷款方案 - 每月定投 + 闲置资金）</td>
-            <td>{{ formatNumber(netProfitLumpSum - netProfitMonthly + idleCapital) }} 元</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 新增还款明细表 -->
-      <h2>还款明细（前12个月）</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>月份</th>
-            <th>月供（元）</th>
-            <th>利息（元）</th>
-            <th>本金（元）</th>
-            <th>剩余本金（元）</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in repaymentSchedule" :key="item.month">
-            <td>{{ item.month }}</td>
-            <td>{{ formatNumber(item.monthlyRepayment) }}</td>
-            <td>{{ formatNumber(item.interest) }}</td>
-            <td>{{ formatNumber(item.principal) }}</td>
-            <td>{{ formatNumber(item.balance < 0 ? 0 : item.balance) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
+    <!-- 贷款摘要卡片 -->
+    <div v-if="calculated" class="mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">贷款概况</h3>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-xs text-gray-500">每月还款额</div>
+          <div class="text-lg font-bold mt-1">{{ fmtMoney(monthlyRepayment) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-xs text-gray-500">总还款额</div>
+          <div class="text-lg font-bold mt-1">{{ fmtMoney(totalLoanRepayment) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-400">
+          <div class="text-xs text-gray-500">总利息</div>
+          <div class="text-lg font-bold mt-1 text-red-600">{{ fmtMoney(totalLoanRepayment - loanPrincipalInput) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4" :class="monthlyCashFlow >= monthlyRepayment ? 'border-green-400' : 'border-red-400'">
+          <div class="text-xs text-gray-500">每月还款能力</div>
+          <div class="text-lg font-bold mt-1" :class="monthlyCashFlow >= monthlyRepayment ? '' : 'text-red-600'">{{ fmtMoney(monthlyCashFlow) }}</div>
+          <div v-if="monthlyCashFlow < monthlyRepayment" class="text-xs text-red-500 mt-1">不足以支付月供！</div>
+        </div>
+      </div>
     </div>
 
-    <div v-if="calculated" class="formula">
-贷款本金 P = {{ formatNumber(loanPrincipalInput) }} 元  
-贷款年利率 = {{ loanRate }} %  
-贷款期限 = {{ loanTerm.toFixed(2) }} 年（共 {{ totalMonths }} 月）  
-月利率 r = {{ monthlyLoanRate.toFixed(6) }}  
+    <!-- 方案对比卡片 -->
+    <div v-if="calculated" class="mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">方案对比</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 贷款投资方案 -->
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-400">
+          <h4 class="font-semibold text-gray-800 mb-3">贷款一次性投资方案</h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">投入系数 beta</span><span>{{ lumpSumBeta.toFixed(2) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ loanTerm.toFixed(2) }}年后基金价值</span><span class="font-semibold">{{ fmtMoney(fundValueLumpSum) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">闲置资金</span><span>{{ fmtMoney(idleCapital) }}</span></div>
+            <div class="flex justify-between pt-2 border-t border-gray-100"><span class="text-gray-500">净收益（基金-总还款）</span><span class="font-bold" :class="netProfitLumpSum >= 0 ? 'text-green-600' : 'text-red-600'">{{ fmtMoney(netProfitLumpSum) }}</span></div>
+          </div>
+        </div>
+        <!-- 定投方案 -->
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-400">
+          <h4 class="font-semibold text-gray-800 mb-3">每月定投方案</h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">每月定投额</span><span>{{ fmtMoney(monthlyCashFlow) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">{{ loanTerm.toFixed(2) }}年后基金价值</span><span class="font-semibold">{{ fmtMoney(fundValueMonthly) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">累计投入本金</span><span>{{ fmtMoney(totalMonthlyInvestment) }}</span></div>
+            <div class="flex justify-between pt-2 border-t border-gray-100"><span class="text-gray-500">净收益</span><span class="font-bold" :class="netProfitMonthly >= 0 ? 'text-green-600' : 'text-red-600'">{{ fmtMoney(netProfitMonthly) }}</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- 差额对比 -->
+      <div class="mt-4 bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">净收益差额（贷款方案 - 定投方案 + 闲置资金）</span>
+          <span class="text-xl font-bold" :class="netProfitLumpSum - netProfitMonthly + idleCapital >= 0 ? 'text-green-600' : 'text-red-600'">{{ fmtMoney(netProfitLumpSum - netProfitMonthly + idleCapital) }}</span>
+        </div>
+      </div>
+    </div>
 
-还款方式：{{ repaymentMethodLabel }}
+    <!-- 还款明细表 -->
+    <div v-if="calculated" class="mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">还款明细（前12个月）</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden text-sm">
+          <thead class="bg-blue-500 text-white">
+            <tr>
+              <th class="px-3 py-2">月份</th>
+              <th class="px-3 py-2">月供（元）</th>
+              <th class="px-3 py-2">利息（元）</th>
+              <th class="px-3 py-2">本金（元）</th>
+              <th class="px-3 py-2">剩余本金（元）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in repaymentSchedule" :key="item.month" class="border-b border-gray-100">
+              <td class="px-3 py-2 text-center">{{ item.month }}</td>
+              <td class="px-3 py-2 text-right">{{ fmtMoney(item.monthlyRepayment) }}</td>
+              <td class="px-3 py-2 text-right">{{ fmtMoney(item.interest) }}</td>
+              <td class="px-3 py-2 text-right">{{ fmtMoney(item.principal) }}</td>
+              <td class="px-3 py-2 text-right">{{ fmtMoney(item.balance < 0 ? 0 : item.balance) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<template v-if="repaymentMethod === 'equalPrincipalAndInterest'">
-每月应还款额 M = P × [ r(1+r)^n / ((1+r)^n -1) ]  
-(1+r)^n = {{ pow1rN.toFixed(6) }}  
-还款系数 = {{ repaymentFactor.toFixed(8) }}  
+    <!-- 公式说明 -->
+    <div v-if="calculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
 
-计算：
-M = {{ loanPrincipalInput }} × {{ repaymentFactor.toFixed(8) }} = {{ monthlyRepayment.toFixed(2) }} 元
+      <h4 class="font-semibold text-gray-800">贷款参数</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>贷款本金 P = {{ fmtMoney(loanPrincipalInput) }} 元</code></p>
+        <p><code>贷款年利率 = {{ loanRate }}%</code></p>
+        <p><code>贷款期限 = {{ loanTerm.toFixed(2) }} 年（共 {{ totalMonths }} 月）</code></p>
+        <p><code>月利率 r = {{ monthlyLoanRate.toFixed(6) }}</code></p>
+      </div>
 
----
+      <h4 class="font-semibold text-gray-800 mt-4">还款计算</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <template v-if="repaymentMethod === 'equalPrincipalAndInterest'">
+          <p><code>每月还款 M = P × [ r(1+r)^n / ((1+r)^n - 1) ]</code></p>
+          <p><code>(1+r)^n = {{ pow1rN.toFixed(6) }}</code></p>
+          <p><code>M = {{ fmtMoney(loanPrincipalInput) }} × {{ repaymentFactor.toFixed(8) }} = {{ fmtMoney(monthlyRepayment) }} 元</code></p>
+        </template>
+        <template v-else>
+          <p><code>每月利息 = P × r = {{ fmtMoney(loanPrincipalInput * monthlyLoanRate) }} 元</code></p>
+          <p><code>每月本金 = P / n = {{ fmtMoney(loanPrincipalInput / totalMonths) }} 元</code></p>
+        </template>
+        <p><code>总还款额 = {{ fmtMoney(totalLoanRepayment) }} 元</code></p>
+        <p><code>总利息 = {{ fmtMoney(totalLoanRepayment - loanPrincipalInput) }} 元</code></p>
+      </div>
 
-贷款总还款额 = M × n = {{ monthlyRepayment.toFixed(2) }} × {{ totalMonths }} = {{ totalLoanRepayment.toFixed(2) }} 元  
-贷款总利息 = 总还款额 - 贷款本金 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
-</template>
+      <h4 class="font-semibold text-gray-800 mt-4">贷款方案：一次性投入基金</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>FV = P × beta × (1 + 基金年化收益率)^年数</code></p>
+        <p><code>= {{ fmtMoney(loanPrincipalInput) }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm.toFixed(2) }} = {{ fmtMoney(fundValueLumpSum) }} 元</code></p>
+        <p><code>闲置资金 = P × (1 - beta) = {{ fmtMoney(idleCapital) }} 元</code></p>
+      </div>
 
-<template v-else>
-先息后本还款方式：  
-每月利息 = P × r = {{ (loanPrincipalInput * monthlyLoanRate).toFixed(2) }} 元  
-每月本金 = 贷款本金 / 贷款期限（月） = {{ (loanPrincipalInput / totalMonths).toFixed(2) }} 元  
-第1个月月供 = 利息 + 本金 = {{ (loanPrincipalInput * monthlyLoanRate + loanPrincipalInput / totalMonths).toFixed(2) }} 元  
-总还款额 = 贷款本金 + 利息总额 = {{ totalLoanRepayment.toFixed(2) }} 元  
-贷款总利息 = 利息总额 = {{ (totalLoanRepayment - loanPrincipalInput).toFixed(2) }} 元
-</template>
-
----
-
-一次性投入系数 beta = {{ lumpSumBeta }}  
-贷款本金一次性投入基金{{ loanTerm.toFixed(2) }}年后价值：  
-FV = P × beta × (1 + 基金年化收益率)^年数  
-= {{ loanPrincipalInput }} × {{ lumpSumBeta }} × (1 + {{ fundRate }}%)^{{ loanTerm.toFixed(2) }}  
-= {{ fundValueLumpSum.toFixed(2) }} 元
-
-闲置资金（未投资部分）：  
-= 贷款本金 × (1 - beta)  
-= {{ loanPrincipalInput }} × (1 - {{ lumpSumBeta }})  
-= {{ idleCapital.toFixed(2) }} 元
-
----
-
-每月定投基金价值计算：  
-FV = P × [ (1 + r)^n - 1 ] ÷ r × (1 + r)  
-其中：  
-P = 每月定投 = {{ monthlyCashFlow }} 元  
-r = 月基金收益率 = {{ monthlyFundRate.toFixed(6) }}  
-n = {{ totalMonths }}
-
-计算：  
-(1 + r)^n = {{ pow1rN_Fund.toFixed(6) }}  
-
-FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthlyFundRate.toFixed(6) }} × (1 + {{ monthlyFundRate.toFixed(6) }})  
-= {{ fundValueMonthly.toFixed(2) }} 元
-
-累计投入本金 = {{ monthlyCashFlow }} × {{ totalMonths }} = {{ totalMonthlyInvestment.toFixed(2) }} 元  
-定投方案净收益 = 基金价值 - 累计投入本金 = {{ netProfitMonthly.toFixed(2) }} 元
+      <h4 class="font-semibold text-gray-800 mt-4">定投方案：每月定投基金</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>FV = PMT × [ (1+r)^n - 1 ] / r × (1 + r)</code></p>
+        <p><code>月基金收益率 = {{ monthlyFundRate.toFixed(6) }}</code></p>
+        <p><code>FV = {{ fmtMoney(fundValueMonthly) }} 元</code></p>
+        <p><code>累计本金 = {{ fmtMoney(monthlyCashFlow) }} × {{ totalMonths }} = {{ fmtMoney(totalMonthlyInvestment) }} 元</code></p>
+      </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script>
     new Vue({
-      el: "#app",
-      data: {
-        loanPrincipalInput: 100000, // 贷款本金输入
-        loanRate: 3,                // 年利率 %
-        loanTermMonths: 60,         // 贷款期限（月）
-        monthlyCashFlow: 1500,      // 每月可用还款额
-        fundRate: 18,               // 基金年化收益率 %
-        lumpSumBeta: 1,             // 一次性投入系数 beta，默认1，限制最大1
-        repaymentMethod: "equalPrincipalAndInterest", // 还款方式，默认等额本息
-        calculated: false,
-
-        monthlyLoanRate: 0,
-        totalMonths: 0,
-        pow1rN: 0,
-        repaymentFactor: 0,
-        monthlyRepayment: 0,
-        totalLoanRepayment: 0,
-        fundValueLumpSum: 0,
-        netProfitLumpSum: 0,
-        monthlyFundRate: 0,
-        pow1rN_Fund: 0,
-        fundValueMonthly: 0,
-        totalMonthlyInvestment: 0,
-        netProfitMonthly: 0,
-
-        idleCapital: 0, // 闲置资金
-
-        repaymentSchedule: [],
-
-        loanTerm: 0, // 年数，计算用
-      },
-      computed: {
-        repaymentMethodLabel() {
-          return this.repaymentMethod === "equalPrincipalAndInterest" ? "等额本息" : "先息后本";
-        }
+      el: '#app',
+      data: function() {
+        return {
+          loanPrincipalInput: 100000,
+          loanRate: 3,
+          loanTermMonths: 60,
+          monthlyCashFlow: 1500,
+          fundRate: 18,
+          lumpSumBeta: 1,
+          repaymentMethod: 'equalPrincipalAndInterest',
+          calculated: false,
+          monthlyLoanRate: 0,
+          totalMonths: 0,
+          loanTerm: 0,
+          pow1rN: 0,
+          repaymentFactor: 0,
+          monthlyRepayment: 0,
+          totalLoanRepayment: 0,
+          fundValueLumpSum: 0,
+          netProfitLumpSum: 0,
+          idleCapital: 0,
+          monthlyFundRate: 0,
+          pow1rN_Fund: 0,
+          fundValueMonthly: 0,
+          totalMonthlyInvestment: 0,
+          netProfitMonthly: 0,
+          repaymentSchedule: []
+        };
       },
       methods: {
-        calculate() {
-          // 限制beta最大为1，最小0
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
+        },
+        calculate: function() {
           if (this.lumpSumBeta > 1) this.lumpSumBeta = 1;
           if (this.lumpSumBeta < 0) this.lumpSumBeta = 0;
 
@@ -353,22 +246,19 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           this.monthlyLoanRate = this.loanRate / 100 / 12;
           this.monthlyFundRate = this.fundRate / 100 / 12;
 
-          if (this.repaymentMethod === "equalPrincipalAndInterest") {
+          if (this.repaymentMethod === 'equalPrincipalAndInterest') {
             this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
             this.repaymentFactor = (this.monthlyLoanRate * this.pow1rN) / (this.pow1rN - 1);
             this.monthlyRepayment = this.loanPrincipalInput * this.repaymentFactor;
             this.totalLoanRepayment = this.monthlyRepayment * this.totalMonths;
-          } else if (this.repaymentMethod === "interestFirst") {
+          } else {
             this.monthlyRepayment = (this.loanPrincipalInput * this.monthlyLoanRate) + (this.loanPrincipalInput / this.totalMonths);
             this.totalLoanRepayment = this.loanPrincipalInput + (this.loanPrincipalInput * this.monthlyLoanRate * this.totalMonths);
             this.pow1rN = Math.pow(1 + this.monthlyLoanRate, this.totalMonths);
             this.repaymentFactor = 0;
           }
 
-          // 计算闲置资金
           this.idleCapital = this.loanPrincipalInput * (1 - this.lumpSumBeta);
-
-          // 一次性投入基金价值（只对beta部分投资）
           this.fundValueLumpSum = this.loanPrincipalInput * this.lumpSumBeta * Math.pow(1 + this.fundRate / 100, this.loanTerm);
           this.netProfitLumpSum = this.fundValueLumpSum - this.totalLoanRepayment;
 
@@ -377,48 +267,28 @@ FV = {{ monthlyCashFlow }} × [ {{ pow1rN_Fund.toFixed(6) }} - 1 ] ÷ {{ monthly
           this.totalMonthlyInvestment = this.monthlyCashFlow * this.totalMonths;
           this.netProfitMonthly = this.fundValueMonthly - this.totalMonthlyInvestment;
 
-          // 还款明细，默认显示前12个月（如果期限小于12个月则显示全部）
           this.repaymentSchedule = [];
-          let balance = this.loanPrincipalInput;
-          const showMonths = Math.min(this.totalMonths, 12);
-
-          if (this.repaymentMethod === "equalPrincipalAndInterest") {
-            for (let month = 1; month <= showMonths; month++) {
-              const interest = balance * this.monthlyLoanRate;
-              const principal = this.monthlyRepayment - interest;
+          var balance = this.loanPrincipalInput;
+          var showMonths = Math.min(this.totalMonths, 12);
+          if (this.repaymentMethod === 'equalPrincipalAndInterest') {
+            for (var month = 1; month <= showMonths; month++) {
+              var interest = balance * this.monthlyLoanRate;
+              var principal = this.monthlyRepayment - interest;
               balance -= principal;
-              this.repaymentSchedule.push({
-                month,
-                monthlyRepayment: this.monthlyRepayment,
-                interest,
-                principal,
-                balance,
-              });
+              this.repaymentSchedule.push({ month: month, monthlyRepayment: this.monthlyRepayment, interest: interest, principal: principal, balance: balance });
             }
-          } else if (this.repaymentMethod === "interestFirst") {
-            const monthlyPrincipal = this.loanPrincipalInput / this.totalMonths;
-            const monthlyInterest = this.loanPrincipalInput * this.monthlyLoanRate;
-            for (let month = 1; month <= showMonths; month++) {
-              const interest = monthlyInterest;
-              const principal = monthlyPrincipal;
-              const monthlyRepayment = interest + principal;
-              balance -= principal;
-              this.repaymentSchedule.push({
-                month,
-                monthlyRepayment,
-                interest,
-                principal,
-                balance,
-              });
+          } else {
+            var mp = this.loanPrincipalInput / this.totalMonths;
+            var mi = this.loanPrincipalInput * this.monthlyLoanRate;
+            for (var m = 1; m <= showMonths; m++) {
+              balance -= mp;
+              this.repaymentSchedule.push({ month: m, monthlyRepayment: mi + mp, interest: mi, principal: mp, balance: balance });
             }
           }
 
           this.calculated = true;
-        },
-        formatNumber(num) {
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        },
-      },
+        }
+      }
     });
   </script>
 </body>

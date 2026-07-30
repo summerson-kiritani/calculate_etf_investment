@@ -4,174 +4,134 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>杠杆倍数计算器</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 0 15px;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1em;
-    }
-    form {
-      background: #fff;
-      padding: 20px 25px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: 600;
-      font-size: 1.05em;
-    }
-    input[type="number"] {
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 1em;
-      margin-top: 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 20px;
-      padding: 12px 25px;
-      background: #409eff;
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      width: 100%;
-      font-size: 1.1em;
-    }
-    button:hover {
-      background: #66b1ff;
-    }
-    .result {
-      background: #fff;
-      padding: 20px 25px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      font-size: 1.1em;
-      line-height: 1.6em;
-      color: #222;
-    }
-    .formula {
-      margin-top: 1em;
-      background: #eef6ff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.95em;
-      white-space: pre-wrap;
-      color: #00529b;
-    }
-    .warning {
-      color: #d9534f;
-      font-weight: 700;
-      margin-top: 10px;
-      text-align: center;
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
     }
   </style>
 </head>
-<body>
-  <div id="app">
-    <h1>杠杆倍数计算器</h1>
-    <form @submit.prevent="calculate">
-      <label for="assetValue">资产总价值（元）</label>
-      <input id="assetValue" type="number" v-model.number="assetValue" min="0" step="1" required />
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">杠杆倍数计算器</h1>
+    <p class="text-gray-500 mt-1">计算资产负债率、负债权益比与权益乘数</p>
 
-      <label for="loanAmount">负债总额（元）</label>
-      <input id="loanAmount" type="number" v-model.number="loanAmount" min="0" step="1" required />
-
-      <label for="equity">自有资金（元）</label>
-      <input id="equity" type="number" v-model.number="equity" min="0" step="1" required />
-
-      <button type="submit">计算杠杆倍数</button>
+    <!-- 输入表单 -->
+    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">资产总价值（元）</label>
+          <input type="number" v-model.number="assetValue" min="0" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">负债总额（元）</label>
+          <input type="number" v-model.number="loanAmount" min="0" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">自有资金（元）<span class="text-xs text-gray-400 font-normal ml-1">自动 = 资产 - 负债</span></label>
+          <input type="number" :value="equity" disabled
+            class="w-full px-3 py-2 mt-1 border border-gray-200 rounded bg-gray-50 text-gray-600 outline-none" />
+        </div>
+      </div>
+      <div v-if="error" class="mt-3 text-sm text-red-500">{{ error }}</div>
+      <button type="submit" class="w-full mt-4 bg-blue-500 text-white py-2 rounded font-semibold hover:bg-blue-600">计算杠杆倍数</button>
     </form>
 
-    <div v-if="calculated" class="result">
-      <div>
-        <strong>计算结果：</strong>
-      </div>
-      <div>资产负债率（Debt to Asset Ratio）：<strong>{{ debtToAssetRatio.toFixed(2) * 100 }}%</strong></div>
-      <div>负债权益比（Debt to Equity Ratio）：<strong>{{ debtToEquityRatio.toFixed(2) }}</strong></div>
-      <div>权益乘数（Equity Multiplier）：<strong>{{ equityMultiplier.toFixed(2) }}</strong></div>
-
-      <div class="formula">
-资产负债率 = 总负债 / 总资产  
-= {{ formatNumber(loanAmount) }} / {{ formatNumber(assetValue) }}  
-= {{ debtToAssetRatio.toFixed(4) }}
-
-负债权益比 = 总负债 / 股东权益  
-= {{ formatNumber(loanAmount) }} / {{ formatNumber(equity) }}  
-= {{ debtToEquityRatio.toFixed(4) }}
-
-权益乘数 = 总资产 / 股东权益 = 1 + 负债权益比  
-= {{ formatNumber(assetValue) }} / {{ formatNumber(equity) }} = {{ equityMultiplier.toFixed(4) }}
+    <!-- 结果摘要卡片 -->
+    <div v-if="calculated" class="mt-6 space-y-3">
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">资产负债率</div>
+          <div class="text-xl font-bold">{{ (debtToAssetRatio * 100).toFixed(2) }}%</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">负债权益比</div>
+          <div class="text-xl font-bold">{{ debtToEquityRatio.toFixed(2) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-sm text-gray-500">权益乘数</div>
+          <div class="text-xl font-bold">{{ equityMultiplier.toFixed(2) }}</div>
+        </div>
       </div>
 
-      <div v-if="warning" class="warning">{{ warning }}</div>
+      <!-- 公式说明 -->
+      <div class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+        <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
+
+        <h4 class="font-semibold text-gray-800">自有资金</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>自有资金 = 资产总价值 - 负债总额</code></p>
+          <p><code>= {{ fmtMoney(assetValue) }} - {{ fmtMoney(loanAmount) }} = {{ fmtMoney(equity) }}</code></p>
+        </div>
+
+        <h4 class="font-semibold text-gray-800 mt-4">资产负债率</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>资产负债率 = 总负债 / 总资产</code></p>
+          <p><code>= {{ fmtMoney(loanAmount) }} / {{ fmtMoney(assetValue) }} = {{ (debtToAssetRatio * 100).toFixed(2) }}%</code></p>
+        </div>
+
+        <h4 class="font-semibold text-gray-800 mt-4">负债权益比</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>负债权益比 = 总负债 / 股东权益</code></p>
+          <p><code>= {{ fmtMoney(loanAmount) }} / {{ fmtMoney(equity) }} = {{ debtToEquityRatio.toFixed(4) }}</code></p>
+        </div>
+
+        <h4 class="font-semibold text-gray-800 mt-4">权益乘数</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>权益乘数 = 总资产 / 股东权益 = 1 + 负债权益比</code></p>
+          <p><code>= {{ fmtMoney(assetValue) }} / {{ fmtMoney(equity) }} = {{ equityMultiplier.toFixed(4) }}</code></p>
+        </div>
+      </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script>
     new Vue({
-      el: "#app",
-      data: {
-        assetValue: 1000000,  // 资产总价值，默认100万
-        loanAmount: 700000,   // 负债总额，默认70万
-        equity: 300000,       // 自有资金，默认30万
-        calculated: false,
-        debtToAssetRatio: 0,
-        debtToEquityRatio: 0,
-        equityMultiplier: 0,
-        warning: ""
+      el: '#app',
+      data: function() {
+        return {
+          assetValue: 1000000,
+          loanAmount: 700000,
+          calculated: false,
+          debtToAssetRatio: 0,
+          debtToEquityRatio: 0,
+          equityMultiplier: 0,
+          error: ''
+        };
+      },
+      computed: {
+        equity: function() {
+          return this.assetValue - this.loanAmount;
+        }
       },
       methods: {
-        calculate() {
-          this.warning = "";
-          // 合理性校验
-          if (this.assetValue <= 0) {
-            this.warning = "资产总价值必须大于0";
-            this.calculated = false;
-            return;
-          }
-          if (this.loanAmount < 0 || this.equity < 0) {
-            this.warning = "负债和自有资金不能为负数";
-            this.calculated = false;
-            return;
-          }
-          if (this.loanAmount + this.equity !== this.assetValue) {
-            this.warning = "资产总价值应等于负债总额与自有资金之和";
-            // 这里只是警告，不阻止计算
-          }
-          if (this.equity === 0) {
-            this.warning = "自有资金为0，负债权益比和权益乘数无法计算";
-            this.debtToAssetRatio = this.loanAmount / this.assetValue;
-            this.debtToEquityRatio = NaN;
-            this.equityMultiplier = NaN;
-            this.calculated = true;
-            return;
-          }
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
+        },
+        calculate: function() {
+          this.error = '';
+          if (this.assetValue <= 0) { this.error = '资产总价值必须大于0'; this.calculated = false; return; }
+          if (this.loanAmount < 0) { this.error = '负债不能为负数'; this.calculated = false; return; }
+          if (this.equity <= 0) { this.error = '自有资金为0或负数，负债权益比和权益乘数无法计算'; this.calculated = false; return; }
 
           this.debtToAssetRatio = this.loanAmount / this.assetValue;
           this.debtToEquityRatio = this.loanAmount / this.equity;
           this.equityMultiplier = this.assetValue / this.equity;
-
           this.calculated = true;
-        },
-        formatNumber(num) {
-          return Number(num).toLocaleString();
         }
       }
     });

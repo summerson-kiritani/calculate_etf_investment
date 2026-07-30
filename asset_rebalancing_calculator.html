@@ -3,314 +3,210 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>无脑资产再平衡计算器</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <title>资产再平衡计算器</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 680px;
-      margin: 20px auto;
-      padding: 0 15px;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1em;
-    }
-    form {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-    }
-    label {
-      display: block;
-      margin-top: 12px;
-      font-weight: 600;
-    }
-    input[type="number"], select {
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 1em;
-      margin-top: 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 2em;
-      word-break: break-word;
-    }
-    th, td {
-      text-align: center;
-      padding: 12px 10px;
-      border-bottom: 1px solid #eee;
-    }
-    th {
-      background: #409eff;
-      color: white;
-      font-weight: 600;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      background: #409eff;
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      user-select: none;
-      width: 100%;
-    }
-    button:hover {
-      background: #66b1ff;
-    }
-    .formula {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      line-height: 1.5em;
-      font-family: "Courier New", Courier, monospace;
-      white-space: pre-wrap;
-      margin-bottom: 30px;
-      overflow-x: auto;
-    }
-    .section {
-      margin-bottom: 20px;
-    }
-    .note {
-      font-size: 0.9em;
-      color: #666;
-      margin-top: 5px;
-      text-align: center;
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
     }
   </style>
 </head>
-<body>
-  <div id="app">
-    <h1>无脑资产再平衡计算器</h1>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+    <a href="index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">资产再平衡计算器</h1>
+    <p class="text-gray-500 mt-1">根据目标比例计算买卖调整金额</p>
 
-    <form @submit.prevent="addCurrentAsset" class="section">
-      <label>当前资产类别</label>
-      <select v-model="currentAssetKey" required>
-        <option disabled value="">请选择资产</option>
-        <option v-for="(asset, key) in availableAssets" :key="key" :value="key">
-          {{ asset.name }}
-        </option>
-      </select>
-
-      <label>当前资产市值（元）</label>
-      <input type="number" v-model.number="currentAssetValue" min="0" step="1" required />
-
-      <button type="submit">添加当前资产</button>
-      <div class="note">* 请依次添加所有当前资产</div>
-    </form>
-
-    <div v-if="currentAssets.length" class="section">
-      <h3>当前资产市值</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>资产类别</th>
-            <th>当前市值（元）</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in currentAssets" :key="item.key">
-            <td>{{ availableAssets[item.key].name }}</td>
-            <td>{{ formatNumber(item.value) }}</td>
-            <td><button @click="removeCurrentAsset(index)" style="background:#e86c6c; padding:4px 10px; font-size:0.9em; border-radius:4px; border:none; color:#fff; cursor:pointer;">删除</button></td>
-          </tr>
-          <tr style="font-weight:bold; background:#f0f9ff;">
-            <td>总计</td>
-            <td>{{ formatNumber(currentTotalValue) }}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <form @submit.prevent="calculateRebalance" v-if="currentAssets.length" class="section">
-      <h3>设置目标再平衡比例 (%)</h3>
-
-      <div v-for="(asset, key) in availableAssets" :key="key" style="margin-bottom: 10px;">
-        <label>{{ asset.name }}</label>
-        <input type="number" v-model.number="targetPercents[key]" min="0" max="100" step="0.01" />
+    <!-- 添加资产表单 -->
+    <form @submit.prevent="addCurrentAsset" class="bg-white rounded-lg shadow p-6 mt-6">
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">选择资产类别</label>
+          <select v-model="currentAssetKey" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option disabled value="">请选择资产</option>
+            <option v-for="(asset, key) in availableAssets" :key="key" :value="key">{{ asset.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">当前市值（元）</label>
+          <input type="number" v-model.number="currentAssetValue" min="0" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
       </div>
-      <div class="note">* 请确保所有资产目标配置比例总和为100%</div>
-
-      <button type="submit">计算再平衡资金分配</button>
+      <div class="mt-4 flex items-center gap-4">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">添加资产</button>
+        <span class="text-xs text-gray-400">请依次添加所有当前资产</span>
+      </div>
     </form>
 
-    <div v-if="rebalanceCalculated" class="section">
-      <h3>再平衡结果</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>资产类别</th>
-            <th>当前市值（元）</th>
-            <th>目标比例 (%)</th>
-            <th>目标金额（元）</th>
-            <th>调整金额（元）</th>
-            <th>操作建议</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in rebalanceResults" :key="item.key">
-            <td>{{ item.name }}</td>
-            <td>{{ formatNumber(item.currentValue) }}</td>
-            <td>{{ item.targetPercent.toFixed(2) }}</td>
-            <td>{{ formatNumber(item.targetAmount) }}</td>
-            <td :style="{ color: item.adjustment >= 0 ? 'green' : 'red' }">
-              {{ item.adjustment >= 0 ? '+' : '' }}{{ formatNumber(item.adjustment) }}
-            </td>
-            <td>
-              <span v-if="item.adjustment > 0">买入</span>
-              <span v-else-if="item.adjustment < 0">卖出</span>
-              <span v-else>不变</span>
-            </td>
-          </tr>
-          <tr style="font-weight: bold; background: #f0f9ff;">
-            <td>总计</td>
-            <td>{{ formatNumber(currentTotalValue) }}</td>
-            <td>100.00</td>
-            <td>{{ formatNumber(currentTotalValue) }}</td>
-            <td>0.00</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- 当前资产卡片列表 -->
+    <div v-if="currentAssets.length" class="mt-6 space-y-3">
+      <div v-for="(item, index) in currentAssets" :key="item.key" class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="flex justify-between items-center">
+          <h4 class="font-semibold text-gray-800">{{ availableAssets[item.key].name }}</h4>
+          <button @click="removeCurrentAsset(index)" class="text-red-400 hover:text-red-600 text-sm">删除</button>
+        </div>
+        <div class="mt-2 text-sm">
+          <span class="text-gray-500">当前市值：</span>
+          <span class="font-semibold">{{ fmtMoney(item.value) }}</span>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">当前总资产</div>
+        <div class="text-xl font-bold">{{ fmtMoney(currentTotalValue) }}</div>
+      </div>
     </div>
 
-    <div v-if="rebalanceCalculated" class="formula section">
-计算公式说明：
+    <!-- 目标比例设置 -->
+    <form v-if="currentAssets.length" @submit.prevent="calculateRebalance" class="bg-white rounded-lg shadow p-6 mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">设置目标再平衡比例</h3>
+      <div class="space-y-3">
+        <div v-for="(asset, key) in availableAssets" :key="key">
+          <label class="block text-sm font-semibold text-gray-700">{{ asset.name }}</label>
+          <input type="number" v-model.number="targetPercents[key]" min="0" max="100" step="0.01"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-4">
+        <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded font-semibold hover:bg-blue-600">计算再平衡资金分配</button>
+      </div>
+      <p class="text-xs text-gray-400 mt-2 text-center">请确保所有资产目标配置比例总和为100%</p>
+    </form>
 
-1. 当前总资产价值 = 各资产当前市值之和
+    <!-- 再平衡结果卡片 -->
+    <div v-if="rebalanceCalculated" class="mt-6 space-y-3">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">再平衡结果</h3>
+      <div v-for="item in rebalanceResults" :key="item.key"
+        class="bg-white rounded-lg shadow p-4 border-l-4"
+        :class="item.adjustment > 0 ? 'border-green-400' : item.adjustment < 0 ? 'border-red-400' : 'border-gray-300'">
+        <div class="flex justify-between items-center">
+          <h4 class="font-semibold text-gray-800">{{ item.name }}</h4>
+          <span class="px-2 py-0.5 rounded text-xs font-semibold"
+            :class="item.adjustment > 0 ? 'bg-green-100 text-green-700' : item.adjustment < 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'">
+            {{ item.adjustment > 0 ? '买入' : item.adjustment < 0 ? '卖出' : '不变' }}
+          </span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+          <div><span class="text-gray-500">当前市值：</span>{{ fmtMoney(item.currentValue) }}</div>
+          <div><span class="text-gray-500">目标比例：</span>{{ item.targetPercent.toFixed(2) }}%</div>
+          <div><span class="text-gray-500">目标金额：</span>{{ fmtMoney(item.targetAmount) }}</div>
+          <div><span class="text-gray-500">调整金额：</span><span :class="item.adjustment >= 0 ? 'text-green-600' : 'text-red-600'">{{ item.adjustment >= 0 ? '+' : '' }}{{ fmtMoney(item.adjustment) }}</span></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="grid grid-cols-3 gap-4 text-center text-sm">
+          <div><span class="text-gray-500">总资产</span><div class="font-bold text-lg">{{ fmtMoney(currentTotalValue) }}</div></div>
+          <div><span class="text-gray-500">需买入</span><div class="font-bold text-lg text-green-600">{{ fmtMoney(totalBuy) }}</div></div>
+          <div><span class="text-gray-500">需卖出</span><div class="font-bold text-lg text-red-600">{{ fmtMoney(totalSell) }}</div></div>
+        </div>
+      </div>
+    </div>
 
-2. 目标资产金额 = 当前总资产价值 × 目标比例（%） ÷ 100
-
-3. 调整金额 = 目标资产金额 - 当前资产市值
-
-- 调整金额 > 0 表示需要买入该资产金额
-- 调整金额 < 0 表示需要卖出该资产金额
-- 调整金额 = 0 表示该资产无需调整
-
----
-
-示例：
-
-当前QQQ资产从 120,000 元变成 141,600 元，目标比例40%，当前总资产假设为 354,000 元
-
-目标金额 = 354,000 × 40% = 141,600 元
-
-调整金额 = 141,600 - 141,600 = 0 元（无需调整）
+    <!-- 公式说明 -->
+    <div v-if="rebalanceCalculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
+      <h4 class="font-semibold text-gray-800">当前总资产</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>总资产 = Σ 各资产当前市值</code></p>
+        <p><code>= {{ fmtMoney(currentTotalValue) }}</code></p>
+      </div>
+      <h4 class="font-semibold text-gray-800 mt-4">目标金额</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>目标金额 = 总资产 × 目标比例 / 100</code></p>
+      </div>
+      <h4 class="font-semibold text-gray-800 mt-4">调整金额</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>调整金额 = 目标金额 - 当前市值</code></p>
+        <p class="text-gray-500">正数表示买入，负数表示卖出</p>
+      </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script>
     new Vue({
-      el: "#app",
-      data: {
-        availableAssets: {
-          QQQ: { name: "QQQ" },
-          QLD: { name: "QLD" },
-          CASH: { name: "货币市场基金（现金）" }
-        },
-        currentAssetKey: "",
-        currentAssetValue: null,
-        currentAssets: [],
-        targetPercents: { QQQ: 0, QLD: 0, CASH: 0 },
-        rebalanceResults: [],
-        rebalanceCalculated: false,
+      el: '#app',
+      data: function() {
+        return {
+          availableAssets: {
+            QQQ: { name: 'QQQ' },
+            QLD: { name: 'QLD' },
+            CASH: { name: '货币市场基金（现金）' }
+          },
+          currentAssetKey: '',
+          currentAssetValue: null,
+          currentAssets: [],
+          targetPercents: { QQQ: 0, QLD: 0, CASH: 0 },
+          rebalanceResults: [],
+          rebalanceCalculated: false
+        };
       },
       computed: {
-        currentTotalValue() {
-          return this.currentAssets.reduce((acc, a) => acc + a.value, 0);
+        currentTotalValue: function() {
+          return this.currentAssets.reduce(function(acc, a) { return acc + a.value; }, 0);
+        },
+        totalBuy: function() {
+          return this.rebalanceResults.filter(function(r) { return r.adjustment > 0; }).reduce(function(acc, r) { return acc + r.adjustment; }, 0);
+        },
+        totalSell: function() {
+          return this.rebalanceResults.filter(function(r) { return r.adjustment < 0; }).reduce(function(acc, r) { return acc + r.adjustment; }, 0);
         }
       },
       methods: {
-        addCurrentAsset() {
-          if (!this.currentAssetKey) {
-            alert("请选择资产类别");
-            return;
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
+        },
+        addCurrentAsset: function() {
+          if (!this.currentAssetKey) { alert('请选择资产类别'); return; }
+          if (this.currentAssetValue === null || this.currentAssetValue < 0) { alert('请输入有效的资产市值'); return; }
+          var idx = -1;
+          for (var i = 0; i < this.currentAssets.length; i++) {
+            if (this.currentAssets[i].key === this.currentAssetKey) { idx = i; break; }
           }
-          if (this.currentAssetValue === null || this.currentAssetValue < 0) {
-            alert("请输入有效的资产市值");
-            return;
-          }
-          // 如果已存在该资产，更新
-          const idx = this.currentAssets.findIndex(a => a.key === this.currentAssetKey);
           if (idx !== -1) {
-            this.currentAssets[idx].value = this.currentAssetValue;
+            this.$set(this.currentAssets, idx, _.extend({}, this.currentAssets[idx], { value: this.currentAssetValue }));
           } else {
             this.currentAssets.push({ key: this.currentAssetKey, value: this.currentAssetValue });
           }
-          // 重置输入
-          this.currentAssetKey = "";
+          this.currentAssetKey = '';
           this.currentAssetValue = null;
-          // 重置结果
           this.rebalanceCalculated = false;
           this.rebalanceResults = [];
         },
-        removeCurrentAsset(index) {
+        removeCurrentAsset: function(index) {
           this.currentAssets.splice(index, 1);
           this.rebalanceCalculated = false;
           this.rebalanceResults = [];
         },
-        calculateRebalance() {
-          // 验证目标比例总和是否为100%
-          const sumPercent = Object.values(this.targetPercents).reduce((a, b) => a + b, 0);
-          if (Math.abs(sumPercent - 100) > 0.01) {
-            alert("目标配置比例总和必须为100%");
-            return;
-          }
-          if (this.currentAssets.length === 0) {
-            alert("请先添加当前资产数据");
-            return;
-          }
-          const totalValue = this.currentTotalValue;
-          const results = [];
-
-          // 先确保所有资产都有当前市值，若没有则视为0
-          Object.keys(this.availableAssets).forEach(key => {
-            let currentValue = 0;
-            const asset = this.currentAssets.find(a => a.key === key);
+        calculateRebalance: function() {
+          var sumPercent = Object.values(this.targetPercents).reduce(function(a, b) { return a + b; }, 0);
+          if (Math.abs(sumPercent - 100) > 0.01) { alert('目标配置比例总和必须为100%'); return; }
+          if (this.currentAssets.length === 0) { alert('请先添加当前资产数据'); return; }
+          var totalValue = this.currentTotalValue;
+          var self = this;
+          var results = [];
+          Object.keys(this.availableAssets).forEach(function(key) {
+            var currentValue = 0;
+            var asset = self.currentAssets.find(function(a) { return a.key === key; });
             if (asset) currentValue = asset.value;
-
-            const targetPercent = this.targetPercents[key] || 0;
-            const targetAmount = totalValue * (targetPercent / 100);
-            const adjustment = targetAmount - currentValue;
-
-            results.push({
-              key,
-              name: this.availableAssets[key].name,
-              currentValue,
-              targetPercent,
-              targetAmount,
-              adjustment
-            });
+            var targetPercent = self.targetPercents[key] || 0;
+            var targetAmount = totalValue * (targetPercent / 100);
+            var adjustment = targetAmount - currentValue;
+            results.push({ key: key, name: self.availableAssets[key].name, currentValue: currentValue, targetPercent: targetPercent, targetAmount: targetAmount, adjustment: adjustment });
           });
-
           this.rebalanceResults = results;
           this.rebalanceCalculated = true;
-        },
-        formatNumber(num) {
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
       }
     });
