@@ -1,329 +1,231 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>维持率风险计算器（含LTV计算基准）</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <title>美股 PAL / Margin LTV 与风控计算器</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
-    /* 使用B样式页面的整体字体和布局样式 */
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 700px;
-      margin: 20px auto;
-      padding: 0 15px;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1em;
-      color: #0b3d91; /* 保留A页面的标题颜色 */
-      font-weight: 700;
-    }
-    form {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: 600;
-      color: #1e293b;
-    }
-    input[type="number"], select {
-      width: 100%;
-      padding: 8px 10px;
-      margin-top: 6px;
-      font-size: 1em;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-      transition: border-color 0.3s ease;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    }
-    input[type="number"]:focus, select:focus {
-      border-color: #409eff;
-      outline: none;
-    }
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      background: #409eff;
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      width: 100%;
-      font-size: 1.1em;
-    }
-    button:hover {
-      background: #66b1ff;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 2em;
-      font-size: 0.95em;
-    }
-    th, td {
-      text-align: center;
-      padding: 12px 8px;
-      border-bottom: 1px solid #eee;
-      color: #334155;
-    }
-    th {
-      background: #409eff;
-      color: white;
-      font-weight: 600;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .text-green {
-      color: #15803d;
-      font-weight: 700;
-    }
-    .text-orange {
-      color: #b45309;
-      font-weight: 700;
-    }
-    .text-red {
-      color: #b91c1c;
-      font-weight: 700;
-    }
-    .font-weight-bold {
-      font-weight: 900 !important;
-    }
-    .note {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      font-size: 0.95em;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      font-family: "Courier New", Courier, monospace;
-      margin-top: 1em;
-      color: #334155;
-    }
-    .info-icon {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      margin-left: 6px;
-      border-radius: 50%;
-      background: #409eff;
-      color: white;
-      text-align: center;
-      font-size: 14px;
-      line-height: 16px;
-      cursor: help;
-      user-select: none;
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
     }
   </style>
 </head>
-<body>
-  <div id="app" role="main">
-    <h1>维持率风险计算器（含LTV计算基准）</h1>
-    <form @submit.prevent="calculate" aria-label="维持率风险计算表单">
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">美股股票质押 (PAL) / Margin LTV 风控计算器</h1>
+    <p class="text-gray-500 mt-1">评估基于美股 LTV 体系下的质押安全边际与清盘（Margin Call）风险</p>
 
-      <label for="assetValue">资产市值（港币万元）</label>
-      <input id="assetValue" type="number" v-model.number="assetValue" min="0.01" step="0.01" required aria-describedby="assetValueHelp" />
-      <small id="assetValueHelp">您当前持有资产的市场价值</small>
+    <!-- 预设样例按钮 -->
+    <div class="mt-4 flex gap-2">
+      <button @click="applyPreset('safe')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">样例：稳健借贷 (30% 额度)</button>
+      <button @click="applyPreset('aggressive')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">样例：高杠杆 (接近上限)</button>
+    </div>
 
-      <label for="creditRatio">信贷率（%）</label>
-      <input id="creditRatio" type="number" v-model.number="creditRatio" min="1" max="100" step="0.1" required aria-describedby="creditRatioHelp" />
-      <small id="creditRatioHelp">资产可抵押贷款的最大比例（如70表示70%）</small>
-
-      <label for="loanAmount">贷款余额（港币万元）</label>
-      <input id="loanAmount" type="number" v-model.number="loanAmount" :max="maxLoanAmount" min="0" step="0.01" required aria-describedby="loanAmountHelp" />
-      <small id="loanAmountHelp">您当前未偿还的贷款金额（不能超过最大贷款额度 {{ formatNumber(maxLoanAmount) }} 万）</small>
-
-      <label for="ltvBase">LTV 计算基准
-        <span class="info-icon" title="选择用总资产市值或有效抵押物市值作为LTV计算的分母">i</span>
-      </label>
-      <select id="ltvBase" v-model="ltvBase" aria-describedby="ltvBaseHelp">
-        <option value="totalAsset">总资产市值</option>
-        <option value="effectiveCollateral">有效抵押物市值</option>
-      </select>
-      <small id="ltvBaseHelp">选择LTV计算时的资产基准</small>
-
-      <label for="maintenanceMargin">维持保证金比例（%）</label>
-      <input id="maintenanceMargin" type="number" v-model.number="maintenanceMargin" min="50" max="150" step="0.1" required aria-describedby="maintenanceMarginHelp" />
-      <small id="maintenanceMarginHelp">低于此比例时触发追加保证金（一般60%~100%之间）</small>
-
-      <button type="submit">计算维持率及风险</button>
+    <!-- 输入表单 -->
+    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">质押资产总市值（美元/元）</label>
+          <input type="number" v-model.number="assetValue" min="0.01" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">初始信贷率 / LTV 授信上限（%）<span class="text-xs text-gray-400 font-normal ml-1">通常 50%~85%</span></label>
+          <input type="number" v-model.number="initialCreditRatio" min="1" max="95" step="0.1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">实际未偿还贷款（美元/元）<span class="text-xs text-gray-400 font-normal ml-1">初始上限 {{ fmtMoney(maxInitialLoan) }}</span></label>
+          <input type="number" v-model.number="loanAmount" min="0" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">清盘强平 LTV 警戒线（%）<span class="text-xs text-gray-400 font-normal ml-1">券商强制平仓线，通常 75%~85%</span></label>
+          <input type="number" v-model.number="liquidationLtv" min="50" max="95" step="0.1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+      <div v-if="error" class="mt-3 text-sm text-red-500">{{ error }}</div>
+      <button type="submit" class="w-full mt-4 bg-blue-500 text-white py-2 rounded font-semibold hover:bg-blue-600">计算风控指标与安全边际</button>
     </form>
 
-    <table v-if="calculated" aria-live="polite" aria-label="计算结果">
-      <thead>
-        <tr>
-          <th>项目</th>
-          <th>数值</th>
-          <th>说明</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>资产市值</td>
-          <td>{{ formatNumber(assetValue) }} 万港币</td>
-          <td>当前持有资产的市场价值</td>
-        </tr>
-        <tr>
-          <td>信贷率</td>
-          <td>{{ creditRatio.toFixed(2) }} %</td>
-          <td>资产可抵押贷款的最大比例</td>
-        </tr>
-        <tr>
-          <td>最大可贷金额</td>
-          <td>{{ formatNumber(maxLoanAmount) }} 万港币</td>
-          <td>资产市值 × 信贷率</td>
-        </tr>
-        <tr>
-          <td>贷款余额</td>
-          <td>{{ formatNumber(loanAmount) }} 万港币</td>
-          <td>当前未偿还贷款金额</td>
-        </tr>
-        <tr>
-          <td>LTV (贷款余额 ÷ 计算基准)</td>
-          <td :class="ltvClass">{{ ltv.toFixed(2) }} %</td>
-          <td>贷款余额 ÷ {{ ltvBaseName }}</td>
-        </tr>
-        <tr>
-          <td>维持率 (计算基准 ÷ 贷款余额)</td>
-          <td :class="maintenanceRateClass">{{ maintenanceRate === Infinity ? '∞' : maintenanceRate.toFixed(2) + ' %' }}</td>
-          <td>计算基准 ÷ 贷款余额 × 100%</td>
-        </tr>
-        <tr>
-          <td>风险状态</td>
-          <td :class="riskClass" colspan="2">{{ riskMessage }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- 结果卡片 -->
+    <div v-if="calculated" class="mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">风控评估结果</h3>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-xs text-gray-500">初始最大可贷额度</div>
+          <div class="text-lg font-bold mt-1">{{ fmtMoney(maxInitialLoan) }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-xs text-gray-500">当前实际 LTV</div>
+          <div class="text-lg font-bold mt-1" :class="ltvColorClass">{{ currentLtv.toFixed(2) }}%</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+          <div class="text-xs text-gray-500">账户净权益 (Equity)</div>
+          <div class="text-lg font-bold mt-1">{{ fmtMoney(equity) }} ({{ equityRatio.toFixed(1) }}%)</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 border-l-4" :class="bufferColorClass">
+          <div class="text-xs text-gray-500">距离强平许可资产最大跌幅</div>
+          <div class="text-lg font-bold mt-1" :class="bufferColorClass">{{ maxAllowedDrop >= 0 ? maxAllowedDrop.toFixed(2) + '%' : '已触发强平' }}</div>
+        </div>
+      </div>
 
-    <div class="note" v-if="calculated" aria-label="计算说明">
-计算说明：
+      <!-- 风险状态卡片 -->
+      <div class="mt-4 bg-white rounded-lg shadow p-4 border-l-4" :class="riskBorderColor">
+        <div class="flex items-center gap-3">
+          <span class="px-3 py-1 rounded text-sm font-bold" :class="riskBadgeClass">{{ riskLabel }}</span>
+          <span class="text-sm text-gray-600">{{ riskMessage }}</span>
+        </div>
+      </div>
+    </div>
 
-- 最大可贷金额 = 资产市值 × 信贷率
-- 贷款余额不能超过最大可贷金额
-- LTV = 贷款余额 ÷ 计算基准 × 100%，计算基准根据选择为总资产市值或有效抵押物市值（资产市值 × 信贷率）
-- 维持率 = 计算基准 ÷ 贷款余额 × 100%，反映资产价值相对于贷款的安全边际
-- 维持保证金比例为银行设定的风险阈值，低于此比例时会触发追加保证金（Margin Call）
-- 若贷款余额为0，视为无风险，维持率显示为无穷大
-- 维持率越高，风险越低；低于维持保证金比例时，风险较高，有追加保证金的可能性
+    <!-- 公式说明 -->
+    <div v-if="calculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-500 mb-4 text-center">美股 LTV 体系风控逻辑推导</h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-semibold text-gray-800">1. 实时 LTV 与 净权益</h4>
+          <div class="mt-1 space-y-1">
+            <p><code>实时 LTV = 贷款余额 ÷ 资产总市值 × 100%</code></p>
+            <p><code>= {{ fmtMoney(loanAmount) }} ÷ {{ fmtMoney(assetValue) }} × 100% = {{ currentLtv.toFixed(2) }}%</code></p>
+            <p><code>账户权益率 = 100% - 实时 LTV = {{ equityRatio.toFixed(2) }}%</code></p>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-semibold text-gray-800">2. 强制平仓临界点计算</h4>
+          <div class="mt-1 space-y-1">
+            <p><code>触发强平的最小市值 = 贷款余额 ÷ 强平 LTV 警戒线</code></p>
+            <p><code>= {{ fmtMoney(loanAmount) }} ÷ {{ (liquidationLtv/100).toFixed(2) }} = {{ fmtMoney(liquidationMarketValue) }}</code></p>
+            <p><code>最大可承受跌幅 = (当前市值 - 临界市值) ÷ 当前市值</code></p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
   <script>
     new Vue({
-      el: "#app",
-      data() {
+      el: '#app',
+      data: function() {
         return {
-          assetValue: 100,  // 万港币
-          creditRatio: 70,  // %
-          loanAmount: 60,   // 万港币
-          maintenanceMargin: 100, // %
-          ltvBase: "totalAsset",  // 计算基准，"totalAsset" 或 "effectiveCollateral"
+          assetValue: 1000000,
+          initialCreditRatio: 70,
+          loanAmount: 300000,
+          liquidationLtv: 80,
           calculated: false,
+          error: ''
         };
       },
       computed: {
-        maxLoanAmount() {
-          return this.assetValue * (this.creditRatio / 100);
+        maxInitialLoan: function() {
+          return this.assetValue * (this.initialCreditRatio / 100);
         },
-        ltvBaseValue() {
-          if (this.ltvBase === "effectiveCollateral") {
-            return this.assetValue * (this.creditRatio / 100);
+        currentLtv: function() {
+          if (!this.assetValue || this.assetValue <= 0) return 0;
+          return (this.loanAmount / this.assetValue) * 100;
+        },
+        equity: function() {
+          return this.assetValue - this.loanAmount;
+        },
+        equityRatio: function() {
+          if (!this.assetValue || this.assetValue <= 0) return 0;
+          return (this.equity / this.assetValue) * 100;
+        },
+        liquidationMarketValue: function() {
+          if (!this.liquidationLtv || this.liquidationLtv <= 0) return 0;
+          return this.loanAmount / (this.liquidationLtv / 100);
+        },
+        maxAllowedDrop: function() {
+          if (!this.assetValue || this.assetValue <= 0) return 0;
+          var drop = ((this.assetValue - this.liquidationMarketValue) / this.assetValue) * 100;
+          return drop;
+        },
+        ltvColorClass: function() {
+          if (this.currentLtv <= this.initialCreditRatio) return 'text-green-600';
+          if (this.currentLtv < this.liquidationLtv) return 'text-yellow-600';
+          return 'text-red-600';
+        },
+        bufferColorClass: function() {
+          if (this.maxAllowedDrop > 30) return 'text-green-600 border-green-400';
+          if (this.maxAllowedDrop > 10) return 'text-yellow-600 border-yellow-400';
+          return 'text-red-600 border-red-400';
+        },
+        riskLabel: function() {
+          if (this.loanAmount === 0) return '无风险';
+          if (this.currentLtv <= this.initialCreditRatio) return '安全 (极佳)';
+          if (this.currentLtv < this.liquidationLtv) return '预警 (超额借贷/大跌后)';
+          return '危险 (触发 Margin Call)';
+        },
+        riskMessage: function() {
+          if (this.loanAmount === 0) return '没有未偿还贷款，不存在平仓风险。';
+          if (this.currentLtv <= this.initialCreditRatio) {
+            return '当前 LTV 在初始授信额度内，安全边际充足。股票需再跌 ' + this.maxAllowedDrop.toFixed(1) + '% 才会触发平仓。';
           }
-          return this.assetValue;
+          if (this.currentLtv < this.liquidationLtv) {
+            return '当前 LTV 已超出初始放款线，但未达到平仓线。请注意资产波动，距平仓线尚有 ' + this.maxAllowedDrop.toFixed(1) + '% 的跌幅缓冲。';
+          }
+          return '警告：当前 LTV 已突破强平警戒线 (' + this.liquidationLtv + '%)！券商可能随时强行平仓！';
         },
-        ltvBaseName() {
-          return this.ltvBase === "effectiveCollateral" ? "有效抵押物市值" : "总资产市值";
+        riskBorderColor: function() {
+          if (this.currentLtv <= this.initialCreditRatio) return 'border-green-400';
+          if (this.currentLtv < this.liquidationLtv) return 'border-yellow-400';
+          return 'border-red-400';
         },
-        ltv() {
-          if (this.loanAmount === 0) return 0;
-          return (this.loanAmount / this.ltvBaseValue) * 100;
-        },
-        maintenanceRate() {
-          if (this.loanAmount === 0) return Infinity;
-          return (this.ltvBaseValue / this.loanAmount) * 100;
-        },
-        ltvClass() {
-          if (this.loanAmount === 0) return "text-green font-weight-bold";
-          if (this.ltv <= this.creditRatio) return "text-green font-weight-bold";
-          if (this.ltv <= this.creditRatio * 1.2) return "text-orange font-weight-bold";
-          return "text-red font-weight-bold";
-        },
-        maintenanceRateClass() {
-          if (this.loanAmount === 0) return "text-green font-weight-bold";
-          if (this.maintenanceRate >= this.maintenanceMargin) return "text-green font-weight-bold";
-          if (this.maintenanceRate >= this.maintenanceMargin * 0.8) return "text-orange font-weight-bold";
-          return "text-red font-weight-bold";
-        },
-        riskMessage() {
-          if (this.loanAmount === 0) return "无贷款，无风险。";
-          if (this.maintenanceRate >= this.maintenanceMargin) return "安全：维持率高于保证金比例，无需追加保证金。";
-          if (this.maintenanceRate >= this.maintenanceMargin * 0.8) return "警告：维持率接近保证金比例，注意风险。";
-          return "危险：维持率低于保证金比例，可能触发追加保证金。";
-        },
-        riskClass() {
-          return this.maintenanceRateClass;
+        riskBadgeClass: function() {
+          if (this.currentLtv <= this.initialCreditRatio) return 'bg-green-100 text-green-700';
+          if (this.currentLtv < this.liquidationLtv) return 'bg-yellow-100 text-yellow-700';
+          return 'bg-red-100 text-red-700';
         }
       },
       methods: {
-        calculate() {
-          if (this.assetValue <= 0) {
-            alert("资产市值必须大于0");
-            return;
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '$0.00';
+          var abs = Math.abs(num);
+          if (abs >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
+          if (abs >= 1000) return '$' + (num / 1000).toFixed(2) + 'K';
+          return '$' + num.toFixed(2);
+        },
+        applyPreset: function(type) {
+          if (type === 'safe') {
+            this.assetValue = 1000000;
+            this.initialCreditRatio = 70;
+            this.loanAmount = 250000;
+            this.liquidationLtv = 80;
+          } else if (type === 'aggressive') {
+            this.assetValue = 1000000;
+            this.initialCreditRatio = 70;
+            this.loanAmount = 650000;
+            this.liquidationLtv = 80;
           }
-          if (this.creditRatio <= 0 || this.creditRatio > 100) {
-            alert("信贷率应介于1%到100%之间");
-            return;
-          }
-          if (this.loanAmount < 0) {
-            alert("贷款余额不能为负数");
-            return;
-          }
-          if (this.loanAmount > this.maxLoanAmount) {
-            alert(`贷款余额不能超过最大贷款额度 ${this.formatNumber(this.maxLoanAmount)} 万`);
-            return;
-          }
-          if (this.maintenanceMargin < 50 || this.maintenanceMargin > 150) {
-            alert("维持保证金比例应在50%至150%之间");
+          this.calculate();
+        },
+        calculate: function() {
+          this.error = '';
+          if (this.assetValue <= 0) { this.error = '资产市值必须大于0'; this.calculated = false; return; }
+          if (this.initialCreditRatio <= 0 || this.initialCreditRatio > 95) { this.error = '信贷率应介于1%到95%之间'; this.calculated = false; return; }
+          if (this.loanAmount < 0) { this.error = '贷款余额不能为负数'; this.calculated = false; return; }
+          if (this.liquidationLtv <= this.initialCreditRatio) {
+            this.error = '强平 LTV 警戒线必须大于初始信贷率';
+            this.calculated = false;
             return;
           }
           this.calculated = true;
-        },
-        formatNumber(num) {
-          if (num === Infinity) return "∞";
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        },
-      },
-      watch: {
-        assetValue() {
-          if (this.loanAmount > this.maxLoanAmount) {
-            this.loanAmount = this.maxLoanAmount;
-          }
-        },
-        creditRatio() {
-          if (this.loanAmount > this.maxLoanAmount) {
-            this.loanAmount = this.maxLoanAmount;
-          }
         }
       },
-      mounted() {
+      mounted: function() {
         this.calculate();
-      },
+      }
     });
   </script>
 </body>

@@ -3,258 +3,289 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>汇财组合贷款的净孖展比率计算器（基于模拟下跌资产重新计算抵押品价值）</title>
+  <title>香港汇丰 (HSBC) 汇财组合贷款 (WPL) 净孖展比率 (NMR) 计算器</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 700px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      max-width: 850px;
       margin: 20px auto;
       padding: 0 15px;
-      background: #f9f9f9;
+      background: #f4f6f9;
       color: #333;
     }
     h1 {
       text-align: center;
-      margin-bottom: 1em;
+      color: #000;
+      font-size: 1.6rem;
+      margin-bottom: 0.2em;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 1.5em;
+    }
+    .preset-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .btn-preset {
+      background: #e2e8f0;
+      color: #334155;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-preset:hover {
+      background: #cbd5e1;
     }
     form {
       background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      margin-bottom: 1.5em;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
     }
     label {
       display: block;
-      margin-top: 10px;
       font-weight: 600;
       color: #1e293b;
+      font-size: 0.9em;
     }
     input[type="number"] {
       width: 100%;
       padding: 8px 10px;
       font-size: 1em;
-      margin-top: 6px;
+      margin-top: 4px;
       border-radius: 4px;
       border: 1px solid #ccc;
       box-sizing: border-box;
-      transition: border-color 0.3s ease;
     }
     input[type="number"]:focus {
-      border-color: #409eff;
+      border-color: #db0011; /* HSBC Red */
       outline: none;
     }
     small {
       display: block;
       margin-top: 2px;
-      font-size: 0.85em;
-      color: #555;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 0.8em;
+      color: #64748b;
     }
-    button {
+    button[type="submit"] {
       margin-top: 15px;
-      padding: 10px 20px;
-      background: #409eff;
+      padding: 12px;
+      background: #db0011; /* HSBC Red */
       border: none;
       color: #fff;
       font-weight: 600;
       border-radius: 4px;
       cursor: pointer;
-      transition: background 0.3s ease;
       width: 100%;
-      font-size: 1.1em;
+      font-size: 1em;
+      transition: background 0.2s;
     }
-    button:hover {
-      background: #66b1ff;
+    button[type="submit"]:hover {
+      background: #b3000e;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       background: #fff;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border-radius: 8px;
       overflow: hidden;
-      margin-bottom: 2em;
-      font-size: 0.95em;
+      margin-bottom: 1.5em;
+      font-size: 0.9em;
     }
     th, td {
-      text-align: center;
-      padding: 12px 8px;
-      border-bottom: 1px solid #eee;
-      color: #334155;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
     }
     th {
-      background: #409eff;
+      background: #1e293b;
       color: white;
+      text-align: left;
+    }
+    .text-right { text-align: right; }
+    .text-green { color: #16a34a; font-weight: 700; }
+    .text-yellow { color: #d97706; font-weight: 700; }
+    .text-orange { color: #ea580c; font-weight: 700; }
+    .text-red { color: #dc2626; font-weight: 700; }
+    
+    .status-card {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 1.5em;
       font-weight: 600;
     }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .text-green {
-      color: #15803d;
-      font-weight: 700;
-    }
-    .text-orange {
-      color: #b45309;
-      font-weight: 700;
-    }
-    .text-red {
-      color: #b91c1c;
-      font-weight: 700;
-    }
-    .font-weight-bold {
-      font-weight: 900 !important;
-    }
+    .bg-green { background: #dcfce7; color: #15803d; border-left: 5px solid #16a34a; }
+    .bg-yellow { background: #fef3c7; color: #b45309; border-left: 5px solid #d97706; }
+    .bg-orange { background: #ffedd5; color: #c2410c; border-left: 5px solid #ea580c; }
+    .bg-red { background: #fee2e2; color: #b91c1c; border-left: 5px solid #dc2626; }
+
     .note {
       background: #fff;
       padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      font-size: 0.95em;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      font-family: "Courier New", Courier, monospace;
-      margin-top: 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      font-size: 0.85em;
+      line-height: 1.6;
+      color: #475569;
+    }
+    .note code {
+      background: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 3px;
+      color: #0f172a;
     }
   </style>
 </head>
 <body>
   <div id="app" role="main">
-    <h1>汇财组合贷款的净孖展比率计算器（基于模拟下跌资产重新计算抵押品价值）</h1>
-    <form @submit.prevent="calculateNMR" aria-label="净孖展比率计算表单">
-      <label for="totalAsset">抵押资产市值总额（港币万元）</label>
-      <input
-        id="totalAsset"
-        type="number"
-        v-model.number="totalAsset"
-        min="1"
-        step="0.01"
-        required
-        aria-describedby="totalAssetHelp"
-      />
-      <small id="totalAssetHelp">您所有认可抵押资产的当前市场价值总和</small>
+    <h1>香港汇丰 (HSBC) 汇财组合贷款 NMR 风控计算器</h1>
+    <div class="subtitle">严格依据香港汇丰银行 Wealth Portfolio Lending 官方底层的 Net Margin Ratio 精细公式计算</div>
 
-      <label for="mixedLTV">混合信贷率（最高贷款比例，%）</label>
-      <input
-        id="mixedLTV"
-        type="number"
-        v-model.number="mixedLTV"
-        min="1"
-        max="100"
-        step="0.1"
-        required
-        aria-describedby="mixedLTVHelp"
-      />
-      <small id="mixedLTVHelp">根据信贷评估，最高可借款额度占资产市值的百分比</small>
+    <!-- 预设样例 -->
+    <div class="preset-group">
+      <button class="btn-preset" @click="setPreset(1500, 60, 800, 15)">样例 1：汇丰官网样例 (1500万资产, 抵押品900万, 借款800万)</button>
+      <button class="btn-preset" @click="setPreset(2000, 70, 1200, 20)">样例 2：稳健组合质押 (70% LTV, 借款 60%)</button>
+      <button class="btn-preset" @click="setPreset(1000, 80, 780, 10)">样例 3：高杠杆质押 (80% LTV, 接近满额提款)</button>
+    </div>
 
-      <label for="loanAmount">未偿还贷款金额（港币万元）</label>
-      <input
-        id="loanAmount"
-        type="number"
-        v-model.number="loanAmount"
-        :max="totalAsset"
-        min="0"
-        step="0.01"
-        required
-        aria-describedby="loanAmountHelp"
-      />
-      <small id="loanAmountHelp">当前您已借出的贷款金额</small>
-
-      <label for="dropPercent">模拟资产下跌百分比（%）</label>
-      <input
-        id="dropPercent"
-        type="number"
-        v-model.number="dropPercent"
-        min="0"
-        max="100"
-        step="0.1"
-        required
-        aria-describedby="dropPercentHelp"
-      />
-      <small id="dropPercentHelp">请输入您想模拟的资产市值下跌百分比</small>
-
-      <button type="submit">计算净孖展比率</button>
+    <form @submit.prevent="calculateNMR">
+      <div class="grid">
+        <div>
+          <label for="totalAsset">抵押资产总市值（万港币）</label>
+          <input id="totalAsset" type="number" v-model.number="totalAsset" min="0.01" step="0.01" required />
+          <small>组合内认可资产（股票/债券/基金）的最新市场价值</small>
+        </div>
+        <div>
+          <label for="mixedLTV">综合信贷率 / LTV（%）</label>
+          <input id="mixedLTV" type="number" v-model.number="mixedLTV" min="1" max="95" step="0.1" required />
+          <small>银行对该组合给出的加权平均借贷比率 (信贷额度 ÷ 市值)</small>
+        </div>
+        <div>
+          <label for="loanAmount">未偿还贷款金额（万港币）</label>
+          <input id="loanAmount" type="number" v-model.number="loanAmount" min="0" step="0.01" required />
+          <small>目前向汇丰银行已提取的透支/贷款余额</small>
+        </div>
+        <div>
+          <label for="dropPercent">压力测试：资产模拟下跌（%）</label>
+          <input id="dropPercent" type="number" v-model.number="dropPercent" min="0" max="99" step="0.1" required />
+          <small>设定市场整体下跌幅度，动态模拟评估风控指标</small>
+        </div>
+      </div>
+      <button type="submit">计算 NMR 及压力测试分析</button>
     </form>
 
-    <table v-if="calculated" aria-live="polite" aria-label="计算结果">
-      <thead>
-        <tr>
-          <th>项目</th>
-          <th>数值</th>
-          <th>说明</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>原始抵押资产市值总额</td>
-          <td>{{ formatNumber(totalAsset) }} 万港币</td>
-          <td>输入的当前资产市值</td>
-        </tr>
-        <tr>
-          <td>模拟下跌后抵押资产市值</td>
-          <td>{{ formatNumber(droppedAsset) }} 万港币</td>
-          <td>资产市值按下跌百分比调整后的值</td>
-        </tr>
-        <tr>
-          <td>混合信贷率</td>
-          <td>{{ mixedLTV.toFixed(2) }} %</td>
-          <td>最高贷款比例</td>
-        </tr>
-        <tr>
-          <td>抵押品价值总额（基于原始资产）</td>
-          <td>{{ formatNumber(originalCollateralValue) }} 万港币</td>
-          <td>原始资产市值 × 混合信贷率</td>
-        </tr>
-        <tr>
-          <td>抵押品价值总额（基于模拟下跌资产）</td>
-          <td>{{ formatNumber(droppedCollateralValue) }} 万港币</td>
-          <td>模拟下跌资产市值 × 混合信贷率</td>
-        </tr>
-        <tr>
-          <td>未偿还贷款金额</td>
-          <td>{{ formatNumber(loanAmount) }} 万港币</td>
-          <td>当前贷款余额</td>
-        </tr>
-        <tr>
-          <td>净孖展比率 (NMR) - 原始资产</td>
-          <td :class="nmrClass">{{ nmrPercentageDisplay }}</td>
-          <td>
-            (资产市值 - 贷款余额) ÷ (资产市值 - 抵押品价值总额)
-          </td>
-        </tr>
-        <tr>
-          <td>净孖展比率 (NMR) - 模拟下跌后资产</td>
-          <td :class="droppedNmrClass">{{ droppedNmrPercentageDisplay }}</td>
-          <td>
-            (模拟下跌资产市值 - 贷款余额) ÷ (模拟下跌资产市值 - 模拟下跌后的抵押品价值总额)
-          </td>
-        </tr>
-        <tr>
-          <td>风险状态（模拟下跌后）</td>
-          <td :class="droppedRiskClass" colspan="2">{{ droppedRiskMessage }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-if="calculated">
+      <!-- 风险状态卡片 -->
+      <div :class="['status-card', droppedStatus.bgClass]">
+        <div>风险状态（模拟下跌 {{ dropPercent }}% 后）：{{ droppedStatus.title }}</div>
+        <div style="font-size: 0.85em; font-weight: normal; margin-top: 4px;">{{ droppedStatus.desc }}</div>
+      </div>
 
-    <div class="note" v-if="calculated" aria-label="计算说明">
-计算说明：
+      <!-- 数据对比表格 -->
+      <table>
+        <thead>
+          <tr>
+            <th>对比项目</th>
+            <th class="text-right">当前状态 (Current)</th>
+            <th class="text-right">模拟下跌后 (Simulated)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>抵押资产总市值</td>
+            <td class="text-right">{{ formatMoney(totalAsset) }} 万</td>
+            <td class="text-right">{{ formatMoney(droppedAsset) }} 万</td>
+          </tr>
+          <tr>
+            <td>抵押品价值 (Collateral Value)</td>
+            <td class="text-right">{{ formatMoney(originalCollateralValue) }} 万</td>
+            <td class="text-right">{{ formatMoney(droppedCollateralValue) }} 万</td>
+          </tr>
+          <tr>
+            <td>可用孖展 (Available Margin)</td>
+            <td class="text-right">{{ formatMoney(originalAvailableMargin) }} 万</td>
+            <td class="text-right">{{ formatMoney(droppedAvailableMargin) }} 万</td>
+          </tr>
+          <tr>
+            <td>规定孖展 (Required Margin)</td>
+            <td class="text-right">{{ formatMoney(originalRequiredMargin) }} 万</td>
+            <td class="text-right">{{ formatMoney(droppedRequiredMargin) }} 万</td>
+          </tr>
+          <tr>
+            <td>未偿还贷款余额</td>
+            <td class="text-right">{{ formatMoney(loanAmount) }} 万</td>
+            <td class="text-right">{{ formatMoney(loanAmount) }} 万</td>
+          </tr>
+          <tr>
+            <td><strong>净孖展比率 (NMR)</strong></td>
+            <td class="text-right" :class="getNMRClass(originalNMR)"><strong>{{ formatNMR(originalNMR) }}</strong></td>
+            <td class="text-right" :class="getNMRClass(droppedNMR)"><strong>{{ formatNMR(droppedNMR) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
 
-抵押品价值总额 = 资产市值 × 混合信贷率 (%)
+      <!-- 风控安全边际分析 -->
+      <table>
+        <thead>
+          <tr>
+            <th colspan="2">临界跌幅预警分析（从当前市值计算）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>触发 <strong>差额通知 (Margin Call Notice)</strong> 的最大允许跌幅 (NMR = 80%)</td>
+            <td class="text-right font-weight-bold" :class="dropToMarginCall < 0 ? 'text-red' : 'text-yellow'">
+              {{ dropToMarginCall < 0 ? '已低于 80% 警告线' : '-' + dropToMarginCall.toFixed(2) + ' %' }}
+            </td>
+          </tr>
+          <tr>
+            <td>触发 <strong>补仓通知 (Top-up Notice)</strong> 的最大允许跌幅 (NMR = 60%)</td>
+            <td class="text-right font-weight-bold" :class="dropToTopUp < 0 ? 'text-red' : 'text-orange'">
+              {{ dropToTopUp < 0 ? '已触发补仓线' : '-' + dropToTopUp.toFixed(2) + ' %' }}
+            </td>
+          </tr>
+          <tr>
+            <td>触发 <strong>强制清盘 (Cut-off / Force Sell)</strong> 的最大允许跌幅 (NMR < 60%)</td>
+            <td class="text-right font-weight-bold" :class="dropToTopUp < 0 ? 'text-red' : 'text-red'">
+              {{ dropToTopUp < 0 ? '已处于强平区' : '-' + dropToTopUp.toFixed(2) + ' %' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-净孖展比率 (NMR) = (资产市值 - 未偿还贷款) ÷ (资产市值 - 抵押品价值总额)
-
-模拟下跌后资产市值 = 原始资产市值 × (1 - 下跌百分比 / 100)
-
-补仓及清盘标准：
-- NMR >= 100%：安全状态
-- 80% <= NMR < 100%：差额通知，建议补仓
-- 60% <= NMR < 80%：补仓通知，需尽快补仓
-- NMR < 60%：强制清盘风险，银行有权强制售出资产
-
-说明：
-这里抵押品价值总额会随资产市值变化而调整，更符合实际业务逻辑。
+      <!-- 汇丰 NMR 官方说明文档 -->
+      <div class="note">
+        <strong>📚 香港汇丰 (HSBC) 汇财组合贷款 NMR 官方风控定义：</strong><br />
+        1. <code>抵押品价值 (Collateral Value)</code> = 资产市值 × 信贷率 (LTV)<br />
+        2. <code>可用孖展 (Available Margin)</code> = 资产总市值 - 未偿还贷款金额<br />
+        3. <code>规定孖展 (Required Margin)</code> = 资产总市值 - 抵押品价值<br />
+        4. <code>净孖展比率 (NMR)</code> = (可用孖展 ÷ 规定孖展) × 100%<br />
+        5. <strong>官方四级风控阈值：</strong>
+        <ul>
+          <li><strong>NMR ≥ 100% (安全状态)</strong>：贷款保障充足，可正常使用透支额度。</li>
+          <li><strong>80% ≤ NMR < 90% (差额通知 Notice)</strong>：银行发出通知提醒关注风险。</li>
+          <li><strong>60% ≤ NMR < 80% (补仓通知 Top-up Notice)</strong>：触发保证金追缴，须在指定时间内补足资金/资产。</li>
+          <li><strong>NMR < 60% (强制平仓 Cut-off)</strong>：银行有权在不通知客户的情况下清算资产还款。</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -263,109 +294,139 @@
       el: "#app",
       data() {
         return {
-          totalAsset: 1500, // 万港币
-          mixedLTV: 60,     // 百分比%
-          loanAmount: 839.44,  // 万港币
-          dropPercent: 20,   // 资产模拟下跌百分比
-          calculated: false,
+          totalAsset: 1500,     // 资产市值 (万港币)
+          mixedLTV: 60,        // 综合 LTV (%)
+          loanAmount: 800,     // 贷款余额 (万港币)
+          dropPercent: 15,     // 模拟下跌 (%)
+          calculated: false
         };
       },
       computed: {
+        // --- 1. 当前状态精细计算 ---
         originalCollateralValue() {
           return this.totalAsset * (this.mixedLTV / 100);
         },
+        originalAvailableMargin() {
+          return this.totalAsset - this.loanAmount;
+        },
+        originalRequiredMargin() {
+          return this.totalAsset - this.originalCollateralValue;
+        },
+        originalNMR() {
+          if (this.loanAmount <= 0) return 9999;
+          if (this.originalRequiredMargin <= 0) return 9999;
+          return (this.originalAvailableMargin / this.originalRequiredMargin) * 100;
+        },
+
+        // --- 2. 模拟下跌后状态计算 ---
         droppedAsset() {
           return this.totalAsset * (1 - this.dropPercent / 100);
         },
         droppedCollateralValue() {
           return this.droppedAsset * (this.mixedLTV / 100);
         },
-        nmr() {
-          const denominator = this.totalAsset - this.originalCollateralValue;
-          if (denominator <= 0) return null;
-          return (this.totalAsset - this.loanAmount) / denominator;
+        droppedAvailableMargin() {
+          return this.droppedAsset - this.loanAmount;
         },
-        nmrPercentage() {
-          return this.nmr !== null ? this.nmr * 100 : null;
+        droppedRequiredMargin() {
+          return this.droppedAsset - this.droppedCollateralValue;
         },
-        droppedNmr() {
-          const denominator = this.droppedAsset - this.droppedCollateralValue;
-          if (denominator <= 0) return -1;  // 极高风险，可能强制清盘
-          return (this.droppedAsset - this.loanAmount) / denominator;
+        droppedNMR() {
+          if (this.loanAmount <= 0) return 9999;
+          if (this.droppedRequiredMargin <= 0) return 9999;
+          return (this.droppedAvailableMargin / this.droppedRequiredMargin) * 100;
         },
-        droppedNmrPercentage() {
-          return this.droppedNmr !== null && this.droppedNmr !== -1 ? this.droppedNmr * 100 : null;
+
+        // --- 3. 汇丰官方阈值临界跌幅计算 ---
+        // 目标公式：NMR = (Asset_target - Loan) / [Asset_target * (1 - LTV)]
+        // 推导得：Asset_target = Loan / [1 - NMR * (1 - LTV)]
+        dropToMarginCall() {
+          if (this.totalAsset <= 0 || this.mixedLTV >= 100) return 0;
+          const ltv = this.mixedLTV / 100;
+          const targetNMR = 0.8; // 80% 追缴线
+          const denominator = 1 - targetNMR * (1 - ltv);
+          if (denominator <= 0) return 0;
+          
+          const targetAsset = this.loanAmount / denominator;
+          if (targetAsset >= this.totalAsset) return -1;
+          return ((this.totalAsset - targetAsset) / this.totalAsset) * 100;
         },
-        nmrClass() {
-          if (this.nmrPercentage === null) return "text-red";
-          if (this.nmrPercentage >= 100) return "text-green";
-          if (this.nmrPercentage >= 80) return "text-orange";
-          return "text-red";
+        dropToTopUp() {
+          if (this.totalAsset <= 0 || this.mixedLTV >= 100) return 0;
+          const ltv = this.mixedLTV / 100;
+          const targetNMR = 0.6; // 60% 强平线
+          const denominator = 1 - targetNMR * (1 - ltv);
+          if (denominator <= 0) return 0;
+
+          const targetAsset = this.loanAmount / denominator;
+          if (targetAsset >= this.totalAsset) return -1;
+          return ((this.totalAsset - targetAsset) / this.totalAsset) * 100;
         },
-        droppedNmrClass() {
-          if (this.droppedNmr === -1) return "text-red font-weight-bold";
-          if (this.droppedNmrPercentage === null) return "text-red";
-          if (this.droppedNmrPercentage >= 100) return "text-green";
-          if (this.droppedNmrPercentage >= 80) return "text-orange";
-          return "text-red";
-        },
-        droppedRiskClass() {
-          if (this.droppedNmr === null) return "text-red";
-          if (this.droppedNmr === -1) return "text-red font-weight-bold";
-          if (this.droppedNmrPercentage >= 100) return "text-green";
-          if (this.droppedNmrPercentage >= 80) return "text-orange";
-          return "text-red";
-        },
-        droppedRiskMessage() {
-          if (this.droppedNmr === null) return "计算异常，请检查输入。";
-          if (this.droppedNmr === -1) return "资产价值严重下跌，贷款风险极高，可能已触发强制清盘。";
-          if (this.droppedNmrPercentage >= 100) {
-            return "安全：模拟下跌后净孖展比率符合要求，无需补仓。";
-          } else if (this.droppedNmrPercentage >= 80) {
-            return "差额通知：模拟下跌后风险增加，请考虑补仓。";
-          } else if (this.droppedNmrPercentage >= 60) {
-            return "补仓通知：模拟下跌后风险较高，请尽快补仓或减少贷款。";
+
+        // --- 4. 模拟下跌后的汇丰风控状态评估 ---
+        droppedStatus() {
+          const nmr = this.droppedNMR;
+          if (nmr >= 100) {
+            return {
+              title: "🟢 运作正常 (Safe)",
+              desc: "NMR 在 100% 或以上，组合资产安全，可正常使用贷款额度。",
+              bgClass: "bg-green"
+            };
+          } else if (nmr >= 90) {
+            return {
+              title: "🟡 额度受限 (Margin Notice)",
+              desc: "NMR 已低于 100%，已达到或超出最高贷款上限，暂停进一步提取贷款。",
+              bgClass: "bg-yellow"
+            };
+          } else if (nmr >= 80) {
+            return {
+              title: "🟠 差额预警 (Margin Call Notice)",
+              desc: "NMR 介于 80% 至 90% 之间，汇丰将发出差额通知提醒风险，建议补充资产。",
+              bgClass: "bg-orange"
+            };
+          } else if (nmr >= 60) {
+            return {
+              title: "🔴 补仓通知 (Top-up Notice)",
+              desc: "NMR 介于 60% 至 80% 之间，已触发补仓线！须在指定时间（通常 1~3 工作日）内补充保证金或还款。",
+              bgClass: "bg-red"
+            };
           } else {
-            return "强制清盘风险：模拟下跌后净孖展比率过低，可能被强制清盘。";
+            return {
+              title: "🚨 强制平仓风险 (Cut-off / Force Sell)",
+              desc: "NMR 已低于 60%！触发强平斩仓线，汇丰有权直接强制卖出证券还款！",
+              bgClass: "bg-red"
+            };
           }
-        },
-        nmrPercentageDisplay() {
-          if (this.nmrPercentage === null) return "计算异常";
-          return this.nmrPercentage.toFixed(2) + " %";
-        },
-        droppedNmrPercentageDisplay() {
-          if (this.droppedNmr === -1) return "极高风险（可能强制清盘）";
-          if (this.droppedNmrPercentage === null) return "计算异常";
-          return this.droppedNmrPercentage.toFixed(2) + " %";
         }
       },
       methods: {
+        setPreset(asset, ltv, loan, drop) {
+          this.totalAsset = asset;
+          this.mixedLTV = ltv;
+          this.loanAmount = loan;
+          this.dropPercent = drop;
+          this.calculateNMR();
+        },
         calculateNMR() {
-          if (this.totalAsset <= 0) {
-            alert("请填写有效的抵押资产市值。");
-            return;
-          }
-          if (this.mixedLTV <= 0 || this.mixedLTV > 100) {
-            alert("混合信贷率应在1至100之间。");
-            return;
-          }
-          if (this.loanAmount < 0) {
-            alert("贷款金额不能为负数。");
-            return;
-          }
-          if (this.loanAmount > this.totalAsset) {
-            alert("贷款金额不能超过抵押资产市值。");
-            return;
-          }
-          if (this.dropPercent < 0 || this.dropPercent > 100) {
-            alert("模拟资产下跌百分比应在0至100之间。");
+          if (this.totalAsset <= 0 || this.mixedLTV <= 0) {
+            alert("请填写正确的资产市值和信贷率。");
             return;
           }
           this.calculated = true;
         },
-        formatNumber(num) {
-          if (num === null) return "计算异常";
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        formatMoney(val) {
+          if (val === undefined || val === null) return "0.00";
+          return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
+        formatNMR(val) {
+          if (val >= 9999) return "N/A (无贷款)";
+          return val.toFixed(2) + " %";
+        },
+        getNMRClass(nmr) {
+          if (nmr >= 100) return "text-green";
+          if (nmr >= 90) return "text-yellow";
+          if (nmr >= 80) return "text-orange";
+          return "text-red";
         }
       },
       mounted() {
