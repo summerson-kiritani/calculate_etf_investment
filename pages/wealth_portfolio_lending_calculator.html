@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>香港汇丰 (HSBC) 组合贷款 (WPL) 多资产风控计算器</title>
+  <title>香港汇丰 (HSBC) 组合贷款 (WPL) 应急风控计算器</title>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <style>
     body {
@@ -43,6 +43,71 @@
       align-items: center;
     }
     
+    /* 逆算看板卡片 */
+    .emergency-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .emergency-box {
+      padding: 15px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    .emergency-box.warning { background: #fffbe2; border-color: #fde047; }
+    .emergency-box.danger { background: #fef2f2; border-color: #fca5a5; }
+    .emergency-title { font-size: 0.85em; color: #64748b; font-weight: 600; }
+    .emergency-value { font-size: 1.4rem; font-weight: 800; margin: 6px 0; }
+    .emergency-sub { font-size: 0.8em; color: #475569; }
+
+    /* 水位条与滑块 */
+    .gauge-container { margin: 15px 0 10px 0; }
+    .gauge-bar-bg {
+      height: 14px;
+      border-radius: 7px;
+      background: #e2e8f0;
+      overflow: hidden;
+      display: flex;
+      position: relative;
+    }
+    .gauge-segment { height: 100%; transition: width 0.3s; }
+    .slider-box {
+      background: #f1f5f9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+    .slider-input {
+      width: 100%;
+      height: 8px;
+      accent-color: #db0011;
+      cursor: pointer;
+    }
+
+    /* 救急测算模块 */
+    .rescue-card {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .rescue-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .rescue-box {
+      background: #fff;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #d8b4fe;
+    }
+
     /* 资产列表样式 */
     .asset-table {
       width: 100%;
@@ -54,11 +119,8 @@
       border-bottom: 1px solid #e2e8f0;
       text-align: left;
     }
-    .asset-table th {
-      background: #f8fafc;
-      color: #475569;
-      font-size: 0.85em;
-    }
+    .asset-table th { background: #f8fafc; color: #475569; font-size: 0.85em; }
+    
     input[type="text"], input[type="number"] {
       width: 100%;
       padding: 6px 8px;
@@ -71,8 +133,8 @@
       border-color: #db0011;
       outline: none;
     }
-    
-    /* 按钮组 */
+
+    /* 按钮样式 */
     .btn {
       padding: 6px 12px;
       border-radius: 4px;
@@ -87,8 +149,6 @@
     .btn-remove:hover { background: #fca5a5; }
     .btn-scenario { background: #e2e8f0; color: #334155; margin-right: 6px; margin-bottom: 6px; }
     .btn-scenario:hover { background: #cbd5e1; }
-    .btn-primary { background: #db0011; color: #fff; width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; margin-top: 10px; }
-    .btn-primary:hover { background: #b3000e; }
 
     /* 结果表格 */
     .res-table {
@@ -101,10 +161,7 @@
       margin-bottom: 1.5em;
       font-size: 0.9em;
     }
-    .res-table th, .res-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #f1f5f9;
-    }
+    .res-table th, .res-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
     .res-table th { background: #1e293b; color: white; text-align: left; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
@@ -114,7 +171,7 @@
     .text-yellow { color: #d97706; font-weight: 700; }
     .text-orange { color: #ea580c; font-weight: 700; }
     .text-red { color: #dc2626; font-weight: 700; }
-    
+
     /* 状态卡片 */
     .status-card {
       padding: 15px;
@@ -141,13 +198,96 @@
 </head>
 <body>
   <div id="app" role="main">
-    <h1>香港汇丰 (HSBC) 组合贷款多资产风控计算器</h1>
-    <div class="subtitle">支持多资产独立配置与独立压力测试 (Multi-Asset Portfolio Stress Testing)</div>
+    <h1>香港汇丰 (HSBC) 组合贷款应急风控计算器</h1>
+    <div class="subtitle">极速风控诊断 • 安全边界逆算 • 应急救急测算</div>
 
-    <!-- 1. 资产明细配置区 -->
+    <!-- 方案 1：反向逆算看板 -->
+    <div class="card" style="border-top: 4px solid #db0011;">
+      <div class="card-title">
+        <span>🛡️ 权益资产（QQQ类）安全防御极限诊断</span>
+        <span style="font-size:0.75em; color:#64748b; font-weight:normal;">假设现金/货基不跌</span>
+      </div>
+      <div class="emergency-grid">
+        <div class="emergency-box warning">
+          <div class="emergency-title">Margin Call 追缴线 (NMR = 80%)</div>
+          <div class="emergency-value text-yellow">
+            {{ riskAssetDropToMarginCall < 0 ? '已触网' : '-' + riskAssetDropToMarginCall.toFixed(1) + '%' }}
+          </div>
+          <div class="emergency-sub">
+            权益市值跌至 <strong>{{ formatMoney(riskMarketValueAtMarginCall) }} 万</strong> 触网
+          </div>
+        </div>
+
+        <div class="emergency-box danger">
+          <div class="emergency-title">Force Sell 强平斩仓线 (NMR = 60%)</div>
+          <div class="emergency-value text-red">
+            {{ riskAssetDropToTopUp < 0 ? '已强平' : '-' + riskAssetDropToTopUp.toFixed(1) + '%' }}
+          </div>
+          <div class="emergency-sub">
+            权益市值跌至 <strong>{{ formatMoney(riskMarketValueAtTopUp) }} 万</strong> 强平
+          </div>
+        </div>
+
+        <div class="emergency-box">
+          <div class="emergency-title">当前模拟状态 NMR</div>
+          <div class="emergency-value" :class="getNMRClass(droppedNMR)">
+            {{ formatNMR(droppedNMR) }}
+          </div>
+          <div class="emergency-sub">安全阈值：≥ 100%</div>
+        </div>
+      </div>
+
+      <!-- 方案 3：交互式安全水位滑块 -->
+      <div class="slider-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9em;">
+          <span><strong>🎛️ 权益/股票资产（如 QQQ）跌幅实时压测拖动条：</strong></span>
+          <span style="font-weight:bold; color:#db0011; font-size:1.1em;">-{{ globalDropSlider }}%</span>
+        </div>
+        <input type="range" class="slider-input" min="0" max="90" step="1" v-model.number="globalDropSlider" @input="updateRiskAssetDrop" />
+        
+        <!-- 可视化水位线 -->
+        <div class="gauge-container">
+          <div class="gauge-bar-bg">
+            <div class="gauge-segment" :style="{ width: Math.min(droppedNMR, 120)/1.2 + '%', background: getGaugeColor(droppedNMR) }"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:0.75em; color:#64748b; margin-top:4px;">
+            <span>0% (斩仓)</span>
+            <span>60% (强平线)</span>
+            <span>80% (预警线)</span>
+            <span>100% (安全线)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 方案 2：补仓/还款救急诊断器 -->
+      <div class="rescue-card" v-if="droppedNMR < targetNMRGoal">
+        <div style="font-weight:700; color:#6b21a8; font-size:0.95em; display:flex; align-items:center;">
+          🚨 应急修复预案（目标恢复至 safe NMR = {{ targetNMRGoal }}%）：
+        </div>
+        <div class="rescue-grid">
+          <div class="rescue-box">
+            <div style="font-size:0.8em; color:#6b21a8; font-weight:600;">方案 A：直接现金还款</div>
+            <div style="font-size:1.2rem; font-weight:800; color:#7e22ce; margin:4px 0;">
+              还款 {{ formatMoney(requiredRepayment) }} 万港币
+            </div>
+            <div style="font-size:0.75em; color:#581c87;">还款后负债降至 {{ formatMoney(loanAmount - requiredRepayment) }} 万</div>
+          </div>
+
+          <div class="rescue-box">
+            <div style="font-size:0.8em; color:#6b21a8; font-weight:600;">方案 B：补充高 LTV 抵押品 (以 95% 货基为例)</div>
+            <div style="font-size:1.2rem; font-weight:800; color:#7e22ce; margin:4px 0;">
+              质押 {{ formatMoney(requiredCollateral95) }} 万港币
+            </div>
+            <div style="font-size:0.75em; color:#581c87;">仅增加 {{ formatMoney(requiredCollateral95 * 0.05) }} 万规定保证金</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 资产配置与明细设置区 -->
     <div class="card">
       <div class="card-title">
-        <span>资产组合明细配置</span>
+        <span>资产组合与负债明细</span>
         <button class="btn btn-add" @click="addAsset">+ 添加资产</button>
       </div>
 
@@ -164,7 +304,7 @@
         <tbody>
           <tr v-for="(item, index) in assets" :key="index">
             <td>
-              <input type="text" v-model="item.name" placeholder="例如: QQQ / 货币基金" />
+              <input type="text" v-model="item.name" placeholder="例如: QQQ" />
             </td>
             <td>
               <input type="number" v-model.number="item.marketValue" min="0" step="0.1" />
@@ -182,119 +322,79 @@
         </tbody>
       </table>
 
-      <!-- 一键极值情景预设 -->
-      <div style="margin-top: 15px;">
-        <span style="font-size: 0.85em; font-weight: 600; color: #64748b; margin-right: 8px;">快捷压力情景：</span>
-        <button class="btn btn-scenario" @click="applyScenario('tech_crash')">📉 科技股/股票暴跌 25% (货币基金不动)</button>
-        <button class="btn btn-scenario" @click="applyScenario('liquidity_crisis')">💥 美股历史危机 (股票跌80%, 债券跌3%)</button>
-        <button class="btn btn-scenario" @click="applyScenario('reset')">🔄 重置跌幅为 0%</button>
+      <!-- 快捷情景选择 -->
+      <div style="margin-top: 15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+        <div>
+          <span style="font-size: 0.85em; font-weight: 600; color: #64748b; margin-right: 8px;">快捷场景：</span>
+          <button class="btn btn-scenario" @click="applyScenario('tech_crash')">📉 股票跌 25% (货基不动)</button>
+          <button class="btn btn-scenario" @click="applyScenario('liquidity_crisis')">💥 美股危机 (股票跌80%, 债跌10%)</button>
+          <button class="btn btn-scenario" @click="applyScenario('reset')">🔄 清空跌幅</button>
+        </div>
+        <div style="min-width:200px;">
+          <label style="font-size:0.85em; font-weight:600;">未偿还贷款余额（万港币）：</label>
+          <input type="number" v-model.number="loanAmount" min="0" step="0.1" style="margin-top:2px;" />
+        </div>
       </div>
     </div>
 
-    <!-- 2. 负债与贷款配置 -->
-    <div class="card">
-      <div class="card-title">未偿还贷款配置</div>
-      <div style="max-width: 300px;">
-        <label style="font-weight: 600; font-size: 0.9em;">未偿还贷款总额（万港币）</label>
-        <input type="number" v-model.number="loanAmount" min="0" step="0.1" style="margin-top: 5px;" />
-        <small style="color: #64748b; display: block; margin-top: 3px;">目前在汇丰已提取的透支/借款余额</small>
-      </div>
-
-      <button class="btn btn-primary" @click="calculate">运行汇丰 NMR 组合风控分析</button>
+    <!-- 评估报告卡片 -->
+    <div :class="['status-card', droppedStatus.bgClass]">
+      <div>模拟压力测试后风险状态：{{ droppedStatus.title }}</div>
+      <div style="font-size: 0.85em; font-weight: normal; margin-top: 4px;">{{ droppedStatus.desc }}</div>
     </div>
 
-    <!-- 3. 计算结果与压力测试评估 -->
-    <div v-if="calculated">
-      <!-- 状态指示卡片 -->
-      <div :class="['status-card', droppedStatus.bgClass]">
-        <div>模拟压力测试后风险状态：{{ droppedStatus.title }}</div>
-        <div style="font-size: 0.85em; font-weight: normal; margin-top: 4px;">{{ droppedStatus.desc }}</div>
-      </div>
+    <!-- 详细数据对比分析 -->
+    <table class="res-table">
+      <thead>
+        <tr>
+          <th>风控指标分析项目</th>
+          <th class="text-right">初始组合状态</th>
+          <th class="text-right">模拟跌幅后</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>资产总市值</td>
+          <td class="text-right">{{ formatMoney(currentTotalMarketValue) }} 万</td>
+          <td class="text-right">{{ formatMoney(droppedTotalMarketValue) }} 万</td>
+        </tr>
+        <tr>
+          <td>抵押品总价值 (Collateral Value)</td>
+          <td class="text-right">{{ formatMoney(currentTotalCollateralValue) }} 万</td>
+          <td class="text-right">{{ formatMoney(droppedTotalCollateralValue) }} 万</td>
+        </tr>
+        <tr>
+          <td>综合平均信贷率 (Weighted LTV)</td>
+          <td class="text-right">{{ currentWeightedLTV.toFixed(2) }} %</td>
+          <td class="text-right">{{ droppedWeightedLTV.toFixed(2) }} %</td>
+        </tr>
+        <tr>
+          <td>可用孖展 (Available Margin)</td>
+          <td class="text-right">{{ formatMoney(currentAvailableMargin) }} 万</td>
+          <td class="text-right">{{ formatMoney(droppedAvailableMargin) }} 万</td>
+        </tr>
+        <tr>
+          <td>规定孖展 (Required Margin)</td>
+          <td class="text-right">{{ formatMoney(currentRequiredMargin) }} 万</td>
+          <td class="text-right">{{ formatMoney(droppedRequiredMargin) }} 万</td>
+        </tr>
+        <tr>
+          <td>未偿还贷款余额</td>
+          <td class="text-right">{{ formatMoney(loanAmount) }} 万</td>
+          <td class="text-right">{{ formatMoney(loanAmount) }} 万</td>
+        </tr>
+        <tr>
+          <td><strong>净孖展比率 (NMR)</strong></td>
+          <td class="text-right" :class="getNMRClass(currentNMR)"><strong>{{ formatNMR(currentNMR) }}</strong></td>
+          <td class="text-right" :class="getNMRClass(droppedNMR)"><strong>{{ formatNMR(droppedNMR) }}</strong></td>
+        </tr>
+      </tbody>
+    </table>
 
-      <!-- 核心对比数据表格 -->
-      <table class="res-table">
-        <thead>
-          <tr>
-            <th>风控指标分析项目</th>
-            <th class="text-right">当前组合状态 (Current)</th>
-            <th class="text-right">独立跌幅模拟后 (Simulated)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>资产总市值</td>
-            <td class="text-right">{{ formatMoney(currentTotalMarketValue) }} 万</td>
-            <td class="text-right">{{ formatMoney(droppedTotalMarketValue) }} 万</td>
-          </tr>
-          <tr>
-            <td>抵押品总价值 (Collateral Value)</td>
-            <td class="text-right">{{ formatMoney(currentTotalCollateralValue) }} 万</td>
-            <td class="text-right">{{ formatMoney(droppedTotalCollateralValue) }} 万</td>
-          </tr>
-          <tr>
-            <td>综合平均信贷率 (Weighted LTV)</td>
-            <td class="text-right">{{ currentWeightedLTV.toFixed(2) }} %</td>
-            <td class="text-right">{{ droppedWeightedLTV.toFixed(2) }} %</td>
-          </tr>
-          <tr>
-            <td>可用孖展 (Available Margin)</td>
-            <td class="text-right">{{ formatMoney(currentAvailableMargin) }} 万</td>
-            <td class="text-right">{{ formatMoney(droppedAvailableMargin) }} 万</td>
-          </tr>
-          <tr>
-            <td>规定孖展 (Required Margin)</td>
-            <td class="text-right">{{ formatMoney(currentRequiredMargin) }} 万</td>
-            <td class="text-right">{{ formatMoney(droppedRequiredMargin) }} 万</td>
-          </tr>
-          <tr>
-            <td>未偿还贷款余额</td>
-            <td class="text-right">{{ formatMoney(loanAmount) }} 万</td>
-            <td class="text-right">{{ formatMoney(loanAmount) }} 万</td>
-          </tr>
-          <tr>
-            <td><strong>净孖展比率 (Net Margin Ratio - NMR)</strong></td>
-            <td class="text-right" :class="getNMRClass(currentNMR)"><strong>{{ formatNMR(currentNMR) }}</strong></td>
-            <td class="text-right" :class="getNMRClass(droppedNMR)"><strong>{{ formatNMR(droppedNMR) }}</strong></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 针对高风险资产的独立临界点分析 -->
-      <table class="res-table">
-        <thead>
-          <tr>
-            <th colspan="2">高风险资产（股票/ETF类）独立安全边际分析</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>假设货币基金/高评级债（LTV ≥ 90%）价格<strong>保持不变</strong>：</td>
-            <td class="text-right" style="color: #64748b; font-size: 0.85em;">基于当前组合计算</td>
-          </tr>
-          <tr>
-            <td>权益/高风险资产<strong>单独下跌</strong>触发 <strong>Margin Call 追缴线 (NMR = 80%)</strong> 的最大允许跌幅</td>
-            <td class="text-right font-weight-bold" :class="riskAssetDropToMarginCall < 0 ? 'text-red' : 'text-yellow'">
-              {{ riskAssetDropToMarginCall < 0 ? '已低于 80% 追缴线' : '-' + riskAssetDropToMarginCall.toFixed(2) + ' %' }}
-            </td>
-          </tr>
-          <tr>
-            <td>权益/高风险资产<strong>单独下跌</strong>触发 <strong>Force Sell 强平斩仓线 (NMR = 60%)</strong> 的最大允许跌幅</td>
-            <td class="text-right font-weight-bold" :class="riskAssetDropToTopUp < 0 ? 'text-red' : 'text-orange'">
-              {{ riskAssetDropToTopUp < 0 ? '已触发强平线' : '-' + riskAssetDropToTopUp.toFixed(2) + ' %' }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 业务逻辑说明 -->
-      <div class="note">
-        <strong>📚 香港汇丰 (HSBC) 多资产组合 WPL 风控计算说明：</strong><br />
-        1. <code>组合抵押品总价值</code> = ∑(各资产市值 × 对应 LTV)<br />
-        2. <code>可用孖展 (Available Margin)</code> = 组合总市值 - 未偿还贷款金额<br />
-        3. <code>规定孖展 (Required Margin)</code> = 组合总市值 - 组合抵押品总价值<br />
-        4. <code>净孖展比率 (NMR)</code> = (可用孖展 ÷ 规定孖展) × 100%<br />
-        5. <strong>多资产非等比例下跌优势：</strong> 当您持有高 LTV（如 95% 货币基金）资产时，其强大的抗跌能力会显著减缓 NMR 的下滑速度。独立测试每个资产的跌幅能避免虚假警报，更贴近真实风控表现。
-      </div>
+    <div class="note">
+      <strong>📚 应急救急计算原理小贴士：</strong><br />
+      1. <strong>现金还款优势</strong>：每还款 $1$ 万港币现金，可用孖展（Available Margin）保持不变，贷款直接减少 $1$ 万，能最迅速抬升 NMR。<br />
+      2. <strong>95% 货币基金质押优势</strong>：追加 $100$ 万 95% LTV 的货币基金，只增加 $5$ 万的规定孖展（Required Margin），却能带来 $100$ 万的可用孖展增加，是绝佳的抵押防空洞。
     </div>
   </div>
 
@@ -308,10 +408,12 @@
             { name: "HSBC 港币货币市场基金", marketValue: 30, ltv: 95, dropPercent: 0 }
           ],
           loanAmount: 11,
-          calculated: false
+          globalDropSlider: 15, // 拖动条绑定的跌幅
+          targetNMRGoal: 100 // 应急修复的目标 NMR (%)
         };
       },
       computed: {
+        // 当前数据计算
         currentTotalMarketValue() {
           return this.assets.reduce((sum, item) => sum + (item.marketValue || 0), 0);
         },
@@ -334,6 +436,7 @@
           return (this.currentAvailableMargin / this.currentRequiredMargin) * 100;
         },
 
+        // 模拟跌幅后数据计算
         droppedTotalMarketValue() {
           return this.assets.reduce((sum, item) => {
             const val = item.marketValue || 0;
@@ -365,11 +468,36 @@
           return (this.droppedAvailableMargin / this.droppedRequiredMargin) * 100;
         },
 
+        // 方案 1：反向逆算高风险资产跌幅及触网市值
         riskAssetDropToMarginCall() {
           return this.calculateRiskAssetDropForNMR(0.8);
         },
         riskAssetDropToTopUp() {
           return this.calculateRiskAssetDropForNMR(0.6);
+        },
+        riskMarketValueAtMarginCall() {
+          return this.calculateRiskMarketValueForNMR(0.8);
+        },
+        riskMarketValueAtTopUp() {
+          return this.calculateRiskMarketValueForNMR(0.6);
+        },
+
+        // 方案 2：救急测算（还款金额与补质押金额）
+        requiredRepayment() {
+          // 目标 NMR = (MarketValue - (Loan - Repay)) / ReqMargin => Repay = Loan - MarketValue + Target * ReqMargin
+          const targetNMR = this.targetNMRGoal / 100;
+          const targetLoan = this.droppedTotalMarketValue - (targetNMR * this.droppedRequiredMargin);
+          const repay = this.loanAmount - targetLoan;
+          return repay > 0 ? repay : 0;
+        },
+        requiredCollateral95() {
+          // 增加 95% LTV 资产 X: NewNMR = (MV + X - Loan) / (ReqMargin + 0.05X) = Target
+          const targetNMR = this.targetNMRGoal / 100;
+          const numerator = targetNMR * this.droppedRequiredMargin - this.droppedAvailableMargin;
+          const denominator = 1 - (0.05 * targetNMR);
+          if (denominator <= 0) return 0;
+          const addVal = numerator / denominator;
+          return addVal > 0 ? addVal : 0;
         },
 
         droppedStatus() {
@@ -408,6 +536,51 @@
         }
       },
       methods: {
+        updateRiskAssetDrop() {
+          // 将滑块数值同步到所有高风险资产（LTV < 90% 的资产）
+          this.assets.forEach(a => {
+            if (a.ltv < 90) {
+              a.dropPercent = this.globalDropSlider;
+            }
+          });
+        },
+        calculateRiskAssetDropForNMR(targetNMR) {
+          if (this.loanAmount <= 0) return 0;
+          let safeMV = 0, safeCollateral = 0, riskMV = 0, riskCollateral = 0;
+
+          this.assets.forEach(a => {
+            const mv = a.marketValue || 0;
+            const ltv = (a.ltv || 0) / 100;
+            if (a.ltv >= 90) {
+              safeMV += mv;
+              safeCollateral += mv * ltv;
+            } else {
+              riskMV += mv;
+              riskCollateral += mv * ltv;
+            }
+          });
+
+          if (riskMV <= 0) return 0;
+          const riskLTV = riskCollateral / riskMV;
+          const safeReqMargin = safeMV - safeCollateral;
+          const numerator = this.loanAmount - safeMV + targetNMR * safeReqMargin;
+          const denominator = 1 - targetNMR * (1 - riskLTV);
+
+          if (denominator <= 0) return 0;
+          const targetRiskMV = numerator / denominator;
+          if (targetRiskMV >= riskMV) return -1;
+
+          return ((riskMV - targetRiskMV) / riskMV) * 100;
+        },
+        calculateRiskMarketValueForNMR(targetNMR) {
+          let riskMV = 0;
+          this.assets.forEach(a => {
+            if (a.ltv < 90) riskMV += (a.marketValue || 0);
+          });
+          const allowedDrop = this.calculateRiskAssetDropForNMR(targetNMR);
+          if (allowedDrop < 0) return 0;
+          return riskMV * (1 - allowedDrop / 100);
+        },
         addAsset() {
           this.assets.push({
             name: "新资产 " + (this.assets.length + 1),
@@ -424,65 +597,28 @@
         applyScenario(type) {
           if (type === 'reset') {
             this.assets.forEach(a => a.dropPercent = 0);
+            this.globalDropSlider = 0;
           } else if (type === 'tech_crash') {
             this.assets.forEach(a => {
               if (a.ltv >= 90) a.dropPercent = 0;
-              else if (a.ltv >= 80) a.dropPercent = 3;
               else a.dropPercent = 25;
             });
+            this.globalDropSlider = 25;
           } else if (type === 'liquidity_crisis') {
             this.assets.forEach(a => {
               if (a.ltv >= 95) a.dropPercent = 3;
               else if (a.ltv >= 80) a.dropPercent = 10;
               else a.dropPercent = 80;
             });
+            this.globalDropSlider = 80;
           }
-          this.calculate();
-        },
-        calculateRiskAssetDropForNMR(targetNMR) {
-          if (this.loanAmount <= 0) return 0;
-
-          let safeMarketValue = 0;
-          let safeCollateralValue = 0;
-          let riskMarketValue = 0;
-          let riskCollateralValue = 0;
-
-          this.assets.forEach(a => {
-            const mv = a.marketValue || 0;
-            const ltv = (a.ltv || 0) / 100;
-            if (a.ltv >= 90) {
-              safeMarketValue += mv;
-              safeCollateralValue += mv * ltv;
-            } else {
-              riskMarketValue += mv;
-              riskCollateralValue += mv * ltv;
-            }
-          });
-
-          if (riskMarketValue <= 0) return 0;
-
-          const riskLTV = riskCollateralValue / riskMarketValue;
-          const safeReqMargin = safeMarketValue - safeCollateralValue;
-          const numerator = this.loanAmount - safeMarketValue + targetNMR * safeReqMargin;
-          const denominator = 1 - targetNMR * (1 - riskLTV);
-
-          if (denominator <= 0) return 0;
-
-          const targetRiskMV = numerator / denominator;
-          if (targetRiskMV >= riskMarketValue) return -1;
-
-          const allowedDrop = ((riskMarketValue - targetRiskMV) / riskMarketValue) * 100;
-          return allowedDrop;
-        },
-        calculate() {
-          this.calculated = true;
         },
         formatMoney(val) {
           if (val === undefined || val === null) return "0.00";
           return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
         formatNMR(val) {
-          if (val >= 9999) return "N/A (无贷款)";
+          if (val >= 9999) return "N/A";
           return val.toFixed(2) + " %";
         },
         getNMRClass(nmr) {
@@ -490,10 +626,13 @@
           if (nmr >= 90) return "text-yellow";
           if (nmr >= 80) return "text-orange";
           return "text-red";
+        },
+        getGaugeColor(nmr) {
+          if (nmr >= 100) return "#16a34a";
+          if (nmr >= 90) return "#d97706";
+          if (nmr >= 80) return "#ea580c";
+          return "#dc2626";
         }
-      },
-      mounted() {
-        this.calculate();
       }
     });
   </script>
