@@ -1,232 +1,481 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>美股 PAL / Margin LTV 与风控计算器</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
-  <style>
-    .formula-section code {
-      background: #eff6ff;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 0.95rem;
-      color: #1d4ed8;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schwab PAL® 多资产组合质押贷款与压力测试计算器</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- FontAwesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen">
-  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
-    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
-    <h1 class="text-2xl font-bold mt-4">美股股票质押 (PAL) / Margin LTV 风控计算器</h1>
-    <p class="text-gray-500 mt-1">评估基于美股 LTV 体系下的质押安全边际与清盘（Margin Call）风险</p>
-
-    <!-- 预设样例按钮 -->
-    <div class="mt-4 flex gap-2">
-      <button @click="applyPreset('safe')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">样例：稳健借贷 (30% 额度)</button>
-      <button @click="applyPreset('aggressive')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">样例：高杠杆 (接近上限)</button>
-    </div>
-
-    <!-- 输入表单 -->
-    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-3">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">质押资产总市值（美元/元）</label>
-          <input type="number" v-model.number="assetValue" min="0.01" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
+  <div id="app" class="max-w-6xl mx-auto px-4 py-8">
+    
+    <!-- 顶栏标题区 -->
+    <header class="mb-8 border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="bg-sky-600 text-white font-bold px-2.5 py-1 rounded text-xs tracking-wider uppercase">Schwab Bank PAL® 标准</span>
+          <h1 class="text-2xl font-bold text-slate-900">多资产质押贷款风控与压力测试计算器</h1>
         </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">初始信贷率 / LTV 授信上限（%）<span class="text-xs text-gray-400 font-normal ml-1">通常 50%~85%</span></label>
-          <input type="number" v-model.number="initialCreditRatio" min="1" max="95" step="0.1" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">实际未偿还贷款（美元/元）<span class="text-xs text-gray-400 font-normal ml-1">初始上限 {{ fmtMoney(maxInitialLoan) }}</span></label>
-          <input type="number" v-model.number="loanAmount" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">清盘强平 LTV 警戒线（%）<span class="text-xs text-gray-400 font-normal ml-1">券商强制平仓线，通常 75%~85%</span></label>
-          <input type="number" v-model.number="liquidationLtv" min="50" max="95" step="0.1" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
+        <p class="text-slate-500 text-sm mt-1">严格遵循嘉信银行 Borrowing Base（借款基数缺口）风控模型，评估非等比例下跌下的安全缓冲。</p>
       </div>
-      <div v-if="error" class="mt-3 text-sm text-red-500">{{ error }}</div>
-      <button type="submit" class="w-full mt-4 bg-blue-500 text-white py-2 rounded font-semibold hover:bg-blue-600">计算风控指标与安全边际</button>
-    </form>
-
-    <!-- 结果卡片 -->
-    <div v-if="calculated" class="mt-6">
-      <h3 class="text-lg font-semibold text-gray-800 mb-3">风控评估结果</h3>
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-xs text-gray-500">初始最大可贷额度</div>
-          <div class="text-lg font-bold mt-1">{{ fmtMoney(maxInitialLoan) }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-xs text-gray-500">当前实际 LTV</div>
-          <div class="text-lg font-bold mt-1" :class="ltvColorClass">{{ currentLtv.toFixed(2) }}%</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-          <div class="text-xs text-gray-500">账户净权益 (Equity)</div>
-          <div class="text-lg font-bold mt-1">{{ fmtMoney(equity) }} ({{ equityRatio.toFixed(1) }}%)</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-4 border-l-4" :class="bufferColorClass">
-          <div class="text-xs text-gray-500">距离强平许可资产最大跌幅</div>
-          <div class="text-lg font-bold mt-1" :class="bufferColorClass">{{ maxAllowedDrop >= 0 ? maxAllowedDrop.toFixed(2) + '%' : '已触发强平' }}</div>
-        </div>
+      <div class="flex gap-2">
+        <button @click="applyPreset('techCrash')" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded text-xs font-medium transition flex items-center gap-1">
+          <i class="fa-solid fa-chart-line-down"></i> 场景：科技股暴跌
+        </button>
+        <button @click="applyPreset('liquidityCrisis')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded text-xs font-medium transition flex items-center gap-1">
+          <i class="fa-solid fa-volcano"></i> 场景：全面流动性危机
+        </button>
+        <button @click="resetDrops()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded text-xs font-medium transition">
+          重置跌幅
+        </button>
       </div>
+    </header>
 
-      <!-- 风险状态卡片 -->
-      <div class="mt-4 bg-white rounded-lg shadow p-4 border-l-4" :class="riskBorderColor">
-        <div class="flex items-center gap-3">
-          <span class="px-3 py-1 rounded text-sm font-bold" :class="riskBadgeClass">{{ riskLabel }}</span>
-          <span class="text-sm text-gray-600">{{ riskMessage }}</span>
-        </div>
-      </div>
-    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- 左侧：输入配置面板 (7列) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- 卡片 1: 资产组合配置表格 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <h2 class="font-semibold text-slate-800 flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-wallet text-sky-600"></i> 1. 质押资产组合配置
+            </h2>
+            <button @click="addAsset" class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-xs font-medium transition flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> 添加资产
+            </button>
+          </div>
 
-    <!-- 公式说明 -->
-    <div v-if="calculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-4 text-center">美股 LTV 体系风控逻辑推导</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-600">
+              <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
+                <tr>
+                  <th class="py-3 px-3">资产名称</th>
+                  <th class="py-3 px-3">当前市值 ($)</th>
+                  <th class="py-3 px-3">放款率 (Advance Rate)</th>
+                  <th class="py-3 px-3">模拟跌幅 (%)</th>
+                  <th class="py-3 px-3 text-center">操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="(asset, index) in assets" :key="index" class="hover:bg-slate-50/50">
+                  <!-- 资产名称 -->
+                  <td class="py-2.5 px-3">
+                    <input type="text" v-model="asset.name" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-sky-500 font-medium" />
+                  </td>
+                  <!-- 资产市值 -->
+                  <td class="py-2.5 px-3">
+                    <input type="number" min="0" step="1000" v-model.number="asset.marketValue" class="w-28 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-800 font-mono text-right focus:outline-none focus:ring-1 focus:ring-sky-500" />
+                  </td>
+                  <!-- Advance Rate (LTV) -->
+                  <td class="py-2.5 px-3">
+                    <div class="flex items-center gap-1">
+                      <input type="number" min="0" max="95" step="5" v-model.number="asset.ltv" class="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-800 font-mono text-right focus:outline-none focus:ring-1 focus:ring-sky-500" />
+                      <span>%</span>
+                    </div>
+                  </td>
+                  <!-- 独立跌幅 -->
+                  <td class="py-2.5 px-3">
+                    <div class="flex items-center gap-1">
+                      <input type="number" min="0" max="100" step="1" v-model.number="asset.dropPercent" class="w-16 bg-red-50/50 border border-red-200 text-red-600 rounded px-2 py-1 font-mono text-right focus:outline-none focus:ring-1 focus:ring-red-500 font-bold" />
+                      <span class="text-red-500">%</span>
+                    </div>
+                  </td>
+                  <!-- 删除按钮 -->
+                  <td class="py-2.5 px-3 text-center">
+                    <button @click="removeAsset(index)" :disabled="assets.length <= 1" class="text-slate-400 hover:text-red-500 disabled:opacity-30 disabled:hover:text-slate-400 transition">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h4 class="font-semibold text-gray-800">1. 实时 LTV 与 净权益</h4>
-          <div class="mt-1 space-y-1">
-            <p><code>实时 LTV = 贷款余额 ÷ 资产总市值 × 100%</code></p>
-            <p><code>= {{ fmtMoney(loanAmount) }} ÷ {{ fmtMoney(assetValue) }} × 100% = {{ currentLtv.toFixed(2) }}%</code></p>
-            <p><code>账户权益率 = 100% - 实时 LTV = {{ equityRatio.toFixed(2) }}%</code></p>
+          <!-- 组合汇总统计行 -->
+          <div class="p-3 bg-slate-50 border-t border-slate-100 text-xs flex justify-between items-center font-medium text-slate-600">
+            <span>资产笔数：<strong class="text-slate-800">{{ assets.length }}</strong></span>
+            <span>综合加权放款率 (Advance Rate)：<strong class="text-sky-700 font-mono">{{ currentWeightedLTV.toFixed(2) }}%</strong></span>
           </div>
         </div>
 
-        <div>
-          <h4 class="font-semibold text-gray-800">2. 强制平仓临界点计算</h4>
-          <div class="mt-1 space-y-1">
-            <p><code>触发强平的最小市值 = 贷款余额 ÷ 强平 LTV 警戒线</code></p>
-            <p><code>= {{ fmtMoney(loanAmount) }} ÷ {{ (liquidationLtv/100).toFixed(2) }} = {{ fmtMoney(liquidationMarketValue) }}</code></p>
-            <p><code>最大可承受跌幅 = (当前市值 - 临界市值) ÷ 当前市值</code></p>
+        <!-- 卡片 2: 未偿还贷款金额设置 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <h2 class="font-semibold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-3">
+            <i class="fa-solid fa-sliders text-sky-600"></i> 2. 未偿还贷款与额度限制
+          </h2>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">未偿还贷款余额 ($)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400 font-mono">$</span>
+                <input type="number" min="0" step="10000" v-model.number="borrowedAmount" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-3 py-1.5 text-slate-800 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div class="flex justify-between items-center mt-2 text-[11px] text-slate-500">
+                <span>初始 Borrowing Base 授信额度: <strong class="font-mono text-slate-700">${{ formatNum(currentBorrowingBase) }}</strong></span>
+                <span>额度提取率: <strong class="font-mono" :class="borrowedAmount > currentBorrowingBase ? 'text-red-600' : 'text-emerald-600'">{{ currentUsageRatio.toFixed(1) }}%</strong></span>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- 卡片 3: 临界点精准反推卡片 -->
+        <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-4 text-xs space-y-2">
+          <div class="flex items-center gap-2 font-bold text-amber-900">
+            <i class="fa-solid fa-calculator text-amber-600"></i>
+            <span>Schwab Borrowing Base 强平临界点反推</span>
+          </div>
+          <p class="text-slate-600 leading-relaxed">
+            在其他资产维持预设跌幅的前提下，持仓最大的核心资产
+            <strong class="text-slate-800">{{ highestRiskAsset.name }}</strong> 允许的最大独立跌幅为 
+            <span class="bg-amber-200/80 px-1.5 py-0.5 rounded text-amber-900 font-mono font-bold text-sm">
+              {{ singleAssetCrashLimitText }}
+            </span>。
+            若跌幅超过该临界点，折算后的 Borrowing Base 将无法覆盖未偿还贷款，触发 <strong>Schwab Shortage Call</strong>。
+          </p>
+        </div>
+
       </div>
+
+      <!-- 右侧：压力测试与风控仪表盘 (5列) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- 核心风控状态面板 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">
+          
+          <!-- 顶部状态指示灯 -->
+          <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+            <span class="text-xs font-semibold text-slate-500 tracking-wider uppercase">PAL 风控评估结果</span>
+            <span :class="riskStatusBadgeClass" class="px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full animate-pulse" :class="riskStatusDotClass"></span>
+              {{ riskStatusText }}
+            </span>
+          </div>
+
+          <!-- 核心数值对比 -->
+          <div class="space-y-4">
+            
+            <!-- 总市值对比 -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-500 mb-1">
+                <span>组合总市值</span>
+                <span v-if="simulatedTotalDrop > 0" class="text-red-500 font-medium">综合跌幅: -{{ simulatedTotalDrop.toFixed(2) }}%</span>
+              </div>
+              <div class="flex items-baseline justify-between font-mono">
+                <span class="text-slate-400 text-sm line-through">${{ formatNum(currentTotalMarketValue) }}</span>
+                <span class="text-2xl font-bold text-slate-900">${{ formatNum(simulatedTotalMarketValue) }}</span>
+              </div>
+            </div>
+
+            <!-- 可贷额度 / Borrowing Base 对比 -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-500 mb-1">
+                <span>跌后可贷额度 (Borrowing Base)</span>
+              </div>
+              <div class="flex items-baseline justify-between font-mono">
+                <span class="text-slate-400 text-xs line-through">${{ formatNum(currentBorrowingBase) }}</span>
+                <span class="text-lg font-bold" :class="simulatedBorrowingBase < borrowedAmount ? 'text-red-600' : 'text-sky-700'">${{ formatNum(simulatedBorrowingBase) }}</span>
+              </div>
+            </div>
+
+            <hr class="border-slate-100 my-2" />
+
+            <!-- 抵押覆盖率 (Collateral Coverage Ratio) -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600">Borrowing Base 覆盖率</span>
+                <span class="font-mono font-bold" :class="collateralCoverageRatio < 100 ? 'text-red-600' : 'text-emerald-600'">
+                  {{ collateralCoverageRatio.toFixed(1) }}% (安全线: 100%)
+                </span>
+              </div>
+              
+              <!-- 覆盖率进度条 -->
+              <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden relative">
+                <div class="h-full transition-all duration-300" :class="collateralBarColorClass" :style="{ width: Math.min(collateralCoverageRatio, 100) + '%' }"></div>
+              </div>
+            </div>
+
+            <!-- 追缴金额 / 安全缓冲计算 -->
+            <div class="bg-slate-50 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span class="text-slate-400 block">追缴保证金缺口 (Call)</span>
+                <span class="font-mono font-bold text-emerald-600" v-if="marginCallAmount <= 0">
+                  $0 (无缺口)
+                </span>
+                <span class="font-mono font-bold text-red-600" v-else>
+                  ${{ formatNum(marginCallAmount) }}
+                </span>
+              </div>
+              <div>
+                <span class="text-slate-400 block"> Borrowing Base 余量</span>
+                <span class="font-mono font-bold" :class="borrowingBaseBuffer >= 0 ? 'text-slate-700' : 'text-red-600'">
+                  ${{ formatNum(borrowingBaseBuffer) }}
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- 嘉信官方业务规范说明卡片 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 text-xs space-y-3">
+          <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-sky-600"></i> Schwab PAL® 官方业务规则说明
+          </h3>
+          <ul class="space-y-2 text-slate-600 list-disc pl-4 leading-relaxed">
+            <li>
+              <strong>Borrowing Base 缺口追缴 (Deficit Call)</strong>：嘉信不采用传统券商 Margin 统一的 25%/30% 维持比例。只要 **`未偿还贷款 > 跌后 Borrowing Base`**，账户即产生 Deficit，必须补交资产或偿还贷款。
+            </li>
+            <li v-if="simulatedBorrowingBase < 100000">
+              <strong class="text-red-600">警告：跌后 Collateral 破 $100,000 官方底线！</strong> 嘉信要求 PAL 质押账户折算总额不得低于 10 万美元，否则会触发账户合规冻结。
+            </li>
+            <li v-else-if="marginCallAmount > 0">
+              <strong class="text-red-600">已触发 Shortage Call！</strong> 您需要补交 <strong>${{ formatNum(marginCallAmount) }}</strong> 的合格资产，或清偿等额贷款。
+            </li>
+            <li v-else-if="collateralCoverageRatio < 115">
+              <strong class="text-amber-600">覆盖率偏低 (低于 115%)。</strong> 避险资产占比充足，但高风险资产波动仍可能随时拉低 Borrowing Base。
+            </li>
+            <li v-else>
+              <strong class="text-emerald-600">风控状态安全。</strong> 货币基金/短债等高 Advance Rate 资产成功锁定了抵押底线。
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
   <script>
-    new Vue({
-      el: '#app',
-      data: function() {
-        return {
-          assetValue: 1000000,
-          initialCreditRatio: 70,
-          loanAmount: 300000,
-          liquidationLtv: 80,
-          calculated: false,
-          error: ''
+    const { createApp, ref, computed } = Vue;
+
+    createApp({
+      setup() {
+        // 质押资产列表 (初始化为 BOXX + QQQ)
+        const assets = ref([
+          { name: '纳斯达克100 ETF (QQQ)', marketValue: 400000, ltv: 70, dropPercent: 80 },
+          { name: '货币市场基金 (BOXX)', marketValue: 300000, ltv: 90, dropPercent: 3 },
+        ]);
+
+        // 未偿还贷款金额
+        const borrowedAmount = ref(110000);
+
+        // 添加资产
+        const addAsset = () => {
+          assets.value.push({
+            name: '新资产 ' + (assets.value.length + 1),
+            marketValue: 100000,
+            ltv: 70,
+            dropPercent: 0
+          });
         };
-      },
-      computed: {
-        maxInitialLoan: function() {
-          return this.assetValue * (this.initialCreditRatio / 100);
-        },
-        currentLtv: function() {
-          if (!this.assetValue || this.assetValue <= 0) return 0;
-          return (this.loanAmount / this.assetValue) * 100;
-        },
-        equity: function() {
-          return this.assetValue - this.loanAmount;
-        },
-        equityRatio: function() {
-          if (!this.assetValue || this.assetValue <= 0) return 0;
-          return (this.equity / this.assetValue) * 100;
-        },
-        liquidationMarketValue: function() {
-          if (!this.liquidationLtv || this.liquidationLtv <= 0) return 0;
-          return this.loanAmount / (this.liquidationLtv / 100);
-        },
-        maxAllowedDrop: function() {
-          if (!this.assetValue || this.assetValue <= 0) return 0;
-          var drop = ((this.assetValue - this.liquidationMarketValue) / this.assetValue) * 100;
-          return drop;
-        },
-        ltvColorClass: function() {
-          if (this.currentLtv <= this.initialCreditRatio) return 'text-green-600';
-          if (this.currentLtv < this.liquidationLtv) return 'text-yellow-600';
-          return 'text-red-600';
-        },
-        bufferColorClass: function() {
-          if (this.maxAllowedDrop > 30) return 'text-green-600 border-green-400';
-          if (this.maxAllowedDrop > 10) return 'text-yellow-600 border-yellow-400';
-          return 'text-red-600 border-red-400';
-        },
-        riskLabel: function() {
-          if (this.loanAmount === 0) return '无风险';
-          if (this.currentLtv <= this.initialCreditRatio) return '安全 (极佳)';
-          if (this.currentLtv < this.liquidationLtv) return '预警 (超额借贷/大跌后)';
-          return '危险 (触发 Margin Call)';
-        },
-        riskMessage: function() {
-          if (this.loanAmount === 0) return '没有未偿还贷款，不存在平仓风险。';
-          if (this.currentLtv <= this.initialCreditRatio) {
-            return '当前 LTV 在初始授信额度内，安全边际充足。股票需再跌 ' + this.maxAllowedDrop.toFixed(1) + '% 才会触发平仓。';
+
+        // 删除资产
+        const removeAsset = (index) => {
+          if (assets.value.length > 1) {
+            assets.value.splice(index, 1);
           }
-          if (this.currentLtv < this.liquidationLtv) {
-            return '当前 LTV 已超出初始放款线，但未达到平仓线。请注意资产波动，距平仓线尚有 ' + this.maxAllowedDrop.toFixed(1) + '% 的跌幅缓冲。';
+        };
+
+        // 一键预设场景
+        const applyPreset = (presetType) => {
+          if (presetType === 'techCrash') {
+            assets.value.forEach(asset => {
+              if (asset.name.includes('货币') || asset.name.includes('现金') || asset.ltv >= 85) {
+                asset.dropPercent = 0;
+              } else {
+                asset.dropPercent = 25; // 科技股暴跌 25%
+              }
+            });
+          } else if (presetType === 'liquidityCrisis') {
+            assets.value.forEach(asset => {
+              if (asset.ltv >= 85) {
+                asset.dropPercent = 2; // 避险资产微跌
+              } else {
+                asset.dropPercent = 35; // 权益资产重挫 35%
+              }
+            });
           }
-          return '警告：当前 LTV 已突破强平警戒线 (' + this.liquidationLtv + '%)！券商可能随时强行平仓！';
-        },
-        riskBorderColor: function() {
-          if (this.currentLtv <= this.initialCreditRatio) return 'border-green-400';
-          if (this.currentLtv < this.liquidationLtv) return 'border-yellow-400';
-          return 'border-red-400';
-        },
-        riskBadgeClass: function() {
-          if (this.currentLtv <= this.initialCreditRatio) return 'bg-green-100 text-green-700';
-          if (this.currentLtv < this.liquidationLtv) return 'bg-yellow-100 text-yellow-700';
-          return 'bg-red-100 text-red-700';
-        }
-      },
-      methods: {
-        fmtMoney: function(num) {
-          if (typeof num !== 'number' || isNaN(num)) return '$0.00';
-          var abs = Math.abs(num);
-          if (abs >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
-          if (abs >= 1000) return '$' + (num / 1000).toFixed(2) + 'K';
-          return '$' + num.toFixed(2);
-        },
-        applyPreset: function(type) {
-          if (type === 'safe') {
-            this.assetValue = 1000000;
-            this.initialCreditRatio = 70;
-            this.loanAmount = 250000;
-            this.liquidationLtv = 80;
-          } else if (type === 'aggressive') {
-            this.assetValue = 1000000;
-            this.initialCreditRatio = 70;
-            this.loanAmount = 650000;
-            this.liquidationLtv = 80;
+        };
+
+        // 重置所有跌幅
+        const resetDrops = () => {
+          assets.value.forEach(asset => asset.dropPercent = 0);
+        };
+
+        // --- 核心计算属性 ---
+
+        // 1. 当前组合总市值
+        const currentTotalMarketValue = computed(() => {
+          return assets.value.reduce((sum, item) => sum + (item.marketValue || 0), 0);
+        });
+
+        // 2. 当前总可贷额度 (Borrowing Base)
+        const currentBorrowingBase = computed(() => {
+          return assets.value.reduce((sum, item) => {
+            return sum + ((item.marketValue || 0) * (item.ltv || 0) / 100);
+          }, 0);
+        });
+
+        // 3. 当前初始额度提取率
+        const currentUsageRatio = computed(() => {
+          if (currentBorrowingBase.value === 0) return 0;
+          return (borrowedAmount.value / currentBorrowingBase.value) * 100;
+        });
+
+        // 4. 当前综合加权放款率 (Advance Rate)
+        const currentWeightedLTV = computed(() => {
+          if (currentTotalMarketValue.value === 0) return 0;
+          return (currentBorrowingBase.value / currentTotalMarketValue.value) * 100;
+        });
+
+        // 5. 压力测试后 - 组合总市值
+        const simulatedTotalMarketValue = computed(() => {
+          return assets.value.reduce((sum, item) => {
+            const val = (item.marketValue || 0) * (1 - (item.dropPercent || 0) / 100);
+            return sum + Math.max(0, val);
+          }, 0);
+        });
+
+        // 6. 压力测试后 - 组合加权 Borrowing Base (嘉信官方标准)
+        const simulatedBorrowingBase = computed(() => {
+          return assets.value.reduce((sum, item) => {
+            const dropVal = (item.marketValue || 0) * (1 - (item.dropPercent || 0) / 100);
+            return sum + (Math.max(0, dropVal) * (item.ltv || 0) / 100);
+          }, 0);
+        });
+
+        // 7. 组合总体跌幅 (%)
+        const simulatedTotalDrop = computed(() => {
+          if (currentTotalMarketValue.value === 0) return 0;
+          return ((currentTotalMarketValue.value - simulatedTotalMarketValue.value) / currentTotalMarketValue.value) * 100;
+        });
+
+        // 8. 嘉信官方标准：追缴保证金金额 (Shortage Call)
+        const marginCallAmount = computed(() => {
+          if (borrowedAmount.value > simulatedBorrowingBase.value) {
+            return borrowedAmount.value - simulatedBorrowingBase.value;
           }
-          this.calculate();
-        },
-        calculate: function() {
-          this.error = '';
-          if (this.assetValue <= 0) { this.error = '资产市值必须大于0'; this.calculated = false; return; }
-          if (this.initialCreditRatio <= 0 || this.initialCreditRatio > 95) { this.error = '信贷率应介于1%到95%之间'; this.calculated = false; return; }
-          if (this.loanAmount < 0) { this.error = '贷款余额不能为负数'; this.calculated = false; return; }
-          if (this.liquidationLtv <= this.initialCreditRatio) {
-            this.error = '强平 LTV 警戒线必须大于初始信贷率';
-            this.calculated = false;
-            return;
+          return 0;
+        });
+
+        // 9. Borrowing Base 覆盖率 ( ≥ 100% 为安全)
+        const collateralCoverageRatio = computed(() => {
+          if (borrowedAmount.value === 0) return 100;
+          return (simulatedBorrowingBase.value / borrowedAmount.value) * 100;
+        });
+
+        // 10. Borrowing Base 剩余安全缓冲额度 ($)
+        const borrowingBaseBuffer = computed(() => {
+          return simulatedBorrowingBase.value - borrowedAmount.value;
+        });
+
+        // 11. 找出市值最高的核心资产进行压力测算
+        const highestRiskAsset = computed(() => {
+          return [...assets.value].sort((a, b) => b.marketValue - a.marketValue)[0] || assets.value[0];
+        });
+
+        // 12. 嘉信官方单资产暴跌临界点反推 (含边界保护)
+        const singleAssetCrashLimitText = computed(() => {
+          const target = highestRiskAsset.value;
+          if (!target || target.marketValue === 0) return 'N/A';
+
+          // 计算其他资产在设定跌幅下的 Borrowing Base
+          const otherAssetsCollateral = assets.value.reduce((sum, item) => {
+            if (item === target) return sum;
+            const dropVal = (item.marketValue || 0) * (1 - (item.dropPercent || 0) / 100);
+            return sum + (Math.max(0, dropVal) * (item.ltv || 0) / 100);
+          }, 0);
+
+          // 目标资产需要提供的最小抵押额 (Borrowing Base)
+          const requiredTargetCollateral = borrowedAmount.value - otherAssetsCollateral;
+          
+          // 如果其他资产提供的 Borrowing Base 已经完全覆盖贷款
+          if (requiredTargetCollateral <= 0) {
+            return '100% (即使跌光也不触及 Call)';
           }
-          this.calculated = true;
-        }
-      },
-      mounted: function() {
-        this.calculate();
+
+          const targetLtv = (target.ltv || 0) / 100;
+          if (targetLtv === 0) return '0.0%';
+          
+          // 目标资产所需的最小市值
+          const requiredTargetMarketValue = requiredTargetCollateral / targetLtv;
+
+          if (requiredTargetMarketValue >= target.marketValue) {
+            return '0.0% (当前已处于 Call 状态)';
+          }
+
+          const maxAllowedDrop = ((target.marketValue - requiredTargetMarketValue) / target.marketValue) * 100;
+          return `${Math.max(0, Math.min(100, maxAllowedDrop)).toFixed(1)}%`;
+        });
+
+        // --- 样式与状态控制 ---
+        const riskStatusText = computed(() => {
+          if (simulatedBorrowingBase.value < 100000 && borrowedAmount.value > 0) return '破 $100k 门槛';
+          if (marginCallAmount.value > 0) return '触发 Shortage Call';
+          if (collateralCoverageRatio.value < 115) return '追缴预警 (低缓冲)';
+          return '安全状态';
+        });
+
+        const riskStatusBadgeClass = computed(() => {
+          if (simulatedBorrowingBase.value < 100000 || marginCallAmount.value > 0) return 'bg-red-100 text-red-700';
+          if (collateralCoverageRatio.value < 115) return 'bg-amber-100 text-amber-700';
+          return 'bg-emerald-100 text-emerald-700';
+        });
+
+        const riskStatusDotClass = computed(() => {
+          if (simulatedBorrowingBase.value < 100000 || marginCallAmount.value > 0) return 'bg-red-600';
+          if (collateralCoverageRatio.value < 115) return 'bg-amber-600';
+          return 'bg-emerald-600';
+        });
+
+        const collateralBarColorClass = computed(() => {
+          if (marginCallAmount.value > 0) return 'bg-red-500';
+          if (collateralCoverageRatio.value < 115) return 'bg-amber-500';
+          return 'bg-emerald-500';
+        });
+
+        // 数字格式化工具函数
+        const formatNum = (num) => {
+          if (isNaN(num) || num === null) return '0';
+          return Math.round(num).toLocaleString('en-US');
+        };
+
+        return {
+          assets,
+          borrowedAmount,
+          addAsset,
+          removeAsset,
+          applyPreset,
+          resetDrops,
+          currentTotalMarketValue,
+          currentBorrowingBase,
+          currentUsageRatio,
+          currentWeightedLTV,
+          simulatedTotalMarketValue,
+          simulatedBorrowingBase,
+          simulatedTotalDrop,
+          marginCallAmount,
+          collateralCoverageRatio,
+          borrowingBaseBuffer,
+          highestRiskAsset,
+          singleAssetCrashLimitText,
+          riskStatusText,
+          riskStatusBadgeClass,
+          riskStatusDotClass,
+          collateralBarColorClass,
+          formatNum
+        };
       }
-    });
+    }).mount('#app');
   </script>
 </body>
 </html>
