@@ -1,307 +1,329 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>模拟涨跌计算器（含波动率损失说明和计算）</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-  <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      max-width: 700px;
-      margin: 20px auto;
-      padding: 0 15px;
-      background: #f9f9f9;
-      color: #333;
-      line-height: 1.6;
-    }
-    h1, h2 {
-      text-align: center;
-      margin-bottom: 1em;
-      color: #2c3e50;
-    }
-    form {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-    }
-    label {
-      display: block;
-      margin-top: 12px;
-      font-weight: 600;
-      color: #34495e;
-    }
-    select, input[type="number"] {
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 1em;
-      margin-top: 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    button, .btn-remove {
-      margin-top: 15px;
-      padding: 8px 16px;
-      background: #409eff;
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      user-select: none;
-    }
-    button:hover, .btn-remove:hover {
-      background: #66b1ff;
-    }
-    .btn-remove {
-      background: #e86c6c;
-      font-weight: 600;
-      font-size: 0.9em;
-      margin-left: 10px;
-      padding: 6px 12px;
-    }
-    .btn-remove:hover {
-      background: #f44336;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 2em;
-      word-break: break-word;
-      text-align: center;
-    }
-    th, td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #eee;
-    }
-    th {
-      background: #409eff;
-      color: white;
-      font-weight: 600;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .result {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      font-family: "Courier New", Courier, monospace;
-      white-space: pre-wrap;
-      margin-bottom: 2em;
-    }
-    .explanation {
-      background: #fff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
-      margin-bottom: 2em;
-      color: #2c3e50;
-    }
-    .explanation a {
-      color: #409eff;
-      text-decoration: none;
-    }
-    .explanation a:hover {
-      text-decoration: underline;
-    }
-    pre {
-      background: #f0f4f8;
-      padding: 8px 12px;
-      border-radius: 4px;
-      overflow-x: auto;
-      font-size: 0.95em;
-      line-height: 1.4;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>杠杆 ETF (QLD/TQQQ) 波动率损耗模拟器</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Chart.js 图表库 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome 图标 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-  <div id="app">
-    <h1>模拟涨跌计算器（含波动率损失说明）</h1>
-    <form @submit.prevent="onAddChange">
-      <label for="principal">本金（元）</label>
-      <input id="principal" type="number" v-model.number="principal" min="0" step="0.01" required />
-
-      <label for="changeSelect">选择涨跌幅度</label>
-      <select id="changeSelect" v-model="selectedChangeType" required>
-        <option disabled value="">请选择涨幅或跌幅</option>
-        <option value="up">上涨</option>
-        <option value="down">下跌</option>
-      </select>
-
-      <label for="percentInput">幅度（%）</label>
-      <input id="percentInput" type="number" v-model.number="percent" step="0.01" min="0" placeholder="输入幅度百分比（正数）" required />
-
-      <button type="submit">添加涨跌项</button>
-    </form>
-
-    <div v-if="changes.length">
-      <table>
-        <thead>
-          <tr>
-            <th>序号</th>
-            <th>类型</th>
-            <th>幅度（%）</th>
-            <th>计算后金额（元）</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in changes" :key="index">
-            <td>{{ index + 1 }}</td>
-            <td>{{ item.type === 'up' ? '上涨' : '下跌' }}</td>
-            <td>{{ item.percent.toFixed(2) }}</td>
-            <td>{{ formatNumber(item.finalAmount) }}</td>
-            <td><button class="btn-remove" @click="removeChange(index)">删除</button></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="result">
-        <div><strong>本金：</strong>{{ formatNumber(principal) }} 元</div>
-        <div><strong>涨跌顺序及金额变化过程：</strong></div>
-        <div v-for="(item, i) in changes" :key="'result' + i" style="margin-top:10px;">
-          <pre>
-第 {{ i + 1 }} 步 {{ item.type === 'up' ? '上涨' : '下跌' }} {{ item.percent.toFixed(2) }}%：
-  计算基数：{{ formatNumber(i === 0 ? principal : changes[i-1].finalAmount) }} 元
-  计算公式：
-    {{ formatNumber(i === 0 ? principal : changes[i-1].finalAmount) }} × (1 {{ item.type === 'up' ? '+' : '-' }} {{ (item.percent/100).toFixed(4).slice(1) }})
-  计算结果：
-    {{ formatNumber(item.finalAmount) }} 元
-          </pre>
-        </div>
-        <div style="margin-top: 12px; font-weight: bold; font-size: 1.1em;">
-          最终金额：{{ formatNumber(changes[changes.length - 1].finalAmount) }} 元
-        </div>
-
-        <div v-if="changes.length >= 2" style="margin-top: 16px; border-top:1px solid #ccc; padding-top: 16px;">
-          <h2>波动率损失说明与计算</h2>
-          <div class="explanation">
-            <p><strong>什么是波动率损失？</strong></p>
-            <p>波动率损失（Volatility Drag）是指由于资产价格上下波动导致的最终收益率低于简单算术平均收益率的现象。</p>
-            <p>例如，资产先上涨10%，后下跌10%，计算如下：</p>
-            <pre>
-初始金额：100元
-上涨10%后 = 100 × (1 + 0.10) = 110元
-下跌10%后 = 110 × (1 - 0.10) = 99元
-最终金额为99元，小于原始本金100元，
-即使涨跌幅度相同，资产价值也出现了减少，这种减少就是波动率损失。</pre>
-            <p>数学上，这个现象可以用公式表示为：</p>
-            <pre>
-最终比例 = (1 + r) × (1 - r) = 1 - r² &lt; 1 （当涨跌幅百分比 r 为正时）
-</pre>
-            <p>其中，r 是涨跌比例的小数形式，波动率损失的大小即为 <code>r²</code>。</p>
-            <p>在连续多次变化时，波动率损失是由各步收益率的乘积和波动引起的，造成实际收益降低。</p>
-          </div>
-
-          <h3>波动率损失计算示例</h3>
-          <div class="explanation">
-            <p>我们这里计算当前模拟涨跌序列的波动率损失，计算公式为：</p>
-            <pre>
-波动率损失(%) = (算术平均收益率) - (几何平均收益率) × 100%
-</pre>
-            <p>具体计算过程：</p>
-            <ol>
-              <li>算术平均收益率 = 每步收益率百分比的算术平均</li>
-              <li>几何平均收益率 = nth 根(最终金额 / 本金) - 1 （n为步数）</li>
-              <li>两者差值乘以100%，即为波动率损失百分比</li>
-            </ol>
-            <p>示例计算：</p>
-            <pre>
-算术平均收益率：
-  {{ avgReturnPercent.toFixed(2) }} %
-
-几何平均收益率：
-  {{ geoReturnPercent.toFixed(2) }} %
-
-波动率损失：
-  {{ volatilityDragPercent.toFixed(2) }} %
-            </pre>
-          </div>
-        </div>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
+  <div id="app" class="max-w-6xl mx-auto px-4 py-8">
+    
+    <!-- 页头 -->
+    <header class="mb-8 border-b border-slate-200 pb-5">
+      <div class="flex items-center gap-3">
+        <span class="bg-indigo-600 text-white font-bold px-2.5 py-1 rounded text-xs uppercase tracking-wider">每日复利重置</span>
+        <h1 class="text-2xl font-bold text-slate-900">杠杆 ETF (QLD / TQQQ) 波动率损耗模拟器</h1>
       </div>
+      <p class="text-slate-500 text-sm mt-1">直观演示“每日动态重置 (Daily Reset)”机制在不同市场路径下产生的磨损（Volatility Drag）与复利效应。</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- 左侧：参数与路径配置 (5列) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- 卡片 1: 场景快速预设 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
+          <h2 class="font-semibold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-600"></i> 1. 快速选择市场行情场景
+          </h2>
+          <div class="grid grid-cols-1 gap-2">
+            <button @click="loadPreset('zigzag')" class="text-left p-2.5 border rounded-lg text-xs hover:border-indigo-500 hover:bg-indigo-50/30 transition flex justify-between items-center" :class="activePreset === 'zigzag' ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200'">
+              <div>
+                <div class="font-bold text-slate-800">猴市宽幅震荡（损耗极高）</div>
+                <div class="text-slate-500 text-[11px]">QQQ 每天在 +3% 与 -3% 之间反复震荡 10 天</div>
+              </div>
+              <i class="fa-solid fa-bolt text-amber-500"></i>
+            </button>
+
+            <button @click="loadPreset('bull')" class="text-left p-2.5 border rounded-lg text-xs hover:border-indigo-500 hover:bg-indigo-50/30 transition flex justify-between items-center" :class="activePreset === 'bull' ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200'">
+              <div>
+                <div class="font-bold text-slate-800">单边强牛市（复利红利）</div>
+                <div class="text-slate-500 text-[11px]">QQQ 连续 6 天每天上涨 2%</div>
+              </div>
+              <i class="fa-solid fa-arrow-trend-up text-emerald-500"></i>
+            </button>
+
+            <button @click="loadPreset('bear')" class="text-left p-2.5 border rounded-lg text-xs hover:border-indigo-500 hover:bg-indigo-50/30 transition flex justify-between items-center" :class="activePreset === 'bear' ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200'">
+              <div>
+                <div class="font-bold text-slate-800">大跌后迅速回本（深坑难填）</div>
+                <div class="text-slate-500 text-[11px]">QQQ 大跌 20% 后连续暴涨回本，看 TQQQ 表现</div>
+              </div>
+              <i class="fa-solid fa-arrow-trend-down text-red-500"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 卡片 2: 自定义行情序列 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <h2 class="font-semibold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+            <i class="fa-solid fa-sliders text-indigo-600"></i> 2. 自定义每日 QQQ 涨跌幅 (%)
+          </h2>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">输入每日涨跌序列 (用逗号隔开)</label>
+            <textarea v-model="rawSequenceInput" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例如: 3, -3, 3, -3, 3, -3"></textarea>
+            <p class="text-[11px] text-slate-400 mt-1">模拟天数：<strong class="text-slate-700 font-mono">{{ dailyChanges.length }} 天</strong></p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">初始投资本金 ($)</label>
+              <input type="number" v-model.number="initialPrincipal" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-mono" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">年化隐性成本 (%)</label>
+              <input type="number" step="0.1" v-model.number="annualFeeRate" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-mono" title="含管理费+衍生品借贷融券成本" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 右侧：图表与损耗分析 (7列) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- 净值走势图表 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+            <h3 class="font-semibold text-slate-800 text-sm">净值走势对比轨迹</h3>
+            <div class="flex gap-3 text-xs font-medium">
+              <span class="text-slate-600"><i class="fa-solid fa-minus text-slate-600"></i> QQQ (1x)</span>
+              <span class="text-sky-600"><i class="fa-solid fa-minus text-sky-600"></i> QLD (2x)</span>
+              <span class="text-indigo-600"><i class="fa-solid fa-minus text-indigo-600"></i> TQQQ (3x)</span>
+            </div>
+          </div>
+          <div class="h-64 relative">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 最终损耗对比卡片 -->
+        <div class="grid grid-cols-3 gap-3">
+          <!-- QQQ 结果 -->
+          <div class="bg-white border border-slate-200 rounded-xl p-3 text-center space-y-1">
+            <span class="text-xs font-bold text-slate-500">QQQ (1x 原生)</span>
+            <div class="text-lg font-bold font-mono" :class="qqqFinalReturn >= 0 ? 'text-emerald-600' : 'text-red-600'">
+              {{ qqqFinalReturn >= 0 ? '+' : '' }}{{ qqqFinalReturn.toFixed(2) }}%
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono">${{ formatNum(qqqFinalValue) }}</div>
+          </div>
+
+          <!-- QLD 结果 -->
+          <div class="bg-white border border-sky-200 rounded-xl p-3 text-center space-y-1 bg-sky-50/20">
+            <span class="text-xs font-bold text-sky-700">QLD (2x 杠杆)</span>
+            <div class="text-lg font-bold font-mono" :class="qldFinalReturn >= 0 ? 'text-emerald-600' : 'text-red-600'">
+              {{ qldFinalReturn >= 0 ? '+' : '' }}{{ qldFinalReturn.toFixed(2) }}%
+            </div>
+            <div class="text-[11px] text-slate-500 font-mono">理论2倍: {{ (qqqFinalReturn * 2).toFixed(2) }}%</div>
+          </div>
+
+          <!-- TQQQ 结果 -->
+          <div class="bg-white border border-indigo-200 rounded-xl p-3 text-center space-y-1 bg-indigo-50/20">
+            <span class="text-xs font-bold text-indigo-700">TQQQ (3x 杠杆)</span>
+            <div class="text-lg font-bold font-mono" :class="tqqqFinalReturn >= 0 ? 'text-emerald-600' : 'text-red-600'">
+              {{ tqqqFinalReturn >= 0 ? '+' : '' }}{{ tqqqFinalReturn.toFixed(2) }}%
+            </div>
+            <div class="text-[11px] text-slate-500 font-mono">理论3倍: {{ (qqqFinalReturn * 3).toFixed(2) }}%</div>
+          </div>
+        </div>
+
+        <!-- 损耗计算核心分析 -->
+        <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-4 text-xs space-y-2">
+          <div class="flex items-center gap-2 font-bold text-amber-900">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+            <span>波动率损耗 (Volatility Drag) 诊断</span>
+          </div>
+          <div class="text-slate-700 leading-relaxed space-y-1">
+            <p>
+              按直觉逻辑，TQQQ 最终收益应为 QQQ 的 3 倍（即 <strong class="font-mono">{{ (qqqFinalReturn * 3).toFixed(2) }}%</strong>）。
+            </p>
+            <p>
+              由于“每日重置复利”机制，TQQQ 实际收益为 <strong class="font-mono" :class="tqqqFinalReturn >= 0 ? 'text-emerald-600' : 'text-red-600'">{{ tqqqFinalReturn.toFixed(2) }}%</strong>，
+              产生损耗偏差：<strong class="font-mono text-red-600" :class="tqqqDrag >= 0 ? 'text-red-600' : 'text-emerald-600'">{{ tqqqDrag.toFixed(2) }}%</strong>。
+            </p>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
   <script>
-    new Vue({
-      el: "#app",
-      data: {
-        principal: 10000,
-        selectedChangeType: "",
-        percent: null,
-        changes: []
-      },
-      computed: {
-        avgReturnPercent() {
-          if (this.changes.length === 0) return 0;
-          const sum = this.changes.reduce((acc, cur) => {
-            return acc + (cur.type === "up" ? cur.percent : -cur.percent);
-          }, 0);
-          return sum / this.changes.length;
-        },
-        geoReturnPercent() {
-          if (this.changes.length === 0) return 0;
-          const final = this.changes[this.changes.length - 1].finalAmount;
-          return (Math.pow(final / this.principal, 1 / this.changes.length) - 1) * 100;
-        },
-        volatilityDragPercent() {
-          // 算术平均收益率 - 几何平均收益率
-          return this.avgReturnPercent - this.geoReturnPercent;
-        }
-      },
-      methods: {
-        onAddChange() {
-          if (this.principal === null || this.principal < 0) {
-            alert("请输入有效的本金");
-            return;
-          }
-          if (!this.selectedChangeType) {
-            alert("请选择上涨或下跌");
-            return;
-          }
-          if (this.percent === null || this.percent <= 0) {
-            alert("请输入有效的幅度（正数）");
-            return;
-          }
+    const { createApp, ref, computed, watch, onMounted } = Vue;
 
-          const baseAmount = this.changes.length > 0
-            ? this.changes[this.changes.length - 1].finalAmount
-            : this.principal;
+    createApp({
+      setup() {
+        const activePreset = ref('zigzag');
+        const rawSequenceInput = ref('3, -3, 3, -3, 3, -3, 3, -3, 3, -3');
+        const initialPrincipal = ref(10000);
+        const annualFeeRate = ref(1.5); // 年化管理费+利息损耗
 
-          let finalAmount;
-          if (this.selectedChangeType === "up") {
-            finalAmount = baseAmount * (1 + this.percent / 100);
-          } else {
-            finalAmount = baseAmount * (1 - this.percent / 100);
+        let chartInstance = null;
+
+        // 加载场景
+        const loadPreset = (type) => {
+          activePreset.value = type;
+          if (type === 'zigzag') {
+            rawSequenceInput.value = '3, -3, 3, -3, 3, -3, 3, -3, 3, -3';
+          } else if (type === 'bull') {
+            rawSequenceInput.value = '2, 2, 2, 2, 2, 2';
+          } else if (type === 'bear') {
+            rawSequenceInput.value = '-10, -11.11, 10, 12.5';
           }
+        };
 
-          this.changes.push({
-            type: this.selectedChangeType,
-            percent: this.percent,
-            finalAmount
+        // 解析输入的序列
+        const dailyChanges = computed(() => {
+          return rawSequenceInput.value
+            .split(',')
+            .map(v => parseFloat(v.trim()))
+            .filter(v => !isNaN(v));
+        });
+
+        // 模拟逐日数据计算
+        const simulationData = computed(() => {
+          const dailyFeeRate = (annualFeeRate.value / 100) / 252;
+          
+          let qqq = initialPrincipal.value;
+          let qld = initialPrincipal.value;
+          let tqqq = initialPrincipal.value;
+
+          const qqqHistory = [qqq];
+          const qldHistory = [qld];
+          const tqqqHistory = [tqqq];
+          const labels = ['第 0 天'];
+
+          dailyChanges.value.forEach((change, index) => {
+            const r = change / 100;
+            
+            // QQQ (1x)
+            qqq = qqq * (1 + r);
+            
+            // QLD (2x) - 扣除每日损耗
+            qld = qld * (1 + 2 * r - dailyFeeRate);
+            
+            // TQQQ (3x) - 扣除每日损耗
+            tqqq = tqqq * (1 + 3 * r - dailyFeeRate * 1.5);
+
+            qqqHistory.push(qqq);
+            qldHistory.push(qld);
+            tqqqHistory.push(tqqq);
+            labels.push(`第 ${index + 1} 天`);
           });
 
-          this.selectedChangeType = "";
-          this.percent = null;
-        },
-        removeChange(idx) {
-          this.changes.splice(idx, 1);
-        },
-        formatNumber(num) {
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
+          return { labels, qqqHistory, qldHistory, tqqqHistory };
+        });
+
+        // 最终指标
+        const qqqFinalValue = computed(() => simulationData.value.qqqHistory.slice(-1)[0] || initialPrincipal.value);
+        const qldFinalValue = computed(() => simulationData.value.qldHistory.slice(-1)[0] || initialPrincipal.value);
+        const tqqqFinalValue = computed(() => simulationData.value.tqqqHistory.slice(-1)[0] || initialPrincipal.value);
+
+        const qqqFinalReturn = computed(() => ((qqqFinalValue.value - initialPrincipal.value) / initialPrincipal.value) * 100);
+        const qldFinalReturn = computed(() => ((qldFinalValue.value - initialPrincipal.value) / initialPrincipal.value) * 100);
+        const tqqqFinalReturn = computed(() => ((tqqqFinalValue.value - initialPrincipal.value) / initialPrincipal.value) * 100);
+
+        // TQQQ 偏离理论值的损耗额度
+        const tqqqDrag = computed(() => {
+          const theoretical = qqqFinalReturn.value * 3;
+          return tqqqFinalReturn.value - theoretical;
+        });
+
+        // 渲染/更新图表
+        const updateChart = () => {
+          const ctx = document.getElementById('performanceChart');
+          if (!ctx) return;
+
+          if (chartInstance) {
+            chartInstance.destroy();
+          }
+
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: simulationData.value.labels,
+              datasets: [
+                {
+                  label: 'QQQ (1x)',
+                  data: simulationData.value.qqqHistory,
+                  borderColor: '#475569',
+                  borderWidth: 2,
+                  fill: false,
+                  tension: 0.1
+                },
+                {
+                  label: 'QLD (2x)',
+                  data: simulationData.value.qldHistory,
+                  borderColor: '#0284c7',
+                  borderWidth: 2,
+                  fill: false,
+                  tension: 0.1
+                },
+                {
+                  label: 'TQQQ (3x)',
+                  data: simulationData.value.tqqqHistory,
+                  borderColor: '#4f46e5',
+                  borderWidth: 2.5,
+                  fill: false,
+                  tension: 0.1
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                y: {
+                  ticks: {
+                    callback: (value) => '$' + Math.round(value)
+                  }
+                }
+              }
+            }
+          });
+        };
+
+        watch(simulationData, () => {
+          updateChart();
+        }, { deep: true });
+
+        onMounted(() => {
+          updateChart();
+        });
+
+        const formatNum = (num) => Math.round(num).toLocaleString('en-US');
+
+        return {
+          activePreset,
+          rawSequenceInput,
+          initialPrincipal,
+          annualFeeRate,
+          dailyChanges,
+          qqqFinalValue,
+          qldFinalValue,
+          tqqqFinalValue,
+          qqqFinalReturn,
+          qldFinalReturn,
+          tqqqFinalReturn,
+          tqqqDrag,
+          loadPreset,
+          formatNum
+        };
       }
-    });
+    }).mount('#app');
   </script>
 </body>
 </html>
