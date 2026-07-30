@@ -186,7 +186,7 @@
       <div style="margin-top: 15px;">
         <span style="font-size: 0.85em; font-weight: 600; color: #64748b; margin-right: 8px;">快捷压力情景：</span>
         <button class="btn btn-scenario" @click="applyScenario('tech_crash')">📉 科技股/股票暴跌 25% (货币基金不动)</button>
-        <button class="btn btn-scenario" @click="applyScenario('liquidity_crisis')">💥 全面流动性危机 (股票跌20%, 债券跌10%)</button>
+        <button class="btn btn-scenario" @click="applyScenario('liquidity_crisis')">💥 美股历史危机 (股票跌80%, 债券跌3%)</button>
         <button class="btn btn-scenario" @click="applyScenario('reset')">🔄 重置跌幅为 0%</button>
       </div>
     </div>
@@ -307,7 +307,7 @@
             { name: "QQQ (纳斯达克 ETF)", marketValue: 40, ltv: 70, dropPercent: 15 },
             { name: "HSBC 港币货币市场基金", marketValue: 30, ltv: 95, dropPercent: 0 }
           ],
-          loanAmount: 50,
+          loanAmount: 11,
           calculated: false
         };
       },
@@ -432,9 +432,9 @@
             });
           } else if (type === 'liquidity_crisis') {
             this.assets.forEach(a => {
-              if (a.ltv >= 95) a.dropPercent = 0;
+              if (a.ltv >= 95) a.dropPercent = 3;
               else if (a.ltv >= 80) a.dropPercent = 10;
-              else a.dropPercent = 20;
+              else a.dropPercent = 80;
             });
           }
           this.calculate();
