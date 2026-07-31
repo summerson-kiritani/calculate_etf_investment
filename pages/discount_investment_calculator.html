@@ -32,12 +32,12 @@
         <label class="block text-sm font-semibold text-gray-700 mb-2">计算模式</label>
         <div class="flex gap-4">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" value="rate" v-model="mode" />
-            <span class="text-sm">输入折扣率算折后价</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
             <input type="radio" value="price" v-model="mode" />
             <span class="text-sm">输入折后价算折扣率</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" value="rate" v-model="mode" />
+            <span class="text-sm">输入折扣率算折后价</span>
           </label>
         </div>
       </div>
@@ -131,7 +131,7 @@
       el: '#app',
       data: function() {
         return {
-          mode: 'rate',
+          mode: 'price',
           originalPrice: 100,
           discountRate: 90,
           discountedPrice: 0,

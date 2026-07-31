@@ -138,7 +138,7 @@
     .bg-orange { background: #ffedd5; color: #c2410c; border-left: 5px solid #ea580c; }
     .bg-red { background: #fee2e2; color: #b91c1c; border-left: 5px solid #dc2626; }
 
-    /* 关键节点预警网格 (方案A) */
+    /* 关键节点预警网格 */
     .alert-milestone-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -159,7 +159,7 @@
     .milestone-title { font-size: 0.8em; color: #64748b; font-weight: 600; }
     .milestone-value { font-size: 1.1em; font-weight: 700; margin-top: 4px; color: #0f172a; }
 
-    /* 图表容器 (方案B) */
+    /* 图表容器 */
     .chart-container {
       position: relative;
       height: 320px;
@@ -343,14 +343,14 @@
         </tbody>
       </table>
 
-      <!-- 4. 方案 A + B：动态提领与利息复利演化模块 -->
+      <!-- 4. 动态提领与利息复利演化模块（接续暴跌后状态） -->
       <div class="card" style="margin-top: 2em;">
         <div class="card-title">
-          <span>📈 长期动态演化模拟（不涨/平盘环境：提领 + 债务复利）</span>
-          <span style="font-size: 0.8em; font-weight: normal; color: #64748b;">假设资产价格保持不变</span>
+          <span>📈 静态压力接续动态演化模拟（暴跌后：提领 + 债务复利）</span>
+          <span style="font-size: 0.8em; font-weight: normal; color: #64748b;">接续暴跌后市值 ({{ formatMoney(droppedTotalMarketValue) }} 万) 进行长期演化</span>
         </div>
 
-        <!-- 方案 A：关键触发节点卡片 -->
+        <!-- 关键触发节点卡片 -->
         <div class="alert-milestone-grid">
           <div class="milestone-box limit">
             <div class="milestone-title">🚫 停止提现/额度受限 (NMR < 100%)</div>
@@ -366,13 +366,13 @@
           </div>
         </div>
 
-        <!-- 方案 B：交互式 Chart.js 趋势图 -->
+        <!-- Chart.js 趋势图 -->
         <div class="chart-container">
           <canvas id="nmrChart"></canvas>
         </div>
 
-        <!-- 方案 A：逐年演化数据明细表 -->
-        <h4 style="margin-top: 25px; margin-bottom: 10px; font-size: 0.95rem; color: #1e293b;">动态逐年演进数据表</h4>
+        <!-- 逐年演化数据明细表 -->
+        <h4 style="margin-top: 25px; margin-bottom: 10px; font-size: 0.95rem; color: #1e293b;">动态逐年演进数据表（基准资产：{{ formatMoney(droppedTotalMarketValue) }} 万）</h4>
         <div style="overflow-x: auto;">
           <table class="res-table" style="margin-bottom: 0;">
             <thead>
@@ -410,7 +410,7 @@
         2. <code>可用孖展 (Available Margin)</code> = 组合总市值 - 未偿还贷款金额<br />
         3. <code>规定孖展 (Required Margin)</code> = 组合总市值 - 组合抵押品总价值<br />
         4. <code>净孖展比率 (NMR)</code> = (可用孖展 ÷ 规定孖展) × 100%<br />
-        5. <strong>动态失血效应（Double Bleeding Effect）：</strong> 在市场平盘不涨时，每年定额提领现金与未偿债务的复利利息会叠加累积到总债务中。这会导致 NMR 逐年单调加速下滑。观察图表中 NMR 穿过 100%、80%、60% 红线的时间节点，可帮助您提前做好流动性规划。
+        5. <strong>动态失血效应（Double Bleeding Effect）：</strong> 演化模块已接续静态压力测试后的市值（{{ formatMoney(droppedTotalMarketValue) }} 万）与规定孖展。每年定额提领现金与利息复利会直接向债务累加，受资产缩水后的低承载力影响，NMR 将会以极快速度向 100%、80% 及 60% 强平线坠落。
       </div>
     </div>
   </div>
@@ -529,14 +529,17 @@
           }
         },
 
-        // 方案 A：动态逐年演进计算数据
+        // 动态逐年演进计算数据（重点修改：接续暴跌后的资产与规定孖展）
         simulationData() {
           const rows = [];
           let currentDebt = this.loanAmount;
+          // 按原初始资产估算的固定现金提领金额
           const annualWithdraw = this.currentTotalMarketValue * (this.withdrawRate / 100);
           const iRate = this.interestRate / 100;
-          const reqMargin = this.currentRequiredMargin;
-          const totalMV = this.currentTotalMarketValue;
+          
+          // 切换为暴跌后的资产总值与规定孖展
+          const reqMargin = this.droppedRequiredMargin;
+          const totalMV = this.droppedTotalMarketValue;
 
           for (let y = 1; y <= this.simYears; y++) {
             const startDebt = currentDebt;
@@ -544,7 +547,7 @@
             const withdraw = annualWithdraw;
             const endDebt = startDebt + interest + withdraw;
             
-            // 计算期末 NMR
+            // 基于暴跌后的资产市值计算期末 NMR
             const availMargin = totalMV - endDebt;
             let nmr = 0;
             if (reqMargin > 0) {
@@ -571,7 +574,7 @@
           return rows;
         },
 
-        // 关键触发节点汇总 (方案 A 顶部摘要)
+        // 关键触发节点汇总
         simulationMilestones() {
           const limit = this.simulationData.find(r => r.nmr < 100);
           const call = this.simulationData.find(r => r.nmr < 80);
@@ -657,7 +660,7 @@
             this.renderChart();
           });
         },
-        // 方案 B：渲染 Chart.js 趋势图表
+        // 渲染 Chart.js 趋势图表（重点修改：第0年起点使用 droppedNMR）
         renderChart() {
           const ctx = document.getElementById('nmrChart');
           if (!ctx) return;
@@ -666,8 +669,8 @@
             this.chartInstance.destroy();
           }
 
-          const labels = ['当前 (第0年)', ...this.simulationData.map(d => `第${d.year}年`)];
-          const nmrData = [this.currentNMR, ...this.simulationData.map(d => d.nmr)];
+          const labels = ['暴跌后基准 (第0年)', ...this.simulationData.map(d => `第${d.year}年`)];
+          const nmrData = [this.droppedNMR, ...this.simulationData.map(d => d.nmr)];
 
           this.chartInstance = new Chart(ctx, {
             type: 'line',
@@ -724,7 +727,7 @@
               plugins: {
                 title: {
                   display: true,
-                  text: '未来 ' + this.simYears + ' 年 NMR 走势演变 (受提领 + 利息复利侵蚀)'
+                  text: '未来 ' + this.simYears + ' 年 NMR 走势演变 (基于暴跌后资产，受提领 + 利息复利侵蚀)'
                 },
                 tooltip: {
                   callbacks: {
@@ -737,8 +740,8 @@
               scales: {
                 y: {
                   title: { display: true, text: 'NMR 比率 (%)' },
-                  suggestedMin: 40,
-                  suggestedMax: 200
+                  suggestedMin: 0,
+                  suggestedMax: 350
                 }
               }
             }
