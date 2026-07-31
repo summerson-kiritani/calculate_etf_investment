@@ -3,32 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schwab PAL® 多资产组合质押贷款与压力测试计算器</title>
+  <title>Schwab PAL® 多资产质押贷款与长期动态演化计算器</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Vue 3 CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- FontAwesome 图标库 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
-  <div id="app" class="max-w-6xl mx-auto px-4 py-8">
+  <div id="app" class="max-w-7xl mx-auto px-4 py-8">
     
     <!-- 顶栏标题区 -->
     <header class="mb-8 border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
           <span class="bg-sky-600 text-white font-bold px-2.5 py-1 rounded text-xs tracking-wider uppercase">Schwab Bank PAL® 标准</span>
-          <h1 class="text-2xl font-bold text-slate-900">多资产质押贷款风控与压力测试计算器</h1>
+          <h1 class="text-2xl font-bold text-slate-900">多资产质押贷款风控与长期演化计算器</h1>
         </div>
-        <p class="text-slate-500 text-sm mt-1">严格遵循嘉信银行 Borrowing Base（借款基数缺口）风控模型，评估非等比例下跌下的安全缓冲。</p>
+        <p class="text-slate-500 text-sm mt-1">结合嘉信银行 Borrowing Base 风控模型与长期债务复利/提额演化模拟。</p>
       </div>
       <div class="flex gap-2">
         <button @click="applyPreset('techCrash')" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded text-xs font-medium transition flex items-center gap-1">
           <i class="fa-solid fa-chart-line-down"></i> 场景：科技股暴跌
         </button>
         <button @click="applyPreset('liquidityCrisis')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded text-xs font-medium transition flex items-center gap-1">
-          <i class="fa-solid fa-volcano"></i> 场景：全面流动性危机
+          <i class="fa-solid fa-volcano"></i> 场景：流动性危机
         </button>
         <button @click="resetDrops()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded text-xs font-medium transition">
           重置跌幅
@@ -41,7 +43,7 @@
       <!-- 左侧：输入配置面板 (7列) -->
       <div class="lg:col-span-7 space-y-6">
         
-        <!-- 卡片 1: 资产组合配置表格 -->
+        <!-- 卡片 1: 质押资产组合配置 -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
             <h2 class="font-semibold text-slate-800 flex items-center gap-2 text-sm">
@@ -65,31 +67,26 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 <tr v-for="(asset, index) in assets" :key="index" class="hover:bg-slate-50/50">
-                  <!-- 资产名称 -->
                   <td class="py-2.5 px-3">
                     <input type="text" v-model="asset.name" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-sky-500 font-medium" />
                   </td>
-                  <!-- 资产市值 -->
                   <td class="py-2.5 px-3">
                     <input type="number" min="0" step="1000" v-model.number="asset.marketValue" class="w-28 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-800 font-mono text-right focus:outline-none focus:ring-1 focus:ring-sky-500" />
                   </td>
-                  <!-- Advance Rate (LTV) -->
                   <td class="py-2.5 px-3">
                     <div class="flex items-center gap-1">
                       <input type="number" min="0" max="95" step="5" v-model.number="asset.ltv" class="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-800 font-mono text-right focus:outline-none focus:ring-1 focus:ring-sky-500" />
                       <span>%</span>
                     </div>
                   </td>
-                  <!-- 独立跌幅 -->
                   <td class="py-2.5 px-3">
                     <div class="flex items-center gap-1">
                       <input type="number" min="0" max="100" step="1" v-model.number="asset.dropPercent" class="w-16 bg-red-50/50 border border-red-200 text-red-600 rounded px-2 py-1 font-mono text-right focus:outline-none focus:ring-1 focus:ring-red-500 font-bold" />
                       <span class="text-red-500">%</span>
                     </div>
                   </td>
-                  <!-- 删除按钮 -->
                   <td class="py-2.5 px-3 text-center">
-                    <button @click="removeAsset(index)" :disabled="assets.length <= 1" class="text-slate-400 hover:text-red-500 disabled:opacity-30 disabled:hover:text-slate-400 transition">
+                    <button @click="removeAsset(index)" :disabled="assets.length <= 1" class="text-slate-400 hover:text-red-500 disabled:opacity-30 transition">
                       <i class="fa-solid fa-trash-can"></i>
                     </button>
                   </td>
@@ -98,30 +95,50 @@
             </table>
           </div>
 
-          <!-- 组合汇总统计行 -->
           <div class="p-3 bg-slate-50 border-t border-slate-100 text-xs flex justify-between items-center font-medium text-slate-600">
             <span>资产笔数：<strong class="text-slate-800">{{ assets.length }}</strong></span>
             <span>综合加权放款率 (Advance Rate)：<strong class="text-sky-700 font-mono">{{ currentWeightedLTV.toFixed(2) }}%</strong></span>
           </div>
         </div>
 
-        <!-- 卡片 2: 未偿还贷款金额设置 -->
+        <!-- 卡片 2: 负债及动态提额参数配置 -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
           <h2 class="font-semibold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-3">
-            <i class="fa-solid fa-sliders text-sky-600"></i> 2. 未偿还贷款与额度限制
+            <i class="fa-solid fa-sliders text-sky-600"></i> 2. 负债与长期动态提额参数配置
           </h2>
 
-          <div class="grid grid-cols-1 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-medium text-slate-600 mb-1">未偿还贷款余额 ($)</label>
+              <label class="block text-xs font-medium text-slate-600 mb-1">未偿还贷款总额 ($)</label>
               <div class="relative">
                 <span class="absolute left-3 top-2 text-slate-400 font-mono">$</span>
                 <input type="number" min="0" step="10000" v-model.number="borrowedAmount" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-3 py-1.5 text-slate-800 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-sky-500" />
               </div>
-              <div class="flex justify-between items-center mt-2 text-[11px] text-slate-500">
-                <span>初始 Borrowing Base 授信额度: <strong class="font-mono text-slate-700">${{ formatNum(currentBorrowingBase) }}</strong></span>
-                <span>额度提取率: <strong class="font-mono" :class="borrowedAmount > currentBorrowingBase ? 'text-red-600' : 'text-emerald-600'">{{ currentUsageRatio.toFixed(1) }}%</strong></span>
+              <p class="text-[11px] text-slate-400 mt-1">初始提取的 PAL 贷款余额</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">每年固定提取比例 (%)</label>
+              <div class="relative">
+                <input type="number" min="0" max="20" step="0.5" v-model.number="annualWithdrawRate" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                <span class="absolute right-3 top-2 text-slate-400 font-mono">%</span>
               </div>
+              <p class="text-[11px] text-slate-400 mt-1">基于跌后资产总额（按年提取）</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">PAL 贷款年利率 (%)</label>
+              <div class="relative">
+                <input type="number" min="0" max="20" step="0.1" v-model.number="interestRate" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                <span class="absolute right-3 top-2 text-slate-400 font-mono">%</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">PAL 融资复利计息年利率</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">模拟演化年数 (Years)</label>
+              <input type="number" min="1" max="30" step="1" v-model.number="simulationYears" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              <p class="text-[11px] text-slate-400 mt-1">推演未来的动态时间范围</p>
             </div>
           </div>
         </div>
@@ -144,25 +161,20 @@
 
       </div>
 
-      <!-- 右侧：压力测试与风控仪表盘 (5列) -->
+      <!-- 右侧：静态风控评估面板 (5列) -->
       <div class="lg:col-span-5 space-y-6">
         
         <!-- 核心风控状态面板 -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 relative overflow-hidden">
-          
-          <!-- 顶部状态指示灯 -->
           <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
-            <span class="text-xs font-semibold text-slate-500 tracking-wider uppercase">PAL 风控评估结果</span>
+            <span class="text-xs font-semibold text-slate-500 tracking-wider uppercase">PAL 当前风控状态</span>
             <span :class="riskStatusBadgeClass" class="px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full animate-pulse" :class="riskStatusDotClass"></span>
               {{ riskStatusText }}
             </span>
           </div>
 
-          <!-- 核心数值对比 -->
           <div class="space-y-4">
-            
-            <!-- 总市值对比 -->
             <div>
               <div class="flex justify-between text-xs text-slate-500 mb-1">
                 <span>组合总市值</span>
@@ -174,7 +186,6 @@
               </div>
             </div>
 
-            <!-- 可贷额度 / Borrowing Base 对比 -->
             <div>
               <div class="flex justify-between text-xs text-slate-500 mb-1">
                 <span>跌后可贷额度 (Borrowing Base)</span>
@@ -187,60 +198,50 @@
 
             <hr class="border-slate-100 my-2" />
 
-            <!-- 抵押覆盖率 (Collateral Coverage Ratio) -->
             <div>
               <div class="flex justify-between text-xs mb-1">
                 <span class="font-medium text-slate-600">Borrowing Base 覆盖率</span>
                 <span class="font-mono font-bold" :class="collateralCoverageRatio < 100 ? 'text-red-600' : 'text-emerald-600'">
-                  {{ collateralCoverageRatio.toFixed(1) }}% (安全线: 100%)
+                  {{ borrowedAmount <= 0 ? 'N/A (无负债)' : collateralCoverageRatio.toFixed(1) + '% (安全线: 100%)' }}
                 </span>
               </div>
               
-              <!-- 覆盖率进度条 -->
               <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden relative">
                 <div class="h-full transition-all duration-300" :class="collateralBarColorClass" :style="{ width: Math.min(collateralCoverageRatio, 100) + '%' }"></div>
               </div>
             </div>
 
-            <!-- 追缴金额 / 安全缓冲计算 -->
             <div class="bg-slate-50 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
               <div>
                 <span class="text-slate-400 block">追缴保证金缺口 (Call)</span>
-                <span class="font-mono font-bold text-emerald-600" v-if="marginCallAmount <= 0">
-                  $0 (无缺口)
-                </span>
-                <span class="font-mono font-bold text-red-600" v-else>
-                  ${{ formatNum(marginCallAmount) }}
-                </span>
+                <span class="font-mono font-bold text-emerald-600" v-if="marginCallAmount <= 0">$0 (无缺口)</span>
+                <span class="font-mono font-bold text-red-600" v-else>${{ formatNum(marginCallAmount) }}</span>
               </div>
               <div>
-                <span class="text-slate-400 block"> Borrowing Base 余量</span>
-                <span class="font-mono font-bold" :class="borrowingBaseBuffer >= 0 ? 'text-slate-700' : 'text-red-600'">
-                  ${{ formatNum(borrowingBaseBuffer) }}
-                </span>
+                <span class="text-slate-400 block">Borrowing Base 余量</span>
+                <span class="font-mono font-bold" :class="borrowingBaseBuffer >= 0 ? 'text-slate-700' : 'text-red-600'">${{ formatNum(borrowingBaseBuffer) }}</span>
               </div>
             </div>
 
           </div>
-
         </div>
 
-        <!-- 嘉信官方业务规范说明卡片 -->
+        <!-- 嘉信官方业务规范说明 -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 text-xs space-y-3">
           <h3 class="font-bold text-slate-800 flex items-center gap-1.5">
-            <i class="fa-solid fa-shield-halved text-sky-600"></i> Schwab PAL® 官方业务规则说明
+            <i class="fa-solid fa-shield-halved text-sky-600"></i> Schwab PAL® 官方风控机制说明
           </h3>
           <ul class="space-y-2 text-slate-600 list-disc pl-4 leading-relaxed">
             <li>
-              <strong>Borrowing Base 缺口追缴 (Deficit Call)</strong>：嘉信不采用传统券商 Margin 统一的 25%/30% 维持比例。只要 **`未偿还贷款 > 跌后 Borrowing Base`**，账户即产生 Deficit，必须补交资产或偿还贷款。
+              <strong>Borrowing Base 缺口追缴 (Deficit Call)</strong>：嘉信不采用传统券商 Margin 统一的维持比例。只要 **`未偿还贷款 > 跌后 Borrowing Base`**（即覆盖率 < 100%），即产生 Shortage Call，需补交资产或偿还贷款。
             </li>
-            <li v-if="simulatedBorrowingBase < 100000">
-              <strong class="text-red-600">警告：跌后 Collateral 破 $100,000 官方底线！</strong> 嘉信要求 PAL 质押账户折算总额不得低于 10 万美元，否则会触发账户合规冻结。
+            <li v-if="simulatedBorrowingBase < 100000 && borrowedAmount > 0">
+              <strong class="text-red-600">警告：跌后 Collateral 破 $100,000 官方底线！</strong> 嘉信要求 PAL 账户折算 Borrowing Base 总额不得低于 10 万美元。
             </li>
             <li v-else-if="marginCallAmount > 0">
-              <strong class="text-red-600">已触发 Shortage Call！</strong> 您需要补交 <strong>${{ formatNum(marginCallAmount) }}</strong> 的合格资产，或清偿等额贷款。
+              <strong class="text-red-600">已触发 Shortage Call！</strong> 您需要补交 <strong>${{ formatNum(marginCallAmount) }}</strong> 的合格资产。
             </li>
-            <li v-else-if="collateralCoverageRatio < 115">
+            <li v-else-if="collateralCoverageRatio < 115 && borrowedAmount > 0">
               <strong class="text-amber-600">覆盖率偏低 (低于 115%)。</strong> 避险资产占比充足，但高风险资产波动仍可能随时拉低 Borrowing Base。
             </li>
             <li v-else>
@@ -252,24 +253,95 @@
       </div>
 
     </div>
+
+    <!-- 底部区域：长期动态演化模拟模块 -->
+    <div class="mt-10 bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-sky-600"></i> 长期动态演化模拟（不涨/平盘环境：提额 + 债务复利）
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">假设资产价格保持不变（基于跌后市值），测算每年持续提额及利息复利对 Borrowing Base 覆盖率的侵蚀过程。</p>
+        </div>
+        
+        <!-- 警报节点汇总卡片 -->
+        <div class="flex flex-wrap gap-2 text-xs">
+          <div class="px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+            <span class="text-amber-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> 预警线 (< 115%)</span>
+            <span class="font-bold text-amber-800 font-mono">{{ yearsMilestones.warningYear ? '第 ' + yearsMilestones.warningYear + ' 年' : '未触发' }}</span>
+          </div>
+          <div class="px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+            <span class="text-red-600 font-bold"><i class="fa-solid fa-bell"></i> Shortage Call (< 100%)</span>
+            <span class="font-bold text-red-800 font-mono">{{ yearsMilestones.callYear ? '第 ' + yearsMilestones.callYear + ' 年' : '未触发' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 折线图表 -->
+      <div class="relative w-full h-80 bg-slate-50/50 p-4 rounded-lg border border-slate-100">
+        <canvas id="evolutionChart"></canvas>
+      </div>
+
+      <!-- 动态逐年演进数据表 -->
+      <div>
+        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">动态逐年演进数据表</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-800 text-white uppercase font-semibold">
+              <tr>
+                <th class="py-3 px-4">年份</th>
+                <th class="py-3 px-4">期初债务 ($)</th>
+                <th class="py-3 px-4">当年利息 ($)</th>
+                <th class="py-3 px-4">当年提额 ($)</th>
+                <th class="py-3 px-4">期末债务 ($)</th>
+                <th class="py-3 px-4">Borrowing Base 覆盖率</th>
+                <th class="py-3 px-4">风控状态</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-mono">
+              <tr v-for="row in yearlyEvolutionData" :key="row.year" class="hover:bg-slate-50 transition">
+                <td class="py-2.5 px-4 font-bold text-slate-800">第 {{ row.year }} 年</td>
+                <td class="py-2.5 px-4">${{ formatNum(row.startDebt) }}</td>
+                <td class="py-2.5 px-4 text-amber-600">+${{ formatNum(row.interest) }}</td>
+                <td class="py-2.5 px-4 text-sky-600">+${{ formatNum(row.withdrawal) }}</td>
+                <td class="py-2.5 px-4 font-bold text-slate-900">${{ formatNum(row.endDebt) }}</td>
+                <td class="py-2.5 px-4 font-bold" :class="row.coverageRatio < 100 ? 'text-red-600' : (row.coverageRatio < 115 ? 'text-amber-600' : 'text-emerald-600')">
+                  {{ row.coverageRatio.toFixed(2) }}%
+                </td>
+                <td class="py-2.5 px-4 font-sans font-bold">
+                  <span v-if="row.coverageRatio < 100" class="text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200">Shortage Call</span>
+                  <span v-else-if="row.coverageRatio < 115" class="text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">追缴预警</span>
+                  <span v-else class="text-emerald-600">正常</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
-    const { createApp, ref, computed } = Vue;
+    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
 
     createApp({
       setup() {
-        // 质押资产列表 (初始化为 BOXX + QQQ)
+        // 1. 质押资产列表
         const assets = ref([
           { name: '纳斯达克100 ETF (QQQ)', marketValue: 400000, ltv: 70, dropPercent: 80 },
-          { name: '纳斯达克100 ETF ×2 (QLD)', marketValue: 300000, ltv: 0, dropPercent: 0 },
+          { name: '纳斯达克100 ETF ×2 (QLD)', marketValue: 300000, ltv: 0, dropPercent: 95 },
           { name: '货币市场基金 (BOXX)', marketValue: 300000, ltv: 90, dropPercent: 3 },
         ]);
 
-        // 未偿还贷款金额
+        // 2. 债务及动态演化参数
         const borrowedAmount = ref(200000);
+        const annualWithdrawRate = ref(2); // 每年提取跌后资产总额的 %
+        const interestRate = ref(6.5);     // PAL 贷款利率 %
+        const simulationYears = ref(15);   // 模拟年数
 
-        // 添加资产
+        let chartInstance = null;
+
         const addAsset = () => {
           assets.value.push({
             name: '新资产 ' + (assets.value.length + 1),
@@ -279,66 +351,52 @@
           });
         };
 
-        // 删除资产
         const removeAsset = (index) => {
           if (assets.value.length > 1) {
             assets.value.splice(index, 1);
           }
         };
 
-        // 一键预设场景
         const applyPreset = (presetType) => {
           if (presetType === 'techCrash') {
             assets.value.forEach(asset => {
               if (asset.name.includes('货币') || asset.name.includes('现金') || asset.ltv >= 85) {
                 asset.dropPercent = 0;
               } else {
-                asset.dropPercent = 25; // 科技股暴跌 25%
+                asset.dropPercent = 25;
               }
             });
           } else if (presetType === 'liquidityCrisis') {
             assets.value.forEach(asset => {
               if (asset.ltv >= 85) {
-                asset.dropPercent = 2; // 避险资产微跌
+                asset.dropPercent = 2;
               } else {
-                asset.dropPercent = 35; // 权益资产重挫 35%
+                asset.dropPercent = 35;
               }
             });
           }
         };
 
-        // 重置所有跌幅
         const resetDrops = () => {
           assets.value.forEach(asset => asset.dropPercent = 0);
         };
 
-        // --- 核心计算属性 ---
-
-        // 1. 当前组合总市值
+        // --- 静态核心计算属性 ---
         const currentTotalMarketValue = computed(() => {
           return assets.value.reduce((sum, item) => sum + (item.marketValue || 0), 0);
         });
 
-        // 2. 当前总可贷额度 (Borrowing Base)
         const currentBorrowingBase = computed(() => {
           return assets.value.reduce((sum, item) => {
             return sum + ((item.marketValue || 0) * (item.ltv || 0) / 100);
           }, 0);
         });
 
-        // 3. 当前初始额度提取率
-        const currentUsageRatio = computed(() => {
-          if (currentBorrowingBase.value === 0) return 0;
-          return (borrowedAmount.value / currentBorrowingBase.value) * 100;
-        });
-
-        // 4. 当前综合加权放款率 (Advance Rate)
         const currentWeightedLTV = computed(() => {
           if (currentTotalMarketValue.value === 0) return 0;
           return (currentBorrowingBase.value / currentTotalMarketValue.value) * 100;
         });
 
-        // 5. 压力测试后 - 组合总市值
         const simulatedTotalMarketValue = computed(() => {
           return assets.value.reduce((sum, item) => {
             const val = (item.marketValue || 0) * (1 - (item.dropPercent || 0) / 100);
@@ -346,7 +404,6 @@
           }, 0);
         });
 
-        // 6. 压力测试后 - 组合加权 Borrowing Base (嘉信官方标准)
         const simulatedBorrowingBase = computed(() => {
           return assets.value.reduce((sum, item) => {
             const dropVal = (item.marketValue || 0) * (1 - (item.dropPercent || 0) / 100);
@@ -354,13 +411,11 @@
           }, 0);
         });
 
-        // 7. 组合总体跌幅 (%)
         const simulatedTotalDrop = computed(() => {
           if (currentTotalMarketValue.value === 0) return 0;
           return ((currentTotalMarketValue.value - simulatedTotalMarketValue.value) / currentTotalMarketValue.value) * 100;
         });
 
-        // 8. 嘉信官方标准：追缴保证金金额 (Shortage Call)
         const marginCallAmount = computed(() => {
           if (borrowedAmount.value > simulatedBorrowingBase.value) {
             return borrowedAmount.value - simulatedBorrowingBase.value;
@@ -368,71 +423,180 @@
           return 0;
         });
 
-        // 9. Borrowing Base 覆盖率 ( ≥ 100% 为安全)
+        // 修复 1：零债务特例处理
         const collateralCoverageRatio = computed(() => {
-          if (borrowedAmount.value === 0) return 100;
+          if (borrowedAmount.value <= 0) return 999;
           return (simulatedBorrowingBase.value / borrowedAmount.value) * 100;
         });
 
-        // 10. Borrowing Base 剩余安全缓冲额度 ($)
         const borrowingBaseBuffer = computed(() => {
           return simulatedBorrowingBase.value - borrowedAmount.value;
         });
 
-        // 11. 找出市值最高的核心资产进行压力测算
         const highestRiskAsset = computed(() => {
           return [...assets.value].sort((a, b) => b.marketValue - a.marketValue)[0] || assets.value[0];
         });
 
-        // 12. 嘉信官方单资产暴跌临界点反推 (含边界保护)
+        // 修复 2：修正 0% LTV 资产的最大跌幅计算
         const singleAssetCrashLimitText = computed(() => {
           const target = highestRiskAsset.value;
           if (!target || target.marketValue === 0) return 'N/A';
 
-          // 计算其他资产在设定跌幅下的 Borrowing Base
+          const targetLtv = (target.ltv || 0) / 100;
+          if (targetLtv === 0) return '100% (LTV为0%，不影响 Borrowing Base)';
+
           const otherAssetsCollateral = assets.value.reduce((sum, item) => {
             if (item === target) return sum;
             const dropVal = (item.marketValue || 0) * (1 - (item.dropPercent || 0) / 100);
             return sum + (Math.max(0, dropVal) * (item.ltv || 0) / 100);
           }, 0);
 
-          // 目标资产需要提供的最小抵押额 (Borrowing Base)
           const requiredTargetCollateral = borrowedAmount.value - otherAssetsCollateral;
-          
-          // 如果其他资产提供的 Borrowing Base 已经完全覆盖贷款
-          if (requiredTargetCollateral <= 0) {
-            return '100% (即使跌光也不触及 Call)';
-          }
+          if (requiredTargetCollateral <= 0) return '100% (即使跌光也不触及 Call)';
 
-          const targetLtv = (target.ltv || 0) / 100;
-          if (targetLtv === 0) return '0.0%';
-          
-          // 目标资产所需的最小市值
           const requiredTargetMarketValue = requiredTargetCollateral / targetLtv;
-
-          if (requiredTargetMarketValue >= target.marketValue) {
-            return '0.0% (当前已处于 Call 状态)';
-          }
+          if (requiredTargetMarketValue >= target.marketValue) return '0.0% (当前已处于 Call 状态)';
 
           const maxAllowedDrop = ((target.marketValue - requiredTargetMarketValue) / target.marketValue) * 100;
           return `${Math.max(0, Math.min(100, maxAllowedDrop)).toFixed(1)}%`;
         });
 
-        // --- 样式与状态控制 ---
+        // 修复 3：统一采用跌后市值作为每年提额计算基数
+        const yearlyEvolutionData = computed(() => {
+          const list = [];
+          let currentDebt = borrowedAmount.value;
+          const baseAsset = simulatedTotalMarketValue.value; // 修正为跌后市值
+          const annualWithdrawal = baseAsset * (annualWithdrawRate.value / 100);
+          const bb = simulatedBorrowingBase.value;
+
+          const years = Math.max(1, Math.min(30, simulationYears.value || 15));
+
+          for (let y = 1; y <= years; y++) {
+            const startDebt = currentDebt;
+            const interest = startDebt * (interestRate.value / 100);
+            const withdrawal = annualWithdrawal;
+            const endDebt = startDebt + interest + withdrawal;
+            const coverageRatio = bb > 0 ? (bb / endDebt) * 100 : 0;
+
+            list.push({
+              year: y,
+              startDebt,
+              interest,
+              withdrawal,
+              endDebt,
+              coverageRatio
+            });
+
+            currentDebt = endDebt;
+          }
+          return list;
+        });
+
+        const yearsMilestones = computed(() => {
+          let warningYear = null;
+          let callYear = null;
+
+          for (const row of yearlyEvolutionData.value) {
+            if (!warningYear && row.coverageRatio < 115) warningYear = row.year;
+            if (!callYear && row.coverageRatio < 100) callYear = row.year;
+          }
+
+          return { warningYear, callYear };
+        });
+
+        // 图表渲染
+        const renderChart = () => {
+          const ctx = document.getElementById('evolutionChart');
+          if (!ctx) return;
+
+          const labels = yearlyEvolutionData.value.map(d => `第${d.year}年`);
+          const ratioData = yearlyEvolutionData.value.map(d => d.coverageRatio.toFixed(2));
+
+          if (chartInstance) {
+            chartInstance.destroy();
+          }
+
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'Borrowing Base 覆盖率 (%)',
+                  data: ratioData,
+                  borderColor: '#0284c7',
+                  backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                  fill: true,
+                  tension: 0.3,
+                  pointRadius: 4,
+                  pointBackgroundColor: '#0284c7'
+                },
+                {
+                  label: '追缴预警线 (115%)',
+                  data: Array(labels.length).fill(115),
+                  borderColor: '#f59e0b',
+                  borderDash: [5, 5],
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Shortage Call 强平线 (100%)',
+                  data: Array(labels.length).fill(100),
+                  borderColor: '#ef4444',
+                  borderDash: [3, 3],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                  callbacks: {
+                    label: (context) => `${context.dataset.label}: ${context.raw}%`
+                  }
+                }
+              },
+              scales: {
+                y: {
+                  title: { display: true, text: '覆盖率 (%)' },
+                  suggestedMin: 50
+                }
+              }
+            }
+          });
+        };
+
+        // 监听变化重新绘图
+        watch(yearlyEvolutionData, () => {
+          nextTick(() => renderChart());
+        }, { deep: true });
+
+        onMounted(() => {
+          nextTick(() => renderChart());
+        });
+
+        // 状态与样式控制（修复零负债下的文本展示）
         const riskStatusText = computed(() => {
-          if (simulatedBorrowingBase.value < 100000 && borrowedAmount.value > 0) return '破 $100k 门槛';
+          if (borrowedAmount.value <= 0) return '安全状态 (无负债)';
+          if (simulatedBorrowingBase.value < 100000) return '破 $100k 门槛';
           if (marginCallAmount.value > 0) return '触发 Shortage Call';
           if (collateralCoverageRatio.value < 115) return '追缴预警 (低缓冲)';
           return '安全状态';
         });
 
         const riskStatusBadgeClass = computed(() => {
+          if (borrowedAmount.value <= 0) return 'bg-emerald-100 text-emerald-700';
           if (simulatedBorrowingBase.value < 100000 || marginCallAmount.value > 0) return 'bg-red-100 text-red-700';
           if (collateralCoverageRatio.value < 115) return 'bg-amber-100 text-amber-700';
           return 'bg-emerald-100 text-emerald-700';
         });
 
         const riskStatusDotClass = computed(() => {
+          if (borrowedAmount.value <= 0) return 'bg-emerald-600';
           if (simulatedBorrowingBase.value < 100000 || marginCallAmount.value > 0) return 'bg-red-600';
           if (collateralCoverageRatio.value < 115) return 'bg-amber-600';
           return 'bg-emerald-600';
@@ -444,7 +608,6 @@
           return 'bg-emerald-500';
         });
 
-        // 数字格式化工具函数
         const formatNum = (num) => {
           if (isNaN(num) || num === null) return '0';
           return Math.round(num).toLocaleString('en-US');
@@ -453,13 +616,15 @@
         return {
           assets,
           borrowedAmount,
+          annualWithdrawRate,
+          interestRate,
+          simulationYears,
           addAsset,
           removeAsset,
           applyPreset,
           resetDrops,
           currentTotalMarketValue,
           currentBorrowingBase,
-          currentUsageRatio,
           currentWeightedLTV,
           simulatedTotalMarketValue,
           simulatedBorrowingBase,
@@ -469,6 +634,8 @@
           borrowingBaseBuffer,
           highestRiskAsset,
           singleAssetCrashLimitText,
+          yearlyEvolutionData,
+          yearsMilestones,
           riskStatusText,
           riskStatusBadgeClass,
           riskStatusDotClass,
