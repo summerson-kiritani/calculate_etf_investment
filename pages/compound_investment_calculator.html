@@ -14,7 +14,6 @@
       font-size: 0.95rem;
       color: #1d4ed8;
     }
-    /* 抽屉平滑过渡 */
     .drawer-slide-enter-active, .drawer-slide-leave-active {
       transition: transform 0.3s ease, opacity 0.3s ease;
     }
@@ -37,86 +36,164 @@
 
     <!-- 标题 -->
     <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
-    <p class="text-gray-500 mt-1">含初始投入，季度收益修正版（含通货膨胀与实际购买力折算）</p>
+    <p class="text-gray-500 mt-1">含初始投入、停止定投与退休条件触发（含通气膨胀与购买力折算）</p>
 
     <!-- 表单 -->
-    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
-      <!-- 方案别名输入 -->
-      <div class="mb-4 pb-4 border-b border-gray-100 flex items-center gap-3">
-        <label class="text-sm font-bold text-gray-700 whitespace-nowrap">🏷️ 方案标签/备注：</label>
-        <input type="text" v-model="planName" placeholder="例如：稳健型投资、激进方案、养老准备" 
-          class="w-full md:w-64 px-3 py-1.5 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+    <form @submit.prevent="calculate" class="bg-white rounded-xl shadow-md p-6 mt-6 border border-gray-100">
+      <!-- 方案别名与编辑状态指示 -->
+      <div class="mb-6 pb-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 flex-1 min-w-[280px]">
+          <label class="text-sm font-bold text-gray-700 whitespace-nowrap">🏷️ 方案名称/备注：</label>
+          <input type="text" v-model="planName" placeholder="例如：稳健型投资、激进方案、养老准备" 
+            class="w-full md:w-72 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div v-if="editingPlanId" class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+          <span>✏️ 当前正编辑已有方案</span>
+          <button type="button" @click="resetToNewPlan" class="text-blue-600 hover:underline font-semibold ml-1">切换为新建方案</button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">初始投入资金（元）</label>
-          <input type="number" v-model.number="initialInvestment" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+      <!-- 参数分组展示 -->
+      <div class="space-y-6">
+        <!-- 分组 1：基础信息与时间 -->
+        <div class="bg-blue-50/40 p-4 rounded-xl border border-blue-100">
+          <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-1.5">
+            <span>📅</span> 1. 基础信息与时间规划
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">当前年龄（岁）</label>
+              <input type="number" v-model.number="currentAge" min="0" step="1" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">开始投资年份</label>
+              <input type="number" v-model.number="startYear" min="1900" step="1" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">预计计算年限（年）</label>
+              <input type="number" v-model.number="years" min="1" step="1" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">每月定投金额（元）</label>
-          <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+
+        <!-- 分组 2：资金投入与收益策略 -->
+        <div class="bg-green-50/40 p-4 rounded-xl border border-green-100">
+          <h3 class="text-sm font-bold text-green-800 mb-3 flex items-center gap-1.5">
+            <span>💰</span> 2. 资金投入与收益参数
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">初始投入资金（元）</label>
+              <input type="number" v-model.number="initialInvestment" min="0" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">每月定投金额（元）</label>
+              <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">定投方式</label>
+              <select v-model="investmentMode" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm">
+                <option value="quarterly">每季度定投（季度末投3个月金额）</option>
+                <option value="yearlyInQ1">每年Q1一次性投入整年金额</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">预估年化收益率（%）</label>
+              <input type="number" v-model.number="annualRate" min="0" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">收益调整系数 β（beta）</label>
+              <input type="number" v-model.number="beta" min="0" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">预估年通胀率（%）</label>
+              <input type="number" v-model.number="inflationRate" min="0" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">定投方式</label>
-          <select v-model="investmentMode" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
-            <option value="quarterly">每季度定投（每季度投入3个月金额）</option>
-            <option value="yearlyInQ1">每年第一季度一次性定投一整年金额</option>
-          </select>
+
+        <!-- 分组 3：停止定投条件 -->
+        <div class="bg-amber-50/40 p-4 rounded-xl border border-amber-100">
+          <h3 class="text-sm font-bold text-amber-800 mb-1 flex items-center gap-1.5">
+            <span>🛑</span> 3. 停止定投条件（满足任意一条即停止后续定投，填 0 代表不设限）
+          </h3>
+          <p class="text-xs text-amber-600 mb-3">当达到以下条件时自动终止后续追加投本金，现有资金继续保留复利运作。</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">停止定投年龄（岁）</label>
+              <input type="number" v-model.number="stopInvestAge" min="0" step="1"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">总资产达到多少停止（元）</label>
+              <input type="number" v-model.number="stopInvestAssets" min="0" step="1000"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">投入本金达到多少停止（元）</label>
+              <input type="number" v-model.number="stopInvestPrincipal" min="0" step="1000"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+            </div>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">预估年化收益率（%）</label>
-          <input type="number" v-model.number="annualRate" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">预估年通胀率（%）</label>
-          <input type="number" v-model.number="inflationRate" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">收益调整系数 β（beta）</label>
-          <input type="number" v-model.number="beta" min="0" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">投资年限（年）</label>
-          <input type="number" v-model.number="years" min="1" step="1" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">当前年龄（岁）</label>
-          <input type="number" v-model.number="currentAge" min="0" step="1" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">开始投资年份</label>
-          <input type="number" v-model.number="startYear" min="1900" step="1" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">开始退休年龄（岁）</label>
-          <input type="number" v-model.number="retirementAge" min="0" step="1" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700">提领率（%，每年Q4执行）</label>
-          <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
-            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div class="md:col-span-2 flex items-center">
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
-            <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
-            退休后继续定投
-          </label>
+
+        <!-- 分组 4：退休与提领策略 -->
+        <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-100">
+          <h3 class="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
+            <span>🏖️</span> 4. 退休与提领策略（满足任意一条即开启退休提领，填 0 代表不限制）
+          </h3>
+          <p class="text-xs text-purple-600 mb-3">进入退休后将每年第四季度按提领率取出生活费。</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">退休年龄（岁）</label>
+              <input type="number" v-model.number="retirementAge" min="0" step="1"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不设退休年龄" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">总资产达到多少开始退休（元）</label>
+              <input type="number" v-model.number="retireAssets" min="0" step="1000"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">投入本金达到多少退休（元）</label>
+              <input type="number" v-model.number="retirePrincipal" min="0" step="1000"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">每年提领率（%，每年Q4执行）</label>
+              <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+            </div>
+            <div class="md:col-span-2 flex items-center pt-5">
+              <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
+                退休后依然继续定投（若取消，退休时将自动停止定投）
+              </label>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="mt-6 flex gap-3">
-        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600 transition">计算并保存方案</button>
-        <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-500 text-white px-6 py-2 rounded font-semibold hover:bg-green-600 transition">导出CSV</button>
+
+      <!-- 提交按钮 -->
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition shadow-sm">
+          {{ editingPlanId ? '更新此方案并计算' : '计算并保存方案' }}
+        </button>
+        <button type="button" v-if="editingPlanId" @click="saveAsNewPlan" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-200 transition">
+          另存为新方案
+        </button>
+        <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition shadow-sm">
+          导出CSV
+        </button>
       </div>
     </form>
 
@@ -156,9 +233,9 @@
       </div>
     </div>
 
-    <!-- 收益突破报告 -->
+    <!-- 收益与事件里程碑报告 -->
     <div v-if="reports.length" class="bg-white rounded-lg shadow p-4 mt-6">
-      <h3 class="text-sm font-semibold text-blue-500 mb-3">收益与资产突破报告</h3>
+      <h3 class="text-sm font-semibold text-blue-500 mb-3">收益与关键节点触发报告</h3>
       <div class="space-y-2">
         <div v-for="r in reports" :key="r.reportId"
           @click="scrollToRow(r.id)"
@@ -225,7 +302,7 @@
       </table>
     </div>
 
-    <!-- 方案对比视图区（勾选 2 个或以上时在下方自动展开） -->
+    <!-- 方案对比视图区 -->
     <div v-if="selectedPlans.length >= 2" class="mt-10 bg-white rounded-xl shadow-lg border border-gray-200 p-6">
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -244,7 +321,6 @@
           :class="['rounded-xl border p-4 relative flex flex-col justify-between transition-all duration-200 shadow-sm', themeClasses[idx % themeClasses.length]]">
           
           <div>
-            <!-- 头部方案名称 -->
             <div class="flex justify-between items-start mb-2">
               <span class="text-xs font-bold px-2 py-0.5 rounded-md" :class="themeBadgeClasses[idx % themeBadgeClasses.length]">
                 方案 {{ idx + 1 }}
@@ -253,7 +329,6 @@
             </div>
             <h3 class="font-bold text-gray-800 text-base mb-3 truncate">{{ plan.name }}</h3>
 
-            <!-- 输入参数摘要（高亮差异性） -->
             <div class="bg-white bg-opacity-70 rounded-lg p-2.5 text-xs space-y-1 text-gray-600 mb-4 border border-gray-100">
               <div class="flex justify-between">
                 <span>月定投:</span>
@@ -264,12 +339,16 @@
                 <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('annualRate')}">{{ plan.inputs.annualRate }}%</span>
               </div>
               <div class="flex justify-between">
-                <span>通货膨胀率:</span>
-                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('inflationRate')}">{{ plan.inputs.inflationRate }}%</span>
+                <span>停止定投条件:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('stopInvestAge') || isDiff('stopInvestAssets')}">
+                  {{ getStopInvestText(plan.inputs) }}
+                </span>
               </div>
               <div class="flex justify-between">
-                <span>投资年限 / 退休年龄:</span>
-                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('years') || isDiff('retirementAge')}">{{ plan.inputs.years }}年 / {{ plan.inputs.retirementAge }}岁</span>
+                <span>退休条件:</span>
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('retirementAge') || isDiff('retireAssets')}">
+                  {{ getRetireText(plan.inputs) }}
+                </span>
               </div>
               <div class="flex justify-between">
                 <span>提领率:</span>
@@ -277,15 +356,12 @@
               </div>
             </div>
 
-            <!-- 核心输出对比（带胜者徽章 👑） -->
             <div class="space-y-3">
-              <!-- 累计本金 -->
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-500">累计本金</span>
                 <span class="font-semibold text-gray-700">￥{{ fmtMoney(plan.summary.principal) }}</span>
               </div>
 
-              <!-- 期末余额 (名义) -->
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-500">期末余额(名义)</span>
                 <div class="flex items-center gap-1">
@@ -296,7 +372,6 @@
                 </div>
               </div>
 
-              <!-- 购买力折算 (终局购买力) -->
               <div class="bg-red-50 p-2 rounded-lg flex justify-between items-center text-xs">
                 <span class="text-red-700 font-medium">今日购买力</span>
                 <div class="flex items-center gap-1">
@@ -305,7 +380,6 @@
                 </div>
               </div>
 
-              <!-- 真实总价值（含已提领） -->
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-500">总资产(含已领)</span>
                 <div class="flex items-center gap-1">
@@ -314,7 +388,6 @@
                 </div>
               </div>
 
-              <!-- 年化收益 CAGR -->
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-500">综合年化(CAGR)</span>
                 <div class="flex items-center gap-1">
@@ -335,10 +408,8 @@
     <!-- 右侧历史记录与方案选择抽屉 -->
     <transition name="drawer-slide">
       <div v-if="showDrawer" class="fixed inset-0 z-50 flex justify-end">
-        <!-- 遮罩层 -->
         <div @click="showDrawer = false" class="fixed inset-0 bg-black bg-opacity-40"></div>
 
-        <!-- 抽屉主体 -->
         <div class="relative w-full max-w-md bg-white h-full shadow-2xl z-10 flex flex-col justify-between">
           <div>
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -346,14 +417,12 @@
               <button @click="showDrawer = false" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
             </div>
 
-            <!-- 提示说明 -->
             <div class="p-4 bg-blue-50 text-blue-800 text-xs flex justify-between items-center">
               <span>💡 勾选 2 ~ 4 个方案即可开启横向对比视图</span>
               <span class="font-bold">{{ selectedPlanIds.length }}/4</span>
             </div>
 
-            <!-- 历史列表 -->
-            <div class="p-4 space-y-3 overflow-y-auto max-h-96">
+            <div class="p-4 space-y-3 overflow-y-auto max-h-[70vh]">
               <div v-if="!history.length" class="text-center py-8 text-gray-400 text-sm">
                 暂无历史方案，点击“计算并保存方案”即可添加
               </div>
@@ -369,21 +438,20 @@
                 </div>
 
                 <div class="mt-2 text-xs text-gray-500 space-y-0.5 ml-6">
-                  <div>投入: ￥{{ item.inputs.monthlyInvestment }}/月 | 年化: {{ item.inputs.annualRate }}% | 通胀: {{ item.inputs.inflationRate }}%</div>
+                  <div>投入: ￥{{ item.inputs.monthlyInvestment }}/月 | 年化: {{ item.inputs.annualRate }}%</div>
                   <div class="font-semibold text-blue-600">期末购买力: ￥{{ fmtMoney(item.summary.realValueAfterWithdraw) }}</div>
                   <div class="text-gray-400 text-min font-mono">{{ item.createdAt }}</div>
                 </div>
 
                 <div class="mt-2 text-right ml-6">
-                  <button @click="loadPlan(item); showDrawer = false;" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded">载入此方案</button>
+                  <button @click="loadPlan(item); showDrawer = false;" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1 rounded">载入此方案</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 底部操作按钮 -->
           <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-between gap-2">
-            <button @click="clearAllHistory" class="text-xs text-red-500 hover:underline">清空所有历史</button>
+            <button @click="clearAllHistory" class="text-xs text-red-500 hover:underline">清空方案记录</button>
             <button @click="showDrawer = false" class="bg-blue-500 text-white text-xs px-4 py-2 rounded font-semibold">确认并查看对比</button>
           </div>
         </div>
@@ -392,28 +460,25 @@
 
     <!-- 公式说明 -->
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明（含通货膨胀折算）</h3>
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式与多条件规则说明</h3>
 
-      <h4 class="font-semibold text-gray-800">1. 季度复利与提领基数</h4>
+      <h4 class="font-semibold text-gray-800">1. 停止定投与退休条件触发逻辑</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>FV_raw = 上期末账户余额 × (1 + 季度修正收益率) + 当季投入</code></p>
-        <p><code>提领金额 = FV_raw × 提领率（仅每年 Q4 执行）</code></p>
+        <p><code>停止定投触发：满足 [年龄 >= 设定期限] 或 [总资产 >= 设定门槛] 或 [投入本金 >= 设定门槛] 时终止后续投入</code></p>
+        <p><code>退休阶段触发：满足 [年龄 >= 退休年龄] 或 [总资产 >= 退休门槛] 或 [本金 >= 退休门槛] 时开启每年Q4提领</code></p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">2. 季度复利与提领计算</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>FV_raw = 上期末账户余额 × (1 + 季度修正收益率) + 当季定投投入</code></p>
+        <p><code>提领金额 = FV_raw × 提领率（仅退休后每年 Q4 执行）</code></p>
         <p><code>期末账户余额（名义数字） = FV_raw - 提领金额</code></p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">2. 通货膨胀与实际购买力折算（方案 A）</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">3. 通货膨胀与实际购买力折算</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>折算因素 (Discount Factor) = (1 + 年通胀率)^(经过年数)</code></p>
         <p><code>期末余额 (今日购买力) = 期末账户余额 ÷ 折算因素</code></p>
-        <p><code>真实总价值 (今日购买力) = 真实总价值 ÷ 折算因素</code></p>
-        <p class="text-gray-500">提示：经过年数按照实际季度精确计算（如第 10 季度为 2 年）。“今日购买力”表达的是该笔资产相当于现在的多少钱。</p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">3. 真实总价值与综合回报率</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>真实总价值 = 期末账户余额 + 历史累计已提领额</code></p>
-        <p><code>总收益倍数 = 真实总价值 ÷ 累计投入本金</code></p>
-        <p><code>综合年化（CAGR）= (总收益倍数)^(1/完整年数) - 1</code></p>
       </div>
     </div>
   </div>
@@ -426,6 +491,7 @@
       data() {
         var currentYear = new Date().getFullYear();
         return {
+          editingPlanId: null, // 当前正在编辑的方案ID（若为null表示新方案）
           planName: '',
           initialInvestment: 0,
           monthlyInvestment: 1000,
@@ -435,16 +501,26 @@
           years: 30,
           startYear: currentYear,
           currentAge: currentYear - 1996,
+
+          // 停止定投条件
+          stopInvestAge: 0,
+          stopInvestAssets: 0,
+          stopInvestPrincipal: 0,
+
+          // 退休条件
           retirementAge: 50,
+          retireAssets: 0,
+          retirePrincipal: 0,
+
           withdrawRate: 2,
           investmentMode: 'quarterly',
           continueInvestAfterRetirement: false,
+
           results: [],
           reports: [],
           selectedReportId: null,
           expandedYears: new Set(),
           
-          // 对比与历史新增数据
           showDrawer: false,
           history: [],
           selectedPlanIds: [],
@@ -463,11 +539,9 @@
         };
       },
       mounted() {
-        // 恢复历史记录
-        var local = localStorage.getItem('compound_calc_history');
-        if (local) {
-          try { this.history = JSON.parse(local); } catch (e) {}
-        }
+        // 按照需求：刷新后清掉缓存，不从 localStorage 恢复旧数据
+        localStorage.removeItem('compound_calc_history');
+        this.history = [];
       },
       computed: {
         summary: function() {
@@ -535,8 +609,7 @@
         calculate: function() {
           if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 ||
               this.inflationRate < 0 || this.beta < 0 || this.years <= 0 || this.currentAge < 0 ||
-              this.startYear < 1900 || this.retirementAge < 0 ||
-              this.withdrawRate < 0 || this.withdrawRate > 100) {
+              this.startYear < 1900 || this.withdrawRate < 0 || this.withdrawRate > 100) {
             alert('请输入合理的正数，且提领率在0-100之间！');
             return;
           }
@@ -554,9 +627,11 @@
           var totalQ = this.years * 4;
           var cAge = this.currentAge;
           var sYear = this.startYear;
-          var rAge = this.retirementAge;
           var wRate = this.withdrawRate / 100;
-          
+
+          var isRetired = false;
+          var isInvestStopped = false;
+
           var cumP = init;
           var cumWithdrawn = 0;
 
@@ -564,10 +639,32 @@
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
             var age = cAge + Math.floor((q - 1) / 4);
-            var isRetired = age >= rAge;
 
+            var prevNetBalance = q === 1 ? init : this.results[q - 2].futureValueAfterWithdraw;
+            var prevCumP = q === 1 ? init : this.results[q - 2].principal;
+
+            // 1. 判断退休触发条件
+            var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
+            var trigRetireAssets = this.retireAssets > 0 && prevNetBalance >= this.retireAssets;
+            var trigRetirePrincipal = this.retirePrincipal > 0 && prevCumP >= this.retirePrincipal;
+
+            if (!isRetired && (trigRetireAge || trigRetireAssets || trigRetirePrincipal)) {
+              isRetired = true;
+            }
+
+            // 2. 判断停止定投条件
+            var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
+            var trigStopAssets = this.stopInvestAssets > 0 && prevNetBalance >= this.stopInvestAssets;
+            var trigStopPrincipal = this.stopInvestPrincipal > 0 && prevCumP >= this.stopInvestPrincipal;
+            var stopByRetirement = isRetired && !this.continueInvestAfterRetirement;
+
+            if (stopByRetirement || trigStopAge || trigStopAssets || trigStopPrincipal) {
+              isInvestStopped = true;
+            }
+
+            // 计算当季定投额
             var qInvest = 0;
-            if (!isRetired || this.continueInvestAfterRetirement) {
+            if (!isInvestStopped) {
               if (this.investmentMode === 'quarterly') {
                 qInvest = monthly * 3;
               } else if (this.investmentMode === 'yearlyInQ1') {
@@ -575,16 +672,11 @@
               }
             }
 
-            cumP = q === 1 ? init + qInvest : cumP + qInvest;
+            cumP = prevCumP + qInvest;
 
-            var fvRaw;
-            if (q === 1) {
-              fvRaw = init + qInvest;
-            } else {
-              var prevNetBalance = this.results[q - 2].futureValueAfterWithdraw;
-              fvRaw = prevNetBalance * (1 + qRate) + qInvest;
-            }
+            var fvRaw = prevNetBalance * (1 + qRate) + qInvest;
 
+            // 3. 提领计算（退休后每年Q4）
             var wAmount = 0;
             if (isRetired && quarter === 4) {
               wAmount = fvRaw * wRate;
@@ -620,7 +712,9 @@
               totalReturnRatio: ratio, 
               cagr: cagr,
               investYear: Math.floor((q - 1) / 4) + 1,
-              index: q - 1
+              index: q - 1,
+              isInvestStopped: isInvestStopped,
+              isRetired: isRetired
             });
           }
 
@@ -629,11 +723,34 @@
           var moneyBPs = [100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000];
           var brokenR = {};
           var brokenM = { principal: {}, totalWealth: {}, profit: {} };
+          var stopReportAdded = false;
+          var retireReportAdded = false;
           var rc = 0;
           var self = this;
 
           this.results.forEach(function(item) {
             var id = 'row-' + item.year + '-' + item.quarter + '-' + item.index;
+
+            // 触发停止定投里程碑报告
+            if (item.isInvestStopped && !stopReportAdded) {
+              stopReportAdded = true;
+              self.reports.push({
+                id: id,
+                text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到设定的停止定投条件，停止追加本金投入。',
+                reportId: 'report-' + id + '-' + rc++
+              });
+            }
+
+            // 触发退休里程碑报告
+            if (item.isRetired && !retireReportAdded) {
+              retireReportAdded = true;
+              self.reports.push({
+                id: id,
+                text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件，开始进入退休提领模式！',
+                reportId: 'report-' + id + '-' + rc++
+              });
+            }
+
             for (var i = 0; i < returnBPs.length; i++) {
               var bp = returnBPs[i];
               if (item.totalReturnRatio >= bp && !brokenR[bp]) {
@@ -682,76 +799,135 @@
             return ap[0] !== bp[0] ? ap[0] - bp[0] : ap[1] - bp[1];
           });
 
-          // 保存当前方案至历史列表
-          this.saveCurrentPlan();
+          // 保存或更新方案
+          this.saveOrUpdatePlan();
         },
-        saveCurrentPlan: function() {
+        saveOrUpdatePlan: function() {
+          var self = this;
           var now = new Date();
           var timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + (now.getMinutes()<10?'0':'')+now.getMinutes();
           var pName = this.planName.trim() || ('方案 ' + (this.history.length + 1) + ' (' + this.annualRate + '%/年)');
-          
-          var planObj = {
-            id: 'plan_' + Date.now(),
-            name: pName,
-            createdAt: timeStr,
-            inputs: {
-              initialInvestment: this.initialInvestment,
-              monthlyInvestment: this.monthlyInvestment,
-              annualRate: this.annualRate,
-              inflationRate: this.inflationRate,
-              beta: this.beta,
-              years: this.years,
-              retirementAge: this.retirementAge,
-              withdrawRate: this.withdrawRate,
-              investmentMode: this.investmentMode,
-              continueInvestAfterRetirement: this.continueInvestAfterRetirement
-            },
-            summary: Object.assign({}, this.summary)
+
+          var inputParams = {
+            initialInvestment: this.initialInvestment,
+            monthlyInvestment: this.monthlyInvestment,
+            annualRate: this.annualRate,
+            inflationRate: this.inflationRate,
+            beta: this.beta,
+            years: this.years,
+            startYear: this.startYear,
+            currentAge: this.currentAge,
+            stopInvestAge: this.stopInvestAge,
+            stopInvestAssets: this.stopInvestAssets,
+            stopInvestPrincipal: this.stopInvestPrincipal,
+            retirementAge: this.retirementAge,
+            retireAssets: this.retireAssets,
+            retirePrincipal: this.retirePrincipal,
+            withdrawRate: this.withdrawRate,
+            investmentMode: this.investmentMode,
+            continueInvestAfterRetirement: this.continueInvestAfterRetirement
           };
 
-          this.history.unshift(planObj);
-          // 默认选中新产生的方案
-          if (this.selectedPlanIds.length < 4) {
-            this.selectedPlanIds.push(planObj.id);
+          // 判断是否在更新已有方案
+          var existingIndex = -1;
+          if (this.editingPlanId) {
+            existingIndex = this.history.findIndex(function(h) { return h.id === self.editingPlanId; });
           }
-          localStorage.setItem('compound_calc_history', JSON.stringify(this.history));
+
+          if (existingIndex !== -1) {
+            // 直接原地更新，不新增重复拷贝
+            this.history[existingIndex].name = pName;
+            this.history[existingIndex].createdAt = timeStr + ' (已更新)';
+            this.history[existingIndex].inputs = inputParams;
+            this.history[existingIndex].summary = Object.assign({}, this.summary);
+          } else {
+            // 创建全新方案
+            var newId = 'plan_' + Date.now();
+            var planObj = {
+              id: newId,
+              name: pName,
+              createdAt: timeStr,
+              inputs: inputParams,
+              summary: Object.assign({}, this.summary)
+            };
+            this.history.unshift(planObj);
+            this.editingPlanId = newId; // 设为当前编辑对象
+            if (this.selectedPlanIds.length < 4) {
+              this.selectedPlanIds.push(newId);
+            }
+          }
+        },
+        saveAsNewPlan: function() {
+          this.editingPlanId = null;
+          this.planName = (this.planName ? this.planName + ' (副本)' : '');
+          this.calculate();
+        },
+        resetToNewPlan: function() {
+          this.editingPlanId = null;
+          this.planName = '';
         },
         deleteHistory: function(id) {
           this.history = this.history.filter(function(h) { return h.id !== id; });
           this.selectedPlanIds = this.selectedPlanIds.filter(function(i) { return i !== id; });
-          localStorage.setItem('compound_calc_history', JSON.stringify(this.history));
+          if (this.editingPlanId === id) this.editingPlanId = null;
         },
         clearAllHistory: function() {
-          if (confirm('确定清空所有历史方案记录吗？')) {
+          if (confirm('确定清空所有方案记录吗？')) {
             this.history = [];
             this.selectedPlanIds = [];
-            localStorage.removeItem('compound_calc_history');
+            this.editingPlanId = null;
           }
         },
         loadPlan: function(plan) {
           var inp = plan.inputs;
+          this.editingPlanId = plan.id; // 标识正在载入编辑此方案
           this.planName = plan.name;
-          this.initialInvestment = inp.initialInvestment;
-          this.monthlyInvestment = inp.monthlyInvestment;
-          this.annualRate = inp.annualRate;
-          this.inflationRate = inp.inflationRate;
-          this.beta = inp.beta;
-          this.years = inp.years;
-          this.retirementAge = inp.retirementAge;
-          this.withdrawRate = inp.withdrawRate;
-          this.investmentMode = inp.investmentMode;
-          this.continueInvestAfterRetirement = inp.continueInvestAfterRetirement;
+          this.initialInvestment = inp.initialInvestment || 0;
+          this.monthlyInvestment = inp.monthlyInvestment || 0;
+          this.annualRate = inp.annualRate || 0;
+          this.inflationRate = inp.inflationRate || 0;
+          this.beta = inp.beta || 1;
+          this.years = inp.years || 30;
+          this.startYear = inp.startYear || new Date().getFullYear();
+          this.currentAge = inp.currentAge || 30;
+
+          this.stopInvestAge = inp.stopInvestAge || 0;
+          this.stopInvestAssets = inp.stopInvestAssets || 0;
+          this.stopInvestPrincipal = inp.stopInvestPrincipal || 0;
+
+          this.retirementAge = inp.retirementAge || 0;
+          this.retireAssets = inp.retireAssets || 0;
+          this.retirePrincipal = inp.retirePrincipal || 0;
+
+          this.withdrawRate = inp.withdrawRate || 0;
+          this.investmentMode = inp.investmentMode || 'quarterly';
+          this.continueInvestAfterRetirement = !!inp.continueInvestAfterRetirement;
+
           this.calculate();
         },
 
-        // 视觉技巧辅助：高亮参数差异
+        getStopInvestText: function(inputs) {
+          var list = [];
+          if (inputs.stopInvestAge > 0) list.push(inputs.stopInvestAge + '岁');
+          if (inputs.stopInvestAssets > 0) list.push(this.fmtMoney(inputs.stopInvestAssets) + '资产');
+          if (inputs.stopInvestPrincipal > 0) list.push(this.fmtMoney(inputs.stopInvestPrincipal) + '本金');
+          return list.length ? list.join(' / ') : '无限制';
+        },
+
+        getRetireText: function(inputs) {
+          var list = [];
+          if (inputs.retirementAge > 0) list.push(inputs.retirementAge + '岁');
+          if (inputs.retireAssets > 0) list.push(this.fmtMoney(inputs.retireAssets) + '资产');
+          if (inputs.retirePrincipal > 0) list.push(this.fmtMoney(inputs.retirePrincipal) + '本金');
+          return list.length ? list.join(' / ') : '无限制';
+        },
+
         isDiff: function(field) {
           if (this.selectedPlans.length < 2) return false;
           var firstVal = this.selectedPlans[0].inputs[field];
           return this.selectedPlans.some(function(p) { return p.inputs[field] !== firstVal; });
         },
 
-        // 视觉技巧辅助：判断指标胜者 (👑)
         isWinner: function(plan, metric) {
           if (this.selectedPlans.length < 2) return false;
           var maxVal = Math.max.apply(Math, this.selectedPlans.map(function(p) { return p.summary[metric] || 0; }));
@@ -815,7 +991,7 @@
           var url = URL.createObjectURL(blob);
           var a = document.createElement('a');
           a.href = url;
-          a.download = '复利定投计算结果(含通胀折算)_' + this.startYear + '_' + this.years + '年.csv';
+          a.download = '复利定投计算结果_' + this.startYear + '_' + this.years + '年.csv';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
