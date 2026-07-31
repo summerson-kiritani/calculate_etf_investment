@@ -36,7 +36,7 @@
 
     <!-- 标题 -->
     <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
-    <p class="text-gray-500 mt-1">含初始投入、停止定投与退休条件触发（含通气膨胀与购买力折算）</p>
+    <p class="text-gray-500 mt-1">含初始投入、停止定投与退休条件触发（含通货膨胀与购买力折算）</p>
 
     <!-- 表单 -->
     <form @submit.prevent="calculate" class="bg-white rounded-xl shadow-md p-6 mt-6 border border-gray-100">
@@ -126,7 +126,7 @@
           <h3 class="text-sm font-bold text-amber-800 mb-1 flex items-center gap-1.5">
             <span>🛑</span> 3. 停止定投条件（满足任意一条即停止后续定投，填 0 代表不设限）
           </h3>
-          <p class="text-xs text-amber-600 mb-3">当达到以下条件时自动终止后续追加投本金，现有资金继续保留复利运作。</p>
+          <p class="text-xs text-amber-600 mb-3">当达到以下条件时自动终止后续追加本金，现有资金继续保留复利运作。</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-600">停止定投年龄（岁）</label>
@@ -164,8 +164,8 @@
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">投入本金达到多少退休（元）</label>
-              <input type="number" v-model.number="retirePrincipal" min="0" step="1000"
+              <label class="block text-xs font-semibold text-gray-600">当年提领额达到多少开始退休（元）</label>
+              <input type="number" v-model.number="retireWithdraw" min="0" step="1000"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
             <div>
@@ -346,7 +346,7 @@
               </div>
               <div class="flex justify-between">
                 <span>退休条件:</span>
-                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('retirementAge') || isDiff('retireAssets')}">
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('retirementAge') || isDiff('retireAssets') || isDiff('retireWithdraw')}">
                   {{ getRetireText(plan.inputs) }}
                 </span>
               </div>
@@ -465,7 +465,7 @@
       <h4 class="font-semibold text-gray-800">1. 停止定投与退休条件触发逻辑</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>停止定投触发：满足 [年龄 >= 设定期限] 或 [总资产 >= 设定门槛] 或 [投入本金 >= 设定门槛] 时终止后续投入</code></p>
-        <p><code>退休阶段触发：满足 [年龄 >= 退休年龄] 或 [总资产 >= 退休门槛] 或 [本金 >= 退休门槛] 时开启每年Q4提领</code></p>
+        <p><code>退休阶段触发：满足 [年龄 >= 退休年龄] 或 [总资产 >= 退休门槛] 或 [当年可提领额 >= 提领门槛] 时开启每年Q4提领</code></p>
       </div>
 
       <h4 class="font-semibold text-gray-800 mt-4">2. 季度复利与提领计算</h4>
@@ -491,26 +491,26 @@
       data() {
         var currentYear = new Date().getFullYear();
         return {
-          editingPlanId: null, // 当前正在编辑的方案ID（若为null表示新方案）
+          editingPlanId: null, // 当前正在编辑的方案ID
           planName: '',
           initialInvestment: 0,
-          monthlyInvestment: 1000,
+          monthlyInvestment: 1500,
           annualRate: 18,
           inflationRate: 2,
           beta: 1,
-          years: 30,
+          years: Math.abs(currentYear - 1996 - 100) + 1,
           startYear: currentYear,
           currentAge: currentYear - 1996,
 
           // 停止定投条件
           stopInvestAge: 0,
-          stopInvestAssets: 0,
+          stopInvestAssets: 500000,
           stopInvestPrincipal: 0,
 
           // 退休条件
           retirementAge: 50,
           retireAssets: 0,
-          retirePrincipal: 0,
+          retireWithdraw: 100000, // 新增：当年提领额达标退休
 
           withdrawRate: 2,
           investmentMode: 'quarterly',
@@ -539,7 +539,7 @@
         };
       },
       mounted() {
-        // 按照需求：刷新后清掉缓存，不从 localStorage 恢复旧数据
+        // 刷新后清除缓存
         localStorage.removeItem('compound_calc_history');
         this.history = [];
       },
@@ -643,16 +643,7 @@
             var prevNetBalance = q === 1 ? init : this.results[q - 2].futureValueAfterWithdraw;
             var prevCumP = q === 1 ? init : this.results[q - 2].principal;
 
-            // 1. 判断退休触发条件
-            var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
-            var trigRetireAssets = this.retireAssets > 0 && prevNetBalance >= this.retireAssets;
-            var trigRetirePrincipal = this.retirePrincipal > 0 && prevCumP >= this.retirePrincipal;
-
-            if (!isRetired && (trigRetireAge || trigRetireAssets || trigRetirePrincipal)) {
-              isRetired = true;
-            }
-
-            // 2. 判断停止定投条件
+            // 1. 判断停止定投条件
             var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
             var trigStopAssets = this.stopInvestAssets > 0 && prevNetBalance >= this.stopInvestAssets;
             var trigStopPrincipal = this.stopInvestPrincipal > 0 && prevCumP >= this.stopInvestPrincipal;
@@ -676,7 +667,21 @@
 
             var fvRaw = prevNetBalance * (1 + qRate) + qInvest;
 
-            // 3. 提领计算（退休后每年Q4）
+            // 2. 判断退休触发条件
+            var potentialWithdraw = fvRaw * wRate; // 若当前提领可领取的金额
+            var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
+            var trigRetireAssets = this.retireAssets > 0 && fvRaw >= this.retireAssets;
+            var trigRetireWithdraw = this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw;
+
+            if (!isRetired && (trigRetireAge || trigRetireAssets || trigRetireWithdraw)) {
+              isRetired = true;
+              // 若设定退休即停止定投，则当前季立即应用
+              if (!this.continueInvestAfterRetirement) {
+                isInvestStopped = true;
+              }
+            }
+
+            // 3. 提领计算（退休后每年Q4执行）
             var wAmount = 0;
             if (isRetired && quarter === 4) {
               wAmount = fvRaw * wRate;
@@ -799,7 +804,6 @@
             return ap[0] !== bp[0] ? ap[0] - bp[0] : ap[1] - bp[1];
           });
 
-          // 保存或更新方案
           this.saveOrUpdatePlan();
         },
         saveOrUpdatePlan: function() {
@@ -822,26 +826,23 @@
             stopInvestPrincipal: this.stopInvestPrincipal,
             retirementAge: this.retirementAge,
             retireAssets: this.retireAssets,
-            retirePrincipal: this.retirePrincipal,
+            retireWithdraw: this.retireWithdraw,
             withdrawRate: this.withdrawRate,
             investmentMode: this.investmentMode,
             continueInvestAfterRetirement: this.continueInvestAfterRetirement
           };
 
-          // 判断是否在更新已有方案
           var existingIndex = -1;
           if (this.editingPlanId) {
             existingIndex = this.history.findIndex(function(h) { return h.id === self.editingPlanId; });
           }
 
           if (existingIndex !== -1) {
-            // 直接原地更新，不新增重复拷贝
             this.history[existingIndex].name = pName;
             this.history[existingIndex].createdAt = timeStr + ' (已更新)';
             this.history[existingIndex].inputs = inputParams;
             this.history[existingIndex].summary = Object.assign({}, this.summary);
           } else {
-            // 创建全新方案
             var newId = 'plan_' + Date.now();
             var planObj = {
               id: newId,
@@ -851,7 +852,7 @@
               summary: Object.assign({}, this.summary)
             };
             this.history.unshift(planObj);
-            this.editingPlanId = newId; // 设为当前编辑对象
+            this.editingPlanId = newId;
             if (this.selectedPlanIds.length < 4) {
               this.selectedPlanIds.push(newId);
             }
@@ -880,7 +881,7 @@
         },
         loadPlan: function(plan) {
           var inp = plan.inputs;
-          this.editingPlanId = plan.id; // 标识正在载入编辑此方案
+          this.editingPlanId = plan.id;
           this.planName = plan.name;
           this.initialInvestment = inp.initialInvestment || 0;
           this.monthlyInvestment = inp.monthlyInvestment || 0;
@@ -897,7 +898,7 @@
 
           this.retirementAge = inp.retirementAge || 0;
           this.retireAssets = inp.retireAssets || 0;
-          this.retirePrincipal = inp.retirePrincipal || 0;
+          this.retireWithdraw = inp.retireWithdraw || 0;
 
           this.withdrawRate = inp.withdrawRate || 0;
           this.investmentMode = inp.investmentMode || 'quarterly';
@@ -918,7 +919,7 @@
           var list = [];
           if (inputs.retirementAge > 0) list.push(inputs.retirementAge + '岁');
           if (inputs.retireAssets > 0) list.push(this.fmtMoney(inputs.retireAssets) + '资产');
-          if (inputs.retirePrincipal > 0) list.push(this.fmtMoney(inputs.retirePrincipal) + '本金');
+          if (inputs.retireWithdraw > 0) list.push(this.fmtMoney(inputs.retireWithdraw) + '提领额');
           return list.length ? list.join(' / ') : '无限制';
         },
 
