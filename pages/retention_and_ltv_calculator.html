@@ -262,11 +262,12 @@
         // 质押资产列表 (初始化为 BOXX + QQQ)
         const assets = ref([
           { name: '纳斯达克100 ETF (QQQ)', marketValue: 400000, ltv: 70, dropPercent: 80 },
+          { name: '纳斯达克100 ETF ×2 (QLD)', marketValue: 300000, ltv: 0, dropPercent: 0 },
           { name: '货币市场基金 (BOXX)', marketValue: 300000, ltv: 90, dropPercent: 3 },
         ]);
 
         // 未偿还贷款金额
-        const borrowedAmount = ref(110000);
+        const borrowedAmount = ref(200000);
 
         // 添加资产
         const addAsset = () => {
