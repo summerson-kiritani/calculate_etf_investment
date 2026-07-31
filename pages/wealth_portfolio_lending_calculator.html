@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>香港汇丰 (HSBC) 组合贷款 (WPL) 多资产风控计算器</title>
+  <title>香港汇丰 (HSBC) 组合贷款 (WPL) 多资产风控与提领模拟计算器</title>
+  <!-- Vue 2 -->
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <!-- Chart.js 趋势图表支持 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      max-width: 950px;
+      max-width: 1000px;
       margin: 20px auto;
       padding: 0 15px;
       background: #f4f6f9;
@@ -59,7 +62,7 @@
       color: #475569;
       font-size: 0.85em;
     }
-    input[type="text"], input[type="number"] {
+    input[type="text"], input[type="number"], select {
       width: 100%;
       padding: 6px 8px;
       font-size: 0.9em;
@@ -67,9 +70,17 @@
       border: 1px solid #cbd5e1;
       box-sizing: border-box;
     }
-    input[type="number"]:focus, input[type="text"]:focus {
+    input[type="number"]:focus, input[type="text"]:focus, select:focus {
       border-color: #db0011;
       outline: none;
+    }
+    
+    /* 配置网络网格 */
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 10px;
     }
     
     /* 按钮组 */
@@ -99,7 +110,7 @@
       border-radius: 8px;
       overflow: hidden;
       margin-bottom: 1.5em;
-      font-size: 0.9em;
+      font-size: 0.88em;
     }
     .res-table th, .res-table td {
       padding: 10px 12px;
@@ -127,6 +138,35 @@
     .bg-orange { background: #ffedd5; color: #c2410c; border-left: 5px solid #ea580c; }
     .bg-red { background: #fee2e2; color: #b91c1c; border-left: 5px solid #dc2626; }
 
+    /* 关键节点预警网格 (方案A) */
+    .alert-milestone-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 1.5em;
+    }
+    .milestone-box {
+      background: #fff;
+      padding: 12px 15px;
+      border-radius: 6px;
+      border-left: 4px solid #cbd5e1;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .milestone-box.limit { border-left-color: #d97706; background: #fffbeb; }
+    .milestone-box.call { border-left-color: #ea580c; background: #fff7ed; }
+    .milestone-box.cut { border-left-color: #dc2626; background: #fef2f2; }
+
+    .milestone-title { font-size: 0.8em; color: #64748b; font-weight: 600; }
+    .milestone-value { font-size: 1.1em; font-weight: 700; margin-top: 4px; color: #0f172a; }
+
+    /* 图表容器 (方案B) */
+    .chart-container {
+      position: relative;
+      height: 320px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
     .note {
       background: #fff;
       padding: 15px 20px;
@@ -142,7 +182,7 @@
 <body>
   <div id="app" role="main">
     <h1>香港汇丰 (HSBC) 组合贷款多资产风控计算器</h1>
-    <div class="subtitle">支持多资产独立配置与独立压力测试 (Multi-Asset Portfolio Stress Testing)</div>
+    <div class="subtitle">包含静态压力测试与动态提领复利演化 (Multi-Asset Stress & Withdrawal Simulation)</div>
 
     <!-- 1. 资产明细配置区 -->
     <div class="card">
@@ -191,31 +231,48 @@
       </div>
     </div>
 
-    <!-- 2. 负债与贷款配置 -->
+    <!-- 2. 负债与动态提领配置区 -->
     <div class="card">
-      <div class="card-title">未偿还贷款配置</div>
-      <div style="max-width: 300px;">
-        <label style="font-weight: 600; font-size: 0.9em;">未偿还贷款总额（万港币）</label>
-        <input type="number" v-model.number="loanAmount" min="0" step="0.1" style="margin-top: 5px;" />
-        <small style="color: #64748b; display: block; margin-top: 3px;">目前在汇丰已提取的透支/借款余额</small>
+      <div class="card-title">负债及动态提领参数配置</div>
+      <div class="config-grid">
+        <div>
+          <label style="font-weight: 600; font-size: 0.88em;">未偿还贷款总额（万港币）</label>
+          <input type="number" v-model.number="loanAmount" min="0" step="0.1" style="margin-top: 5px;" />
+          <small style="color: #64748b; display: block; margin-top: 3px;">初始提取的透支/借款余额</small>
+        </div>
+        <div>
+          <label style="font-weight: 600; font-size: 0.88em;">每年固定提领比例 (%)</label>
+          <input type="number" v-model.number="withdrawRate" min="0" max="20" step="0.1" style="margin-top: 5px;" />
+          <small style="color: #64748b; display: block; margin-top: 3px;">基于初始资产总额（按年提领）</small>
+        </div>
+        <div>
+          <label style="font-weight: 600; font-size: 0.88em;">贷款年利率 (%)</label>
+          <input type="number" v-model.number="interestRate" min="0" max="15" step="0.1" style="margin-top: 5px;" />
+          <small style="color: #64748b; display: block; margin-top: 3px;">WPL 融资本息复利计息率</small>
+        </div>
+        <div>
+          <label style="font-weight: 600; font-size: 0.88em;">模拟演化年数 (Years)</label>
+          <input type="number" v-model.number="simYears" min="3" max="30" step="1" style="margin-top: 5px;" />
+          <small style="color: #64748b; display: block; margin-top: 3px;">默认模拟未来 15 年</small>
+        </div>
       </div>
 
-      <button class="btn btn-primary" @click="calculate">运行汇丰 NMR 组合风控分析</button>
+      <button class="btn btn-primary" @click="calculate">运行汇丰 NMR 组合风控与长期演化分析</button>
     </div>
 
     <!-- 3. 计算结果与压力测试评估 -->
     <div v-if="calculated">
-      <!-- 状态指示卡片 -->
+      <!-- 静态压力测试状态指示卡片 -->
       <div :class="['status-card', droppedStatus.bgClass]">
-        <div>模拟压力测试后风险状态：{{ droppedStatus.title }}</div>
+        <div>静态跌幅测试风险状态：{{ droppedStatus.title }}</div>
         <div style="font-size: 0.85em; font-weight: normal; margin-top: 4px;">{{ droppedStatus.desc }}</div>
       </div>
 
-      <!-- 核心对比数据表格 -->
+      <!-- 核心静态对比数据表格 -->
       <table class="res-table">
         <thead>
           <tr>
-            <th>风控指标分析项目</th>
+            <th>静态风控指标分析项目</th>
             <th class="text-right">当前组合状态 (Current)</th>
             <th class="text-right">独立跌幅模拟后 (Simulated)</th>
           </tr>
@@ -259,7 +316,7 @@
         </tbody>
       </table>
 
-      <!-- 针对高风险资产的独立临界点分析 -->
+      <!-- 高风险资产独立临界点分析 -->
       <table class="res-table">
         <thead>
           <tr>
@@ -286,6 +343,66 @@
         </tbody>
       </table>
 
+      <!-- 4. 方案 A + B：动态提领与利息复利演化模块 -->
+      <div class="card" style="margin-top: 2em;">
+        <div class="card-title">
+          <span>📈 长期动态演化模拟（不涨/平盘环境：提领 + 债务复利）</span>
+          <span style="font-size: 0.8em; font-weight: normal; color: #64748b;">假设资产价格保持不变</span>
+        </div>
+
+        <!-- 方案 A：关键触发节点卡片 -->
+        <div class="alert-milestone-grid">
+          <div class="milestone-box limit">
+            <div class="milestone-title">🚫 停止提现/额度受限 (NMR < 100%)</div>
+            <div class="milestone-value">{{ simulationMilestones.limitYear }}</div>
+          </div>
+          <div class="milestone-box call">
+            <div class="milestone-title">⚠️ Margin Call 追缴预警 (NMR < 80%)</div>
+            <div class="milestone-value">{{ simulationMilestones.callYear }}</div>
+          </div>
+          <div class="milestone-box cut">
+            <div class="milestone-title">🚨 触及强平斩仓线 (NMR < 60%)</div>
+            <div class="milestone-value">{{ simulationMilestones.cutYear }}</div>
+          </div>
+        </div>
+
+        <!-- 方案 B：交互式 Chart.js 趋势图 -->
+        <div class="chart-container">
+          <canvas id="nmrChart"></canvas>
+        </div>
+
+        <!-- 方案 A：逐年演化数据明细表 -->
+        <h4 style="margin-top: 25px; margin-bottom: 10px; font-size: 0.95rem; color: #1e293b;">动态逐年演进数据表</h4>
+        <div style="overflow-x: auto;">
+          <table class="res-table" style="margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th class="text-center">年份</th>
+                <th class="text-right">期初债务 (万)</th>
+                <th class="text-right">当年利息 (万)</th>
+                <th class="text-right">当年提领 (万)</th>
+                <th class="text-right">期末债务 (万)</th>
+                <th class="text-right">NMR 比率</th>
+                <th class="text-center">风控状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in simulationData" :key="row.year">
+                <td class="text-center font-weight-bold">第 {{ row.year }} 年</td>
+                <td class="text-right">{{ formatMoney(row.startDebt) }}</td>
+                <td class="text-right" style="color: #64748b;">+{{ formatMoney(row.interest) }}</td>
+                <td class="text-right" style="color: #64748b;">+{{ formatMoney(row.withdraw) }}</td>
+                <td class="text-right font-weight-bold">{{ formatMoney(row.endDebt) }}</td>
+                <td class="text-right" :class="getNMRClass(row.nmr)"><strong>{{ row.nmr.toFixed(2) }} %</strong></td>
+                <td class="text-center">
+                  <span :class="getStatusBadgeClass(row.status)">{{ row.status }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- 业务逻辑说明 -->
       <div class="note">
         <strong>📚 香港汇丰 (HSBC) 多资产组合 WPL 风控计算说明：</strong><br />
@@ -293,7 +410,7 @@
         2. <code>可用孖展 (Available Margin)</code> = 组合总市值 - 未偿还贷款金额<br />
         3. <code>规定孖展 (Required Margin)</code> = 组合总市值 - 组合抵押品总价值<br />
         4. <code>净孖展比率 (NMR)</code> = (可用孖展 ÷ 规定孖展) × 100%<br />
-        5. <strong>多资产非等比例下跌优势：</strong> 当您持有高 LTV（如 95% 货币基金）资产时，其强大的抗跌能力会显著减缓 NMR 的下滑速度。独立测试每个资产的跌幅能避免虚假警报，更贴近真实风控表现。
+        5. <strong>动态失血效应（Double Bleeding Effect）：</strong> 在市场平盘不涨时，每年定额提领现金与未偿债务的复利利息会叠加累积到总债务中。这会导致 NMR 逐年单调加速下滑。观察图表中 NMR 穿过 100%、80%、60% 红线的时间节点，可帮助您提前做好流动性规划。
       </div>
     </div>
   </div>
@@ -309,11 +426,15 @@
             { name: "HSBC 港币货币市场基金", marketValue: 30, ltv: 95, dropPercent: 3 }
           ],
           loanAmount: 20,
-          calculated: false
+          withdrawRate: 2.0,  // 默认每年提领初始资产的 2%
+          interestRate: 4.9,  // 默认贷款年利率 4.9%
+          simYears: 15,       // 默认模拟 15 年
+          calculated: false,
+          chartInstance: null
         };
       },
       computed: {
-        currentTotalMarketValue() {5555
+        currentTotalMarketValue() {
           return this.assets.reduce((sum, item) => sum + (item.marketValue || 0), 0);
         },
         currentTotalCollateralValue() {
@@ -406,6 +527,61 @@
               bgClass: "bg-red"
             };
           }
+        },
+
+        // 方案 A：动态逐年演进计算数据
+        simulationData() {
+          const rows = [];
+          let currentDebt = this.loanAmount;
+          const annualWithdraw = this.currentTotalMarketValue * (this.withdrawRate / 100);
+          const iRate = this.interestRate / 100;
+          const reqMargin = this.currentRequiredMargin;
+          const totalMV = this.currentTotalMarketValue;
+
+          for (let y = 1; y <= this.simYears; y++) {
+            const startDebt = currentDebt;
+            const interest = startDebt * iRate;
+            const withdraw = annualWithdraw;
+            const endDebt = startDebt + interest + withdraw;
+            
+            // 计算期末 NMR
+            const availMargin = totalMV - endDebt;
+            let nmr = 0;
+            if (reqMargin > 0) {
+              nmr = (availMargin / reqMargin) * 100;
+            }
+
+            let status = "正常";
+            if (nmr < 60) status = "强平斩仓";
+            else if (nmr < 80) status = "Margin Call";
+            else if (nmr < 100) status = "暂停提领";
+
+            rows.push({
+              year: y,
+              startDebt: startDebt,
+              interest: interest,
+              withdraw: withdraw,
+              endDebt: endDebt,
+              nmr: nmr,
+              status: status
+            });
+
+            currentDebt = endDebt;
+          }
+          return rows;
+        },
+
+        // 关键触发节点汇总 (方案 A 顶部摘要)
+        simulationMilestones() {
+          const limit = this.simulationData.find(r => r.nmr < 100);
+          const call = this.simulationData.find(r => r.nmr < 80);
+          const cut = this.simulationData.find(r => r.nmr < 60);
+
+          return {
+            limitYear: limit ? `第 ${limit.year} 年` : `模拟期（${this.simYears}年）内安全`,
+            callYear: call ? `第 ${call.year} 年` : `模拟期（${this.simYears}年）内安全`,
+            cutYear: cut ? `第 ${cut.year} 年` : `模拟期（${this.simYears}年）内安全`
+          };
         }
       },
       methods: {
@@ -477,6 +653,96 @@
         },
         calculate() {
           this.calculated = true;
+          this.$nextTick(() => {
+            this.renderChart();
+          });
+        },
+        // 方案 B：渲染 Chart.js 趋势图表
+        renderChart() {
+          const ctx = document.getElementById('nmrChart');
+          if (!ctx) return;
+
+          if (this.chartInstance) {
+            this.chartInstance.destroy();
+          }
+
+          const labels = ['当前 (第0年)', ...this.simulationData.map(d => `第${d.year}年`)];
+          const nmrData = [this.currentNMR, ...this.simulationData.map(d => d.nmr)];
+
+          this.chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: '动态净孖展比率 (NMR %)',
+                  data: nmrData,
+                  borderColor: '#db0011',
+                  backgroundColor: 'rgba(219, 0, 17, 0.08)',
+                  fill: true,
+                  tension: 0.2,
+                  borderWidth: 3,
+                  pointRadius: 4,
+                  pointHoverRadius: 6
+                },
+                {
+                  label: '暂停提现线 (100%)',
+                  data: Array(labels.length).fill(100),
+                  borderColor: '#d97706',
+                  borderDash: [5, 5],
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Margin Call 追缴线 (80%)',
+                  data: Array(labels.length).fill(80),
+                  borderColor: '#ea580c',
+                  borderDash: [5, 5],
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: '强平斩仓线 (60%)',
+                  data: Array(labels.length).fill(60),
+                  borderColor: '#dc2626',
+                  borderDash: [3, 3],
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                intersect: false,
+                mode: 'index'
+              },
+              plugins: {
+                title: {
+                  display: true,
+                  text: '未来 ' + this.simYears + ' 年 NMR 走势演变 (受提领 + 利息复利侵蚀)'
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} %`;
+                    }
+                  }
+                }
+              },
+              scales: {
+                y: {
+                  title: { display: true, text: 'NMR 比率 (%)' },
+                  suggestedMin: 40,
+                  suggestedMax: 200
+                }
+              }
+            }
+          });
         },
         formatMoney(val) {
           if (val === undefined || val === null) return "0.00";
@@ -490,6 +756,12 @@
           if (nmr >= 100) return "text-green";
           if (nmr >= 90) return "text-yellow";
           if (nmr >= 80) return "text-orange";
+          return "text-red";
+        },
+        getStatusBadgeClass(status) {
+          if (status === "正常") return "text-green";
+          if (status === "暂停提领") return "text-yellow";
+          if (status === "Margin Call") return "text-orange";
           return "text-red";
         }
       },
