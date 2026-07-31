@@ -310,7 +310,7 @@
       </table>
     </div>
 
-    <!-- 方案对比视图区 -->
+    <!-- 方案多维对比视图区 -->
     <div v-if="selectedPlans.length >= 2" class="mt-10 bg-white rounded-xl shadow-lg border border-gray-200 p-6">
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -368,6 +368,15 @@
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-500">累计本金</span>
                 <span class="font-semibold text-gray-700">￥{{ fmtMoney(plan.summary.principal) }}</span>
+              </div>
+
+              <!-- 新增：总提领额对比 -->
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">总提领额</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="isWinner(plan, 'totalWithdrawn')" class="text-xs" title="总提领最高">👑</span>
+                  <span class="font-bold text-purple-600">￥{{ fmtMoney(plan.summary.totalWithdrawn) }}</span>
+                </div>
               </div>
 
               <div class="flex justify-between items-center text-xs">
@@ -951,6 +960,7 @@
         isWinner: function(plan, metric) {
           if (this.selectedPlans.length < 2) return false;
           var maxVal = Math.max.apply(Math, this.selectedPlans.map(function(p) { return p.summary[metric] || 0; }));
+          if (maxVal === 0) return false; // 若最大值为 0，则不悬挂胜者皇冠
           return plan.summary[metric] === maxVal;
         },
 
