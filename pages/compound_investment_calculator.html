@@ -44,7 +44,7 @@
       <div class="mb-6 pb-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3 flex-1 min-w-[280px]">
           <label class="text-sm font-bold text-gray-700 whitespace-nowrap">🏷️ 方案名称/备注：</label>
-          <input type="text" v-model="planName" placeholder="例如：稳健型投资、激进方案、养老准备" 
+          <input type="text" v-model="planName" placeholder="例如：稳健型投资、激进方案、FIRE养老准备" 
             class="w-full md:w-72 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div v-if="editingPlanId" class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
@@ -152,19 +152,27 @@
             <span>🏖️</span> 4. 退休与提领策略（满足任意一条即开启退休提领，填 0 代表不限制）
           </h3>
           <p class="text-xs text-purple-600 mb-3">进入退休后将每年第四季度按提领率取出生活费。</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-600">退休年龄（岁）</label>
               <input type="number" v-model.number="retirementAge" min="0" step="1"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不设退休年龄" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">总资产达到多少开始退休（元）</label>
-              <input type="number" v-model.number="retireAssets" min="0" step="1000"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+              <label class="block text-xs font-semibold text-gray-600">预估退休年开销（元）</label>
+              <input type="number" v-model.number="annualExpense" min="0" step="1000"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不按开销倍数" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">当年提领额达到多少开始退休（元）</label>
+              <label class="block text-xs font-semibold text-gray-600">
+                目标资产倍数 (FIRE)
+                <span v-if="annualExpense > 0" class="text-purple-600 font-bold ml-1">({{ fmtMoney(annualExpense * expenseMultiple) }})</span>
+              </label>
+              <input type="number" v-model.number="expenseMultiple" min="1" step="0.5"
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="默认 33 倍" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600">当年提领额达到多少退休（元）</label>
               <input type="number" v-model.number="retireWithdraw" min="0" step="1000"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
@@ -173,7 +181,7 @@
               <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
-            <div class="md:col-span-2 flex items-center pt-5">
+            <div class="md:col-span-3 flex items-center pt-5">
               <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
                 <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
                 退休后依然继续定投（若取消，退休时将自动停止定投）
@@ -310,7 +318,7 @@
             📊 方案多维对比视图 
             <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full">已选 {{ selectedPlans.length }} / 4 个方案</span>
           </h2>
-          <p class="text-xs text-gray-500 mt-1">对比包含不同收益率、通胀率及投领策略对终局资产的影响</p>
+          <p class="text-xs text-gray-500 mt-1">对比包含不同收益率、通胀率及 FIRE 退休策略对终局资产的影响</p>
         </div>
         <button @click="selectedPlanIds = []" class="text-xs text-gray-400 hover:text-red-500">取消对比</button>
       </div>
@@ -346,7 +354,7 @@
               </div>
               <div class="flex justify-between">
                 <span>退休条件:</span>
-                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('retirementAge') || isDiff('retireAssets') || isDiff('retireWithdraw')}">
+                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('retirementAge') || isDiff('annualExpense') || isDiff('expenseMultiple') || isDiff('retireWithdraw')}">
                   {{ getRetireText(plan.inputs) }}
                 </span>
               </div>
@@ -462,10 +470,11 @@
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
       <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式与多条件规则说明</h3>
 
-      <h4 class="font-semibold text-gray-800">1. 停止定投与退休条件触发逻辑</h4>
+      <h4 class="font-semibold text-gray-800">1. FIRE 退休与停止定投条件触发逻辑</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>停止定投触发：满足 [年龄 >= 设定期限] 或 [总资产 >= 设定门槛] 或 [投入本金 >= 设定门槛] 时终止后续投入</code></p>
-        <p><code>退休阶段触发：满足 [年龄 >= 退休年龄] 或 [总资产 >= 退休门槛] 或 [当年可提领额 >= 提领门槛] 时开启每年Q4提领</code></p>
+        <p><code>FIRE 目标资产总额 = 预计年开销 × 目标倍数（传统 FIRE 为 25 倍，推荐设为 33 倍）</code></p>
+        <p><code>退休阶段触发：满足 [年龄 >= 退休年龄] 或 [总资产 >= FIRE目标资产] 或 [当年可提领额 >= 提领门槛] 时开启每年Q4提领</code></p>
       </div>
 
       <h4 class="font-semibold text-gray-800 mt-4">2. 季度复利与提领计算</h4>
@@ -509,8 +518,9 @@
 
           // 退休条件
           retirementAge: 50,
-          retireAssets: 0,
-          retireWithdraw: 100000, // 新增：当年提领额达标退休
+          annualExpense: 80000,       // 新增：预估退休年开销（元）
+          expenseMultiple: 33,    // 新增：开销倍数（默认 33 倍）
+          retireWithdraw: 0,      // 当年提领额达标退休
 
           withdrawRate: 2,
           investmentMode: 'quarterly',
@@ -629,6 +639,9 @@
           var sYear = this.startYear;
           var wRate = this.withdrawRate / 100;
 
+          // 计算 FIRE 目标退休资产额 (年开销 * 倍数)
+          var targetRetireAssets = (this.annualExpense > 0 && this.expenseMultiple > 0) ? (this.annualExpense * this.expenseMultiple) : 0;
+
           var isRetired = false;
           var isInvestStopped = false;
 
@@ -670,7 +683,7 @@
             // 2. 判断退休触发条件
             var potentialWithdraw = fvRaw * wRate; // 若当前提领可领取的金额
             var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
-            var trigRetireAssets = this.retireAssets > 0 && fvRaw >= this.retireAssets;
+            var trigRetireAssets = targetRetireAssets > 0 && fvRaw >= targetRetireAssets;
             var trigRetireWithdraw = this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw;
 
             if (!isRetired && (trigRetireAge || trigRetireAssets || trigRetireWithdraw)) {
@@ -751,7 +764,7 @@
               retireReportAdded = true;
               self.reports.push({
                 id: id,
-                text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件，开始进入退休提领模式！',
+                text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件（FIRE目标资产或年龄/提领额），正式进入退休提领模式！',
                 reportId: 'report-' + id + '-' + rc++
               });
             }
@@ -825,7 +838,8 @@
             stopInvestAssets: this.stopInvestAssets,
             stopInvestPrincipal: this.stopInvestPrincipal,
             retirementAge: this.retirementAge,
-            retireAssets: this.retireAssets,
+            annualExpense: this.annualExpense,
+            expenseMultiple: this.expenseMultiple,
             retireWithdraw: this.retireWithdraw,
             withdrawRate: this.withdrawRate,
             investmentMode: this.investmentMode,
@@ -897,7 +911,8 @@
           this.stopInvestPrincipal = inp.stopInvestPrincipal || 0;
 
           this.retirementAge = inp.retirementAge || 0;
-          this.retireAssets = inp.retireAssets || 0;
+          this.annualExpense = inp.annualExpense || 0;
+          this.expenseMultiple = inp.expenseMultiple || 33;
           this.retireWithdraw = inp.retireWithdraw || 0;
 
           this.withdrawRate = inp.withdrawRate || 0;
@@ -918,7 +933,11 @@
         getRetireText: function(inputs) {
           var list = [];
           if (inputs.retirementAge > 0) list.push(inputs.retirementAge + '岁');
-          if (inputs.retireAssets > 0) list.push(this.fmtMoney(inputs.retireAssets) + '资产');
+          var exp = inputs.annualExpense || 0;
+          var mult = inputs.expenseMultiple || 33;
+          if (exp > 0) {
+            list.push(this.fmtMoney(exp * mult) + '(' + mult + '倍开销)');
+          }
           if (inputs.retireWithdraw > 0) list.push(this.fmtMoney(inputs.retireWithdraw) + '提领额');
           return list.length ? list.join(' / ') : '无限制';
         },
