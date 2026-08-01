@@ -31,7 +31,7 @@
   <div id="app" class="max-w-5xl mx-auto px-4 py-8 pb-24">
     <!-- 顶部导航与历史记录入口 -->
     <div class="flex justify-between items-center">
-      <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+      <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm font-medium">&larr; 返回首页</a>
       <button @click="showDrawer = true" class="relative bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-1.5 rounded-lg shadow-sm text-sm font-medium flex items-center gap-2">
         <span>📜 方案对比与历史</span>
         <span v-if="history.length" class="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">{{ history.length }}</span>
@@ -65,7 +65,7 @@
         <div class="flex items-center gap-3 flex-1 min-w-[280px]">
           <label class="text-sm font-bold text-gray-700 whitespace-nowrap">🏷️ 方案名称/备注：</label>
           <input type="text" v-model="planName" placeholder="例如：7股3债稳健方案、QQQ激进FIRE退休" 
-            class="w-full md:w-72 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+            class="w-full md:w-80 h-9 px-3 text-sm border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div v-if="editingPlanId" class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
           <span>✏️ 当前正在编辑已有方案</span>
@@ -73,9 +73,9 @@
         </div>
       </div>
 
-      <!-- ETF 绩效快速参考卡片（展开/收起） -->
+      <!-- ETF 绩效快速参考卡片 -->
       <div class="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-        <div class="flex justify-between items-center cursor-pointer" @click="showEtfPresets = !showEtfPresets">
+        <div class="flex justify-between items-center cursor-pointer select-none" @click="showEtfPresets = !showEtfPresets">
           <div class="flex items-center gap-2">
             <span class="text-base">📊</span>
             <span class="text-sm font-bold text-blue-900">美股美债经典 ETF 历史绩效参考面板（点击快速一键套用）</span>
@@ -91,7 +91,7 @@
               <div class="font-bold text-xs text-gray-800 group-hover:text-blue-700 flex justify-between">
                 <span>{{ etf.name }}</span>
                 <span class="text-blue-600 font-extrabold">{{ etf.rate }}%</span>
-              </div>
+              </div退休提领模式>
               <div class="text-min text-gray-500 mt-1 flex justify-between">
                 <span>年化波动率: {{ etf.vol }}%</span>
                 <span class="text-blue-500 text-xs">套用 &rarr;</span>
@@ -109,21 +109,21 @@
           <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-1.5">
             <span>📅</span> 1. 基础信息与时间规划
           </h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
-              <label class="block text-xs font-semibold text-gray-600">当前年龄（岁）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">当前年龄（岁）</label>
               <input type="number" v-model.number="currentAge" min="0" step="1" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">开始投资年份</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">开始投资年份</label>
               <input type="number" v-model.number="startYear" min="1900" step="1" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">预计计算年限（年）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">预计计算年限（年）</label>
               <input type="number" v-model.number="years" min="1" step="1" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
           </div>
         </div>
@@ -133,64 +133,59 @@
           <h3 class="text-sm font-bold text-green-800 mb-3 flex items-center gap-1.5">
             <span>💰</span> 2. 资金投入、资产配置与波动率参数
           </h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
-              <label class="block text-xs font-semibold text-gray-600">初始投入资金（元）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">初始投入资金（元）</label>
               <input type="number" v-model.number="initialInvestment" min="0" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">每月定投金额（元）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">每月定投金额（元）</label>
               <input type="number" v-model.number="monthlyInvestment" min="0" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">定投方式</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">定投方式</label>
               <select v-model="investmentMode" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm">
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm">
                 <option value="quarterly">每季度定投（季度末投入3个月金额）</option>
                 <option value="yearlyInQ1">每年Q1一次性投入整年金额</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">
-                预估年化收益率 (%)
-                <span class="text-gray-400 font-normal ml-1">(可手动填或上方一键套用)</span>
-              </label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4 truncate" title="预估年化收益率 (%)">预估年化收益率 (%)</label>
               <input type="number" v-model.number="annualRate" min="0" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-semibold text-blue-600" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-semibold text-blue-600" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">
-                资产配置调校 Beta (β)
-                <span class="text-gray-400 font-normal ml-1">(7股3债设 0.7，全股设 1.0)</span>
-              </label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4 truncate" title="资产配置调校 Beta (β)">资产配置调校 Beta (β)</label>
               <input type="number" v-model.number="beta" min="0" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+              <p class="text-min text-gray-400 mt-1">例: 7股3债设0.7, 全股设1.0</p>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">预估年通胀率（%）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">预估年通胀率（%）</label>
               <input type="number" v-model.number="inflationRate" min="0" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
 
             <!-- 蒙特卡洛模式特有参数 -->
-            <div v-if="calcMode === 'monteCarlo'" class="md:col-span-3 bg-purple-50 p-3 rounded-lg border border-purple-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-if="calcMode === 'monteCarlo'" class="md:col-span-3 bg-purple-50 p-3.5 rounded-lg border border-purple-200 grid grid-cols-1 md:grid-cols-2 gap-4 items-start mt-1">
               <div>
-                <label class="block text-xs font-bold text-purple-900">预估年化波动率 σ (%)</label>
-                <p class="text-min text-purple-600 mb-1">美股宽基如 SPY 约 15%, QQQ 约 20%, 债基约 5%。调整 Beta 将同步按比例调校。</p>
+                <label class="block text-xs font-bold text-purple-900 mb-1">预估年化波动率 σ (%)</label>
                 <input type="number" v-model.number="volatility" min="0" step="0.1" required
-                  class="w-full px-3 py-1.5 bg-white border border-purple-300 rounded-lg focus:border-purple-500 outline-none text-sm font-bold text-purple-700" />
+                  class="w-full h-9 px-3 bg-white border border-purple-300 rounded-lg focus:border-purple-500 outline-none text-sm font-bold text-purple-700" />
+                <p class="text-min text-purple-600 mt-1">美股宽基如 SPY 约 15%, QQQ 约 20%, 债基约 5%</p>
               </div>
               <div>
-                <label class="block text-xs font-bold text-purple-900">蒙特卡洛模拟随机采样次数</label>
-                <p class="text-min text-purple-600 mb-1">模拟不同市场牛熊交替下的上千种人生路径</p>
+                <label class="block text-xs font-bold text-purple-900 mb-1">蒙特卡洛模拟随机采样次数</label>
                 <select v-model.number="simulationsCount"
-                  class="w-full px-3 py-1.5 bg-white border border-purple-300 rounded-lg focus:border-purple-500 outline-none text-sm font-semibold">
+                  class="w-full h-9 px-3 bg-white border border-purple-300 rounded-lg focus:border-purple-500 outline-none text-sm font-semibold">
                   <option :value="1000">1,000 次模拟 (推荐, 兼顾速度与精度)</option>
                   <option :value="3000">3,000 次模拟 (高精度)</option>
                   <option :value="5000">5,000 次模拟 (极限深度计算)</option>
                 </select>
+                <p class="text-min text-purple-600 mt-1">模拟不同市场牛熊交替下的上千种人生路径</p>
               </div>
             </div>
           </div>
@@ -202,94 +197,98 @@
             <span>🛑</span> 3. 停止定投条件（满足任意一条即停止后续定投，填 0 代表不限制）
           </h3>
           <p class="text-xs text-amber-600 mb-3">当达到以下条件时自动终止后续追加本金，现有资金继续保留复利运作。</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
-              <label class="block text-xs font-semibold text-gray-600">停止定投年龄（岁）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">停止定投年龄（岁）</label>
               <input type="number" v-model.number="stopInvestAge" min="0" step="1"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">总资产达到多少停止（元）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">总资产达到多少停止（元）</label>
               <input type="number" v-model.number="stopInvestAssets" min="0" step="1000"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">投入本金达到多少停止（元）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">投入本金达到多少停止（元）</label>
               <input type="number" v-model.number="stopInvestPrincipal" min="0" step="1000"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
           </div>
         </div>
 
-        <!-- 分组 4：退休与提领策略（已优化提领方式拆分） -->
+        <!-- 分组 4：退休与提领策略（已极致优化排版与垂直对齐） -->
         <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-100">
           <h3 class="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
             <span>🏖️</span> 4. 退休与提领策略
           </h3>
           <p class="text-xs text-purple-600 mb-3">满足退休条件时开启每年第四季度的退休提领。支持【按资产百分比】与【固定金额（随通胀递增）】两种提领模式。</p>
 
-          <!-- 触发退休条件设置 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 pb-4 border-b border-purple-100">
+          <!-- 触发退休条件设置 (5列排列高度严格对齐) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 pb-4 border-b border-purple-100 items-start">
             <div>
-              <label class="block text-xs font-semibold text-gray-600">退休年龄（岁）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">退休年龄（岁）</label>
               <input type="number" v-model.number="retirementAge" min="0" step="1"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">预估退休年开销（元）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">预估退休年开销（元）</label>
               <input type="number" v-model.number="annualExpense" min="0" step="1000"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="例如：80000" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="例如：80000" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">目标资产倍数 (FIRE)</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">目标资产倍数 (FIRE)</label>
               <input type="number" v-model.number="expenseMultiple" min="1" step="0.5"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="默认 33 倍" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="默认 33 倍" />
             </div>
             <div>
-              <label class="block text-xs font-bold text-purple-900">🎯 FIRE 目标退休总资产</label>
-              <div class="w-full px-3 py-2 mt-1 bg-purple-100/80 border border-purple-200 rounded-lg text-purple-900 font-extrabold text-sm flex items-center justify-between min-h-[38px]">
+              <label class="block text-xs font-bold text-purple-900 mb-1.5 h-4 truncate">🎯 FIRE 目标退休总资产</label>
+              <div class="w-full h-9 px-3 bg-purple-100/80 border border-purple-200 rounded-lg text-purple-900 font-extrabold text-sm flex items-center justify-between">
                 <span>{{ fireTargetAssets > 0 ? fmtMoney(fireTargetAssets) : '未设置' }}</span>
-                <span class="text-xs text-purple-600 font-normal" v-if="fireTargetAssets > 0">(联动算出)</span>
+                <span class="text-xs text-purple-600 font-normal" v-if="fireTargetAssets > 0">(联动)</span>
               </div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">年度可提领额达到多少触发退休（元）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4 truncate" title="年度可提领额触发阈值">可提领额触发阈值（元）</label>
               <input type="number" v-model.number="retireWithdraw" min="0" step="1000"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
           </div>
 
-          <!-- 提领规则细节设置 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- 提领规则细节设置 (3列完美对齐) -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
-              <label class="block text-xs font-semibold text-gray-700">退休提领模式</label>
+              <label class="block text-xs font-semibold text-gray-700 mb-1.5 h-4">退休提领模式</label>
               <select v-model="withdrawMode" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-purple-300 rounded-lg focus:border-purple-500 font-semibold outline-none text-sm text-purple-900">
-                <option value="percent">1. 按总资产的百分比提领 (%)</option>
-                <option value="fixedInflation">2. 固定金额与通货膨胀率挂钩 (抗通胀递增)</option>
+                class="w-full h-9 px-3 bg-white border border-purple-300 rounded-lg focus:border-purple-500 font-semibold outline-none text-sm text-purple-900">
+                <option value="percent">按总资产的百分比提领 (%)</option>
+                <option value="fixedInflation">固定金额与通货膨胀率挂钩 (抗通胀递增)</option>
               </select>
             </div>
 
             <!-- 模式 1 对应的参数：百分比 -->
             <div v-if="withdrawMode === 'percent'">
-              <label class="block text-xs font-semibold text-gray-600">每年提领总资产比例（%）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">每年提领总资产比例（%）</label>
               <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="经典如 4%" />
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="经典如 4%" />
             </div>
 
             <!-- 模式 2 对应的参数：固定基础金额 -->
             <div v-if="withdrawMode === 'fixedInflation'">
-              <label class="block text-xs font-semibold text-gray-600">基准首年提领额（元/年，按今日购买力计）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">基准首年提领额（元/年）</label>
               <input type="number" v-model.number="fixedWithdrawAmount" min="0" step="1000" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="例如：80000" />
-              <p class="text-min text-purple-600 mt-1">未来实际提领额将按预估年通胀率（{{ inflationRate }}%）自动按年复利上调，保持实际购买力。</p>
+                class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="例如：80000" />
+              <p class="text-min text-purple-600 mt-1">按年通胀率（{{ inflationRate }}%）自动复利上调，保持购买力</p>
             </div>
 
-            <div class="flex items-center pt-2">
-              <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
-                <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
-                退休后依然继续定投（若取消，达到退休条件时将自动停止追加本金）
-              </label>
+            <!-- 复选框高度与左侧控件精确平齐 -->
+            <div>
+              <label class="block text-xs font-semibold text-transparent mb-1.5 h-4 select-none">占位对齐栏</label>
+              <div class="h-9 flex items-center">
+                <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+                  <input type="checkbox" v-model="continueInvestAfterRetirement" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-400" />
+                  <span>退休后依然继续定投本金</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -297,19 +296,19 @@
 
       <!-- 提交按钮 -->
       <div class="mt-6 flex flex-wrap gap-3">
-        <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition shadow-sm">
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition shadow-sm text-sm">
           {{ editingPlanId ? '更新此方案并计算' : '计算并保存方案' }}
         </button>
-        <button type="button" v-if="editingPlanId" @click="saveAsNewPlan" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-200 transition">
+        <button type="button" v-if="editingPlanId" @click="saveAsNewPlan" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-200 transition text-sm">
           另存为新方案
         </button>
-        <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition shadow-sm">
+        <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition shadow-sm text-sm">
           导出 CSV
         </button>
       </div>
     </form>
 
-    <!-- 蒙特卡洛专属高亮报告卡片 (只在蒙特卡洛模式下显示) -->
+    <!-- 蒙特卡洛专属高亮报告卡片 -->
     <div v-if="calcMode === 'monteCarlo' && mcSummary" class="mt-6 bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-xl shadow-lg p-6">
       <div class="flex flex-wrap justify-between items-center gap-4">
         <div>
@@ -631,7 +630,7 @@
       data() {
         var currentYear = new Date().getFullYear();
         return {
-          calcMode: 'deterministic', // 'deterministic' | 'monteCarlo'
+          calcMode: 'deterministic',
           editingPlanId: null,
           planName: '',
           initialInvestment: 0,
@@ -656,9 +655,9 @@
           expenseMultiple: 33,
           retireWithdraw: 0,
 
-          withdrawMode: 'percent', // 'percent' | 'fixedInflation'
-          withdrawRate: 4,          // 按资产百分比提领率
-          fixedWithdrawAmount: 80000, // 固定提领金额（抗通胀）
+          withdrawMode: 'percent',
+          withdrawRate: 2,
+          fixedWithdrawAmount: 80000,
           investmentMode: 'quarterly',
           continueInvestAfterRetirement: false,
 
@@ -703,7 +702,6 @@
         this.calculate();
       },
       watch: {
-        // 当修改预估退休开销时，自动同步设置固定提领额默认值，方便联动
         annualExpense: function(val) {
           if (val > 0 && (!this.fixedWithdrawAmount || this.fixedWithdrawAmount === 80000)) {
             this.fixedWithdrawAmount = val;
@@ -800,18 +798,15 @@
           }
         },
 
-        // 计算单期提领额 (支持两种模式)
         calcWithdrawAmount: function(currentAssets, yearsPassed) {
           if (this.withdrawMode === 'percent') {
             return currentAssets * (this.withdrawRate / 100);
           } else {
             var infRate = this.inflationRate / 100;
-            // 固定金额随通胀逐年递增
             return (this.fixedWithdrawAmount || 0) * Math.pow(1 + infRate, yearsPassed);
           }
         },
 
-        // 1. 确定性推演计算逻辑
         runDeterministic: function() {
           this.results = [];
           this.reports = [];
@@ -843,7 +838,6 @@
             var prevNetBalance = q === 1 ? init : this.results[q - 2].futureValueAfterWithdraw;
             var prevCumP = q === 1 ? init : this.results[q - 2].principal;
 
-            // 判定停止定投条件
             var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
             var trigStopAssets = this.stopInvestAssets > 0 && prevNetBalance >= this.stopInvestAssets;
             var trigStopPrincipal = this.stopInvestPrincipal > 0 && prevCumP >= this.stopInvestPrincipal;
@@ -865,7 +859,6 @@
             cumP = prevCumP + qInvest;
             var fvRaw = prevNetBalance * (1 + baseQR) + qInvest;
 
-            // 评估当期可能提领额 (用于触发条件校验)
             var potentialWithdraw = this.calcWithdrawAmount(fvRaw, yearsPassed);
             var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
             var trigRetireAssets = targetRetireAssets > 0 && fvRaw >= targetRetireAssets;
@@ -876,11 +869,10 @@
               if (!this.continueInvestAfterRetirement) isInvestStopped = true;
             }
 
-            // 执行退休提领 (每年 Q4)
             var wAmount = 0;
             if (isRetired && quarter === 4) {
               wAmount = this.calcWithdrawAmount(fvRaw, yearsPassed);
-              wAmount = Math.min(fvRaw, wAmount); // 不得超扣至负数
+              wAmount = Math.min(fvRaw, wAmount);
             }
             cumWithdrawn += wAmount;
 
@@ -913,7 +905,6 @@
           this.saveOrUpdatePlan();
         },
 
-        // 2. 蒙特卡洛压力测试计算逻辑
         runMonteCarlo: function() {
           this.results = [];
           this.reports = [];
@@ -957,7 +948,6 @@
               var quarter = ((q - 1) % 4) + 1;
               var yearsPassed = q / 4;
 
-              // 判定停止定投
               var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
               var trigStopAssets = this.stopInvestAssets > 0 && curBalance >= this.stopInvestAssets;
               var trigStopPrincipal = this.stopInvestPrincipal > 0 && cumP >= this.stopInvestPrincipal;
@@ -973,11 +963,9 @@
 
               cumP += qInvest;
 
-              // 采样季度收益率
               var randomQReturn = randNormal(qMean, qStd);
               curBalance = curBalance * (1 + randomQReturn) + qInvest;
 
-              // 判定退休（年龄、复合 FIRE 目标资产、提领额）
               var potentialWithdraw = this.calcWithdrawAmount(curBalance, yearsPassed);
               if (!isRetired && ((this.retirementAge > 0 && age >= this.retirementAge) || 
                   (targetRetireAssets > 0 && curBalance >= targetRetireAssets) || 
@@ -986,7 +974,6 @@
                 if (!this.continueInvestAfterRetirement) isInvestStopped = true;
               }
 
-              // 提领
               if (isRetired && quarter === 4) {
                 var wAmt = this.calcWithdrawAmount(curBalance, yearsPassed);
                 curBalance -= wAmt;
@@ -1000,7 +987,6 @@
             if (curBalance > 0) successSims++;
           }
 
-          // 统计分位数路径 (P10, P50, P90)
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
