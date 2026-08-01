@@ -40,7 +40,7 @@
 
     <!-- 标题 -->
     <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
-    <p class="text-gray-500 mt-1">含蒙特卡洛序列收益风险模拟、Beta资产配置调校、ETF绩效快速套用与FIRE退休推演</p>
+    <p class="text-gray-500 mt-1">含蒙特卡洛序列收益风险模拟、Beta资产配置调校、ETF绩效快速套用、IRR内部收益率与FIRE退休推演</p>
 
     <!-- 模式切换 Tabs -->
     <div class="flex border-b border-gray-200 mt-6 bg-white rounded-t-xl p-1 shadow-sm border">
@@ -335,7 +335,7 @@
     </div>
 
     <!-- 摘要卡片 -->
-    <div v-if="results.length" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+    <div v-if="results.length" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
         <div class="text-xs text-gray-500">累计本金</div>
         <div class="text-lg font-bold mt-1">{{ fmtMoney(summary.principal) }}</div>
@@ -368,6 +368,14 @@
         <div class="text-xs text-gray-500">综合年化 (CAGR)</div>
         <div class="text-lg font-bold mt-1">{{ (summary.cagr * 100).toFixed(2) }}%</div>
       </div>
+      <!-- 新增：IRR 卡片 -->
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-teal-500 col-span-2 md:col-span-1">
+        <div class="text-xs text-gray-500 flex items-center justify-between">
+          <span>内部收益率 (IRR)</span>
+          <span class="text-min text-teal-600 font-semibold" title="精准反映定投/提领多笔现金流的时间价值回报率">现金流精准</span>
+        </div>
+        <div class="text-lg font-bold mt-1 text-teal-600">{{ (summary.irr * 100).toFixed(2) }}%</div>
+      </div>
     </div>
 
     <!-- 收益与事件里程碑报告 -->
@@ -398,7 +406,8 @@
             <th class="px-3 py-2">当年提领额</th>
             <th class="px-3 py-2 text-red-200">余额 (折算购买力)</th>
             <th class="px-3 py-2">收益倍数 (含已领)</th>
-            <th class="px-3 py-2">综合年化</th>
+            <th class="px-3 py-2">综合年化 (CAGR)</th>
+            <th class="px-3 py-2 bg-teal-600">内部收益率 (IRR)</th>
           </tr>
         </thead>
         <tbody>
@@ -418,6 +427,7 @@
               <td class="px-3 py-2 text-right font-bold text-red-600 bg-red-50">{{ fmtMoney(yearData.realValueAfterWithdraw) }}</td>
               <td class="px-3 py-2 text-center">{{ yearData.totalReturnRatio.toFixed(2) }}倍</td>
               <td class="px-3 py-2 text-center">{{ (yearData.cagr * 100).toFixed(2) }}%</td>
+              <td class="px-3 py-2 text-center font-bold text-teal-600 bg-teal-50/50">{{ (yearData.irr * 100).toFixed(2) }}%</td>
             </tr>
             <!-- 季度明细行 -->
             <template v-if="expandedYears.has(yearData.year)">
@@ -435,6 +445,7 @@
                 <td class="px-3 py-1.5 text-right font-semibold text-red-500 bg-red-50">{{ fmtMoney(q.realValueAfterWithdraw) }}</td>
                 <td class="px-3 py-1.5 text-center text-gray-600">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
                 <td class="px-3 py-1.5 text-center text-gray-600">{{ (q.cagr * 100).toFixed(2) }}%</td>
+                <td class="px-3 py-1.5 text-center font-semibold text-teal-600 bg-teal-50/50">{{ (q.irr * 100).toFixed(2) }}%</td>
               </tr>
             </template>
           </template>
@@ -450,7 +461,7 @@
             📊 方案多维对比视图 
             <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full">已选 {{ selectedPlans.length }} / 4 个方案</span>
           </h2>
-          <p class="text-xs text-gray-500 mt-1">对比包含不同收益率、Beta配置、波动率及 FIRE 退休策略对终局资产的影响</p>
+          <p class="text-xs text-gray-500 mt-1">对比包含不同收益率、Beta配置、波动率及 FIRE 退休策略对终局资产与 IRR 收益率的影响</p>
         </div>
         <button @click="selectedPlanIds = []" class="text-xs text-gray-400 hover:text-red-500">取消对比</button>
       </div>
@@ -491,6 +502,14 @@
             </div>
 
             <div class="space-y-3">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">内部收益率 (IRR)</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="isWinner(plan, 'irr')" class="text-xs" title="IRR 最高">👑</span>
+                  <span class="font-bold text-teal-600">{{ (plan.summary.irr * 100).toFixed(2) }}%</span>
+                </div>
+              </div>
+
               <div class="flex justify-between items-center text-xs">
                 <span class="text-gray-500">累计本金</span>
                 <span class="font-semibold text-gray-700">￥{{ fmtMoney(plan.summary.principal) }}</span>
@@ -564,7 +583,7 @@
                 </div>
 
                 <div class="mt-2 text-xs text-gray-500 space-y-0.5 ml-6">
-                  <div>模式: {{ item.inputs.calcMode === 'monteCarlo' ? '🎲 蒙特卡洛' : '📈 确定性' }} | 年化: {{ item.inputs.annualRate }}% (β={{ item.inputs.beta }})</div>
+                  <div>模式: {{ item.inputs.calcMode === 'monteCarlo' ? '🎲 蒙特卡洛' : '📈 确定性' }} | IRR: {{ (item.summary.irr * 100).toFixed(2) }}%</div>
                   <div class="font-semibold text-blue-600">期末购买力: ￥{{ fmtMoney(item.summary.realValueAfterWithdraw) }}</div>
                   <div class="text-gray-400 text-min font-mono">{{ item.createdAt }}</div>
                 </div>
@@ -605,6 +624,12 @@
         <p><code>每季度随机收益率 R_q ~ Normal(μ_q, σ_q)</code>（使用 Box-Muller 正态随机采样）</p>
         <p>蒙特卡洛模拟运行 1000~5000 次可能的人生市场路径，精准捕捉在“退休初期遭遇熊市”等极端序列收益风险下的账户生存概率。</p>
       </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">4. 内部收益率 (IRR) 计算原理</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>使净现值 NPV = ∑ [ CF_t / (1 + IRR_q)^t ] = 0</code></p>
+        <p>IRR 考虑了分批投入（追加本金）与分批取出（退休提领）的时间点和资金体量。比传统的 CAGR（复合年化回报）更能贴切衡量多笔不定期/不定额现金流下的真实真实资金年化回报率。</p>
+      </div>
     </div>
   </div>
 
@@ -618,6 +643,58 @@
       while (v === 0) v = Math.random();
       let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
       return mean + z * std;
+    }
+
+    // 内部收益率 (IRR) 计算函数 (基于 quarterly 现金流，使用牛顿迭代法 + 二分兜底)
+    function calculateIRR(cashFlows) {
+      if (!cashFlows || cashFlows.length < 2) return 0;
+
+      var hasPos = false, hasNeg = false;
+      for (var i = 0; i < cashFlows.length; i++) {
+        if (cashFlows[i] > 0) hasPos = true;
+        if (cashFlows[i] < 0) hasNeg = true;
+      }
+      if (!hasPos || !hasNeg) return 0;
+
+      // 牛顿-拉夫逊法
+      var rate = 0.02; // 初始猜测季度利率
+      for (var iter = 0; iter < 50; iter++) {
+        var npv = 0;
+        var dNpv = 0;
+        for (var t = 0; t < cashFlows.length; t++) {
+          var denom = Math.pow(1 + rate, t);
+          npv += cashFlows[t] / denom;
+          if (t > 0) {
+            dNpv -= (t * cashFlows[t]) / (denom * (1 + rate));
+          }
+        }
+        if (Math.abs(npv) < 1e-5) {
+          var annual = Math.pow(1 + rate, 4) - 1;
+          return isNaN(annual) ? 0 : annual;
+        }
+        if (Math.abs(dNpv) < 1e-10) break;
+        var nextRate = rate - npv / dNpv;
+        if (nextRate <= -0.99) nextRate = (rate - 0.99) / 2;
+        rate = nextRate;
+      }
+
+      // 二分法兜底
+      var low = -0.9, high = 3.0;
+      for (var b = 0; b < 60; b++) {
+        var mid = (low + high) / 2;
+        var val = 0;
+        for (var k = 0; k < cashFlows.length; k++) {
+          val += cashFlows[k] / Math.pow(1 + mid, k);
+        }
+        if (Math.abs(val) < 1e-5) {
+          var res = Math.pow(1 + mid, 4) - 1;
+          return isNaN(res) ? 0 : res;
+        }
+        if (val > 0) low = mid;
+        else high = mid;
+      }
+      var finalRate = Math.pow(1 + (low + high) / 2, 4) - 1;
+      return isNaN(finalRate) ? 0 : finalRate;
     }
 
     new Vue({
@@ -720,7 +797,8 @@
             totalWealth: last.totalWealth,
             realTotalWealth: last.realTotalWealth,
             profit: last.profit,
-            cagr: last.cagr
+            cagr: last.cagr,
+            irr: last.irr || 0
           };
         },
         yearlyData: function() {
@@ -741,6 +819,7 @@
               principal: q4.principal,
               totalReturnRatio: q4.totalReturnRatio,
               cagr: q4.cagr,
+              irr: q4.irr || 0,
               withdrawAmount: withdrawAmount,
               quarters: quarters
             };
@@ -824,6 +903,9 @@
           var cumP = init;
           var cumWithdrawn = 0;
 
+          // 现金流序列 (以季度为单位，t=0 为 -init)
+          var runningCFs = [-init];
+
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
@@ -883,6 +965,13 @@
             var fullY = Math.floor(q / 4);
             if (cumP > 0 && fullY > 0) cagr = Math.pow(ratio, 1 / fullY) - 1;
 
+            // 计算当前季度的 IRR
+            var qNetCF = -qInvest + wAmount;
+            var currentCFs = runningCFs.slice();
+            currentCFs.push(qNetCF + fvAfterWithdraw);
+            var currentIrr = calculateIRR(currentCFs);
+            runningCFs.push(qNetCF);
+
             this.results.push({
               year: year, quarter: quarter, age: age,
               principal: cumP, futureValue: fvRaw, 
@@ -890,7 +979,7 @@
               realValueAfterWithdraw: realValueAfterWithdraw,
               withdrawAmount: wAmount, totalWithdrawn: cumWithdrawn,
               totalWealth: totalWealth, realTotalWealth: realTotalWealth,
-              profit: profit, totalReturnRatio: ratio, cagr: cagr,
+              profit: profit, totalReturnRatio: ratio, cagr: cagr, irr: currentIrr,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
               isInvestStopped: isInvestStopped, isRetired: isRetired
             });
@@ -985,6 +1074,7 @@
           // --- 基于 P50 中位数采样路径计算渲染表格及报告所需数据 ---
           var p50IsRetired = false;
           var p50CumWithdrawn = 0;
+          var runningCFsP50 = [-init];
 
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
@@ -1032,6 +1122,15 @@
             var fullY = Math.floor(q / 4);
             var cagr = (estPrincipal > 0 && fullY > 0) ? (Math.pow(ratio, 1 / fullY) - 1) : 0;
 
+            // P50 路径下的 IRR 计算
+            var prevEstP = q === 1 ? init : simPrincipals[q - 2][idx50];
+            var qInvestEst = Math.max(0, estPrincipal - prevEstP);
+            var qNetCFP50 = -qInvestEst + wAmount;
+            var currentCFsP50 = runningCFsP50.slice();
+            currentCFsP50.push(qNetCFP50 + p50);
+            var irrP50 = calculateIRR(currentCFsP50);
+            runningCFsP50.push(qNetCFP50);
+
             this.results.push({
               year: year, quarter: quarter, age: age,
               principal: estPrincipal, futureValue: p50,
@@ -1040,7 +1139,7 @@
               withdrawAmount: wAmount,
               totalWithdrawn: p50CumWithdrawn,
               totalWealth: totalWealthP50, realTotalWealth: realTotalWealthP50,
-              profit: totalWealthP50 - estPrincipal, totalReturnRatio: ratio, cagr: cagr,
+              profit: totalWealthP50 - estPrincipal, totalReturnRatio: ratio, cagr: cagr, irr: irrP50,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
               isInvestStopped: false,
               isRetired: p50IsRetired
@@ -1099,7 +1198,7 @@
                 brokenR[bp] = true;
                 self.reports.push({
                   id: id,
-                  text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数突破 ' + bp + ' 倍！名义资产余额 ' + self.fmtMoney(item.futureValueAfterWithdraw) + '（折算今日购买力约 ' + self.fmtMoney(item.realValueAfterWithdraw) + '）。',
+                  text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数突破 ' + bp + ' 倍！名义资产余额 ' + self.fmtMoney(item.futureValueAfterWithdraw) + '（IRR: ' + (item.irr * 100).toFixed(2) + '%）。',
                   reportId: 'report-' + id + '-' + rc++
                 });
                 break;
@@ -1259,7 +1358,7 @@
 
         exportCSV: function() {
           if (!this.results.length) return;
-          var headers = ['年份', '季度', '年龄', '累计本金（元）', '期末账户余额-名义（元）', '期末余额-折算今日购买力（元）', '当年提领金额（元）', '收益倍数', '综合年化（%）'];
+          var headers = ['年份', '季度', '年龄', '累计本金（元）', '期末账户余额-名义（元）', '期末余额-折算今日购买力（元）', '当年提领金额（元）', '收益倍数', '综合年化 CAGR（%）', '内部收益率 IRR（%）'];
           var rows = this.results.map(function(item) {
             return [
               item.year, 
@@ -1270,7 +1369,8 @@
               item.realValueAfterWithdraw.toFixed(2),
               item.withdrawAmount.toFixed(2),
               item.totalReturnRatio.toFixed(2), 
-              (item.cagr * 100).toFixed(2)
+              (item.cagr * 100).toFixed(2),
+              (item.irr * 100).toFixed(2)
             ];
           });
           function safe(f) {
