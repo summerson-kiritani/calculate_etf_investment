@@ -91,7 +91,7 @@
               <div class="font-bold text-xs text-gray-800 group-hover:text-blue-700 flex justify-between">
                 <span>{{ etf.name }}</span>
                 <span class="text-blue-600 font-extrabold">{{ etf.rate }}%</span>
-              </div退休提领模式>
+              </div>
               <div class="text-min text-gray-500 mt-1 flex justify-between">
                 <span>年化波动率: {{ etf.vol }}%</span>
                 <span class="text-blue-500 text-xs">套用 &rarr;</span>
@@ -216,14 +216,13 @@
           </div>
         </div>
 
-        <!-- 分组 4：退休与提领策略（已极致优化排版与垂直对齐） -->
+        <!-- 分组 4：退休与提领策略 -->
         <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-100">
           <h3 class="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
             <span>🏖️</span> 4. 退休与提领策略
           </h3>
           <p class="text-xs text-purple-600 mb-3">满足退休条件时开启每年第四季度的退休提领。支持【按资产百分比】与【固定金额（随通胀递增）】两种提领模式。</p>
 
-          <!-- 触发退休条件设置 (5列排列高度严格对齐) -->
           <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 pb-4 border-b border-purple-100 items-start">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">退休年龄（岁）</label>
@@ -254,7 +253,6 @@
             </div>
           </div>
 
-          <!-- 提领规则细节设置 (3列完美对齐) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1.5 h-4">退休提领模式</label>
@@ -265,14 +263,12 @@
               </select>
             </div>
 
-            <!-- 模式 1 对应的参数：百分比 -->
             <div v-if="withdrawMode === 'percent'">
               <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">每年提领总资产比例（%）</label>
               <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
                 class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="经典如 4%" />
             </div>
 
-            <!-- 模式 2 对应的参数：固定基础金额 -->
             <div v-if="withdrawMode === 'fixedInflation'">
               <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">基准首年提领额（元/年）</label>
               <input type="number" v-model.number="fixedWithdrawAmount" min="0" step="1000" required
@@ -280,7 +276,6 @@
               <p class="text-min text-purple-600 mt-1">按年通胀率（{{ inflationRate }}%）自动复利上调，保持购买力</p>
             </div>
 
-            <!-- 复选框高度与左侧控件精确平齐 -->
             <div>
               <label class="block text-xs font-semibold text-transparent mb-1.5 h-4 select-none">占位对齐栏</label>
               <div class="h-9 flex items-center">
@@ -987,6 +982,10 @@
             if (curBalance > 0) successSims++;
           }
 
+          // --- 基于 P50 中位数采样路径计算渲染表格及报告所需数据 ---
+          var p50IsRetired = false;
+          var p50CumWithdrawn = 0;
+
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
@@ -1007,10 +1006,29 @@
             var estPrincipal = simPrincipals[q - 1][idx50];
 
             var yearsPassed = q / 4;
+            var potentialWithdrawP50 = this.calcWithdrawAmount(p50, yearsPassed);
+
+            // 判定 P50 路径下的退休状态
+            if (!p50IsRetired && ((this.retirementAge > 0 && age >= this.retirementAge) || 
+                (targetRetireAssets > 0 && p50 >= targetRetireAssets) || 
+                (this.retireWithdraw > 0 && potentialWithdrawP50 >= this.retireWithdraw))) {
+              p50IsRetired = true;
+            }
+
+            var wAmount = 0;
+            if (p50IsRetired && quarter === 4) {
+              wAmount = this.calcWithdrawAmount(p50, yearsPassed);
+              wAmount = Math.min(p50, wAmount);
+            }
+            p50CumWithdrawn += wAmount;
+
             var discountFactor = Math.pow(1 + infRate, yearsPassed);
             var realP50 = p50 / discountFactor;
 
-            var ratio = estPrincipal > 0 ? p50 / estPrincipal : 0;
+            var totalWealthP50 = p50 + p50CumWithdrawn;
+            var realTotalWealthP50 = totalWealthP50 / discountFactor;
+
+            var ratio = estPrincipal > 0 ? totalWealthP50 / estPrincipal : 0;
             var fullY = Math.floor(q / 4);
             var cagr = (estPrincipal > 0 && fullY > 0) ? (Math.pow(ratio, 1 / fullY) - 1) : 0;
 
@@ -1019,11 +1037,13 @@
               principal: estPrincipal, futureValue: p50,
               futureValueAfterWithdraw: p50, realValueAfterWithdraw: realP50,
               p10Balance: p10, p50Balance: p50, p90Balance: p90,
-              withdrawAmount: 0, totalWithdrawn: 0,
-              totalWealth: p50, realTotalWealth: realP50,
-              profit: p50 - estPrincipal, totalReturnRatio: ratio, cagr: cagr,
+              withdrawAmount: wAmount,
+              totalWithdrawn: p50CumWithdrawn,
+              totalWealth: totalWealthP50, realTotalWealth: realTotalWealthP50,
+              profit: totalWealthP50 - estPrincipal, totalReturnRatio: ratio, cagr: cagr,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
-              isInvestStopped: false, isRetired: false
+              isInvestStopped: false,
+              isRetired: p50IsRetired
             });
           }
 
