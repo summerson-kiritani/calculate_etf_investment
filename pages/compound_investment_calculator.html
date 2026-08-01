@@ -6,6 +6,10 @@
   <title>复利定投计算器（双模式 & 蒙特卡洛 & ETF绩效参考版）</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
+    .text-min {
+      font-size: 0.7rem;
+      line-height: 0.95rem;
+    }
     .formula-section code {
       background: #eff6ff;
       padding: 2px 6px;
@@ -64,7 +68,7 @@
             class="w-full md:w-72 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div v-if="editingPlanId" class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-          <span>✏️ 当前正编辑已有方案</span>
+          <span>✏️ 当前正在编辑已有方案</span>
           <button type="button" @click="resetToNewPlan" class="text-blue-600 hover:underline font-semibold ml-1">切换为新建方案</button>
         </div>
       </div>
@@ -144,7 +148,7 @@
               <label class="block text-xs font-semibold text-gray-600">定投方式</label>
               <select v-model="investmentMode" required
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm">
-                <option value="quarterly">每季度定投（季度末投3个月金额）</option>
+                <option value="quarterly">每季度定投（季度末投入3个月金额）</option>
                 <option value="yearlyInQ1">每年Q1一次性投入整年金额</option>
               </select>
             </div>
@@ -159,7 +163,7 @@
             <div>
               <label class="block text-xs font-semibold text-gray-600">
                 资产配置调校 Beta (β)
-                <span class="text-gray-400 font-normal ml-1">(7股3债设0.7, 全股设1.0)</span>
+                <span class="text-gray-400 font-normal ml-1">(7股3债设 0.7，全股设 1.0)</span>
               </label>
               <input type="number" v-model.number="beta" min="0" step="0.01" required
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
@@ -195,7 +199,7 @@
         <!-- 分组 3：停止定投条件 -->
         <div class="bg-amber-50/40 p-4 rounded-xl border border-amber-100">
           <h3 class="text-sm font-bold text-amber-800 mb-1 flex items-center gap-1.5">
-            <span>🛑</span> 3. 停止定投条件（满足任意一条即停止后续定投，填 0 代表不设限）
+            <span>🛑</span> 3. 停止定投条件（满足任意一条即停止后续定投，填 0 代表不限制）
           </h3>
           <p class="text-xs text-amber-600 mb-3">当达到以下条件时自动终止后续追加本金，现有资金继续保留复利运作。</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -220,30 +224,39 @@
         <!-- 分组 4：退休与提领策略 -->
         <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-100">
           <h3 class="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
-            <span>🏖️</span> 4. 退休与提领策略（满足任意一条即开启退休提领，填 0 代表不限制）
+            <span>🏖️</span> 4. 退休与提领策略（满足任意条件即开启退休提领，填 0 代表不限制）
           </h3>
-          <p class="text-xs text-purple-600 mb-3">进入退休后将每年第四季度按提领率取出生活费。</p>
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <p class="text-xs text-purple-600 mb-3">通过【年开销 × 目标倍数】复合计算 FIRE 退休目标资产。进入退休后每年第四季度执行提领。</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-600">退休年龄（岁）</label>
               <input type="number" v-model.number="retirementAge" min="0" step="1"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不设退休年龄" />
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
+
+            <!-- FIRE 复合参数输入项：开销 & 倍数 -->
             <div>
               <label class="block text-xs font-semibold text-gray-600">预估退休年开销（元）</label>
               <input type="number" v-model.number="annualExpense" min="0" step="1000"
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不按开销倍数" />
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="例如：80000" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600">
-                目标资产倍数 (FIRE)
-                <span v-if="annualExpense > 0" class="text-purple-600 font-bold ml-1">({{ fmtMoney(annualExpense * expenseMultiple) }})</span>
-              </label>
+              <label class="block text-xs font-semibold text-gray-600">目标资产倍数 (FIRE)</label>
               <input type="number" v-model.number="expenseMultiple" min="1" step="0.5"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="默认 33 倍" />
             </div>
+
+            <!-- 复合参数实时联动计算展示卡片 -->
+            <div class="lg:col-span-1">
+              <label class="block text-xs font-bold text-purple-900">🎯 FIRE 目标退休总资产</label>
+              <div class="w-full px-3 py-2 mt-1 bg-purple-100/80 border border-purple-200 rounded-lg text-purple-900 font-extrabold text-sm flex items-center justify-between min-h-[38px]">
+                <span>{{ fireTargetAssets > 0 ? fmtMoney(fireTargetAssets) : '未设置' }}</span>
+                <span class="text-xs text-purple-600 font-normal" v-if="fireTargetAssets > 0">(联动算出)</span>
+              </div>
+            </div>
+
             <div>
-              <label class="block text-xs font-semibold text-gray-600">当年提领额达到多少退休（元）</label>
+              <label class="block text-xs font-semibold text-gray-600">年度可提领额达到多少触发退休（元）</label>
               <input type="number" v-model.number="retireWithdraw" min="0" step="1000"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
@@ -252,10 +265,11 @@
               <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
             </div>
-            <div class="md:col-span-3 flex items-center pt-5">
+
+            <div class="lg:col-span-6 flex items-center pt-2">
               <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
                 <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
-                退休后依然继续定投（若取消，退休时将自动停止定投）
+                退休后依然继续定投（若取消，达到退休条件时将自动停止定投）
               </label>
             </div>
           </div>
@@ -271,7 +285,7 @@
           另存为新方案
         </button>
         <button type="button" v-if="results.length" @click="exportCSV" class="bg-green-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition shadow-sm">
-          导出CSV
+          导出 CSV
         </button>
       </div>
     </form>
@@ -287,7 +301,7 @@
               {{ mcSummary.successRate.toFixed(1) }}%
             </span>
           </h2>
-          <p class="text-xs text-purple-200 mt-1">基于 {{ simulationsCount.toLocaleString() }} 次随机采样推演。成功率指在经过序列收益风险后，整个生命周期账户不提前归零破产的概率。</p>
+          <p class="text-xs text-purple-200 mt-1">基于 {{ simulationsCount.toLocaleString() }} 次随机采样推演。成功率指在经历序列收益风险后，整个生命周期账户不提前归零破产的概率。</p>
         </div>
 
         <div class="grid grid-cols-3 gap-3 bg-white/10 p-3 rounded-lg backdrop-blur-sm text-center">
@@ -666,6 +680,12 @@
         this.calculate();
       },
       computed: {
+        // 计算属性：FIRE 目标退休总资产 = 年开销 × 目标倍数
+        fireTargetAssets: function() {
+          var exp = Number(this.annualExpense) || 0;
+          var mult = Number(this.expenseMultiple) || 0;
+          return exp * mult;
+        },
         summary: function() {
           if (!this.results.length) return {};
           var last = this.results[this.results.length - 1];
@@ -739,7 +759,7 @@
           if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 ||
               this.inflationRate < 0 || this.beta < 0 || this.years <= 0 || this.currentAge < 0 ||
               this.startYear < 1900 || this.withdrawRate < 0 || this.withdrawRate > 100) {
-            alert('请输入合理的正数，且提领率在0-100之间！');
+            alert('请输入合理的数值，且提领率在 0-100% 之间！');
             return;
           }
 
@@ -768,7 +788,8 @@
           var sYear = this.startYear;
           var wRate = this.withdrawRate / 100;
 
-          var targetRetireAssets = (this.annualExpense > 0 && this.expenseMultiple > 0) ? (this.annualExpense * this.expenseMultiple) : 0;
+          // 绑定复合目标资产 (年开销 × 目标倍数)
+          var targetRetireAssets = this.fireTargetAssets;
           var isRetired = false;
           var isInvestStopped = false;
           var cumP = init;
@@ -804,7 +825,7 @@
             cumP = prevCumP + qInvest;
             var fvRaw = prevNetBalance * (1 + baseQR) + qInvest;
 
-            // 判断退休触发条件
+            // 判断退休触发条件（年龄、复合资产目标、提领额）
             var potentialWithdraw = fvRaw * wRate;
             var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
             var trigRetireAssets = targetRetireAssets > 0 && fvRaw >= targetRetireAssets;
@@ -874,9 +895,10 @@
           var cAge = this.currentAge;
           var sYear = this.startYear;
           var wRate = this.withdrawRate / 100;
-          var targetRetireAssets = (this.annualExpense > 0 && this.expenseMultiple > 0) ? (this.annualExpense * this.expenseMultiple) : 0;
 
-          // 存储全套模拟矩阵: simMatrix[q][simIndex] 资产余额，simPrincipals[q][simIndex] 累计本金
+          // 复合目标资产 (年开销 × 目标倍数)
+          var targetRetireAssets = this.fireTargetAssets;
+
           var simMatrix = new Array(totalQ);
           var simPrincipals = new Array(totalQ);
           for (var t = 0; t < totalQ; t++) {
@@ -916,7 +938,7 @@
               var randomQReturn = randNormal(qMean, qStd);
               curBalance = curBalance * (1 + randomQReturn) + qInvest;
 
-              // 判定退休
+              // 判定退休（年龄、复合 FIRE 目标资产、提领额）
               var potentialWithdraw = curBalance * wRate;
               if (!isRetired && ((this.retirementAge > 0 && age >= this.retirementAge) || 
                   (targetRetireAssets > 0 && curBalance >= targetRetireAssets) || 
@@ -939,13 +961,12 @@
             if (curBalance > 0) successSims++;
           }
 
-          // 统计分位数路径 (P10, P50, P90) 并按 P50 对应模拟路径提取精确的真实累计本金
+          // 统计分位数路径 (P10, P50, P90)
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
             var age = cAge + Math.floor((q - 1) / 4);
 
-            // 索引排序，保持资产与对应累计本金的关联
             var indices = new Int32Array(simCount);
             for (var k = 0; k < simCount; k++) indices[k] = k;
             var qBalances = simMatrix[q - 1];
@@ -958,7 +979,7 @@
             var p10 = qBalances[idx10];
             var p50 = qBalances[idx50];
             var p90 = qBalances[idx90];
-            var estPrincipal = simPrincipals[q - 1][idx50]; // 提取 P50 路径下的实际本金
+            var estPrincipal = simPrincipals[q - 1][idx50];
 
             var yearsPassed = q / 4;
             var discountFactor = Math.pow(1 + infRate, yearsPassed);
@@ -1010,7 +1031,7 @@
               stopReportAdded = true;
               self.reports.push({
                 id: id,
-                text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到设定的停止定投条件，停止追加本金投入。',
+                text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，触发设定的停止定投条件，暂停后续本金投入。',
                 reportId: 'report-' + id + '-' + rc++
               });
             }
@@ -1019,7 +1040,7 @@
               retireReportAdded = true;
               self.reports.push({
                 id: id,
-                text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件（FIRE目标资产或年龄/提领额），正式进入退休提领模式！',
+                text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件（FIRE目标资产 ' + self.fmtMoney(self.fireTargetAssets) + ' 或年龄/提领额阈值），正式开启退休提领模式！',
                 reportId: 'report-' + id + '-' + rc++
               });
             }
@@ -1030,7 +1051,7 @@
                 brokenR[bp] = true;
                 self.reports.push({
                   id: id,
-                  text: '第' + item.investYear + '年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数突破 ' + bp + ' 倍，账户余额名义 ' + self.fmtMoney(item.futureValueAfterWithdraw) + '（折算今日购买力约 ' + self.fmtMoney(item.realValueAfterWithdraw) + '）',
+                  text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数突破 ' + bp + ' 倍！名义资产余额 ' + self.fmtMoney(item.futureValueAfterWithdraw) + '（折算今日购买力约 ' + self.fmtMoney(item.realValueAfterWithdraw) + '）。',
                   reportId: 'report-' + id + '-' + rc++
                 });
                 break;
@@ -1183,7 +1204,7 @@
           });
         },
 
-        // 导出 CSV (增加了 \uFEFF BOM 头防 Windows Excel 乱码)
+        // 导出 CSV (带有 BOM 头防 Excel 乱码)
         exportCSV: function() {
           if (!this.results.length) return;
           var headers = ['年份', '季度', '年龄', '累计本金（元）', '期末账户余额-名义（元）', '期末余额-折算今日购买力（元）', '当年提领金额（元）', '收益倍数', '综合年化（%）'];
