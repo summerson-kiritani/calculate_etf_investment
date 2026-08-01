@@ -173,7 +173,7 @@
             <!-- 蒙特卡洛模式特有参数 -->
             <div v-if="calcMode === 'monteCarlo'" class="md:col-span-3 bg-purple-50 p-3 rounded-lg border border-purple-200 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-bold text-purple-900">预估年化波动率 $\sigma$ (%)</label>
+                <label class="block text-xs font-bold text-purple-900">预估年化波动率 σ (%)</label>
                 <p class="text-min text-purple-600 mb-1">美股宽基如 SPY 约 15%, QQQ 约 20%, 债基约 5%。调整 Beta 将同步按比例调校。</p>
                 <input type="number" v-model.number="volatility" min="0" step="0.1" required
                   class="w-full px-3 py-1.5 bg-white border border-purple-300 rounded-lg focus:border-purple-500 outline-none text-sm font-bold text-purple-700" />
@@ -559,7 +559,7 @@
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
       <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算模型、Beta调校与蒙特卡洛原理说明</h3>
 
-      <h4 class="font-semibold text-gray-800">1. Beta ($\beta$) 资产配置调校逻辑</h4>
+      <h4 class="font-semibold text-gray-800">1. Beta (β) 资产配置调校逻辑</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>有效收益率 Rate_eff = 基准年化收益率 × Beta</code></p>
         <p><code>有效波动率 Vol_eff = 年化波动率 σ × Beta</code>（例如：70%股票/30%债券组合可设置 Beta=0.7）</p>
@@ -851,7 +851,7 @@
           this.saveOrUpdatePlan();
         },
 
-        // 蒙特卡洛压力测试计算逻辑（已修复动态累计本金与分位数映射Bug）
+        // 蒙特卡洛压力测试计算逻辑
         runMonteCarlo: function() {
           this.results = [];
           this.reports = [];
