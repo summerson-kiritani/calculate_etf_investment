@@ -57,7 +57,7 @@
         :class="['flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2', 
           calcMode === 'monteCarlo' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100']">
         <span>🎲 蒙特卡洛压力测试</span>
-        <span class="text-xs opacity-80">(考虑波动率 & 锁定连续 P50 采样路径)</span>
+        <span class="text-xs opacity-80">(对数正态无漂移采样 & 锁定连续 P50 路径)</span>
       </button>
     </div>
 
@@ -151,8 +151,8 @@
               <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">定投方式</label>
               <select v-model="investmentMode" required
                 class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm">
-                <option value="quarterly">每季度定投（季度末投入3个月金额）</option>
-                <option value="yearlyInQ1">每年Q1一次性投入整年金额</option>
+                <option value="quarterly">每季度定投（期初投入3个月金额计息）</option>
+                <option value="yearlyInQ1">每年Q1一次性投入整年金额（期初计息）</option>
               </select>
             </div>
             <div>
@@ -718,16 +718,16 @@
 
       <h4 class="font-semibold text-gray-800">1. 股票质押借贷（Buy, Borrow, Die / 买借死）与卖股扣税模型</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>质押模式股票资产：A_t = A_{t-1} × (1 + R_q) + 定投额</code>（股票全额留在场内复利）</p>
+        <p><code>质押模式股票资产：A_t = (A_{t-1} + 定投额) × (1 + R_q)</code>（期初投入注入资金同步计息）</p>
         <p><code>质押模式负债累加：D_t = D_{t-1} × (1 + r_{loan_q}) + 当期借款额 W_t</code></p>
-        <p><code>卖股模式扣税公式：售出股票 A_{sell} = W_{target} / [1 - (1 - 成本/总资产) × 资本利得税率]</code>（根据持仓溢价比例精准扣税）</p>
+        <p><code>卖股模式扣税与持仓成本扣减：cumP_{new} = cumP_{old} × [1 - grossSell / A_t]</code>（已按卖出比例同步更新本金基数）</p>
         <p><code>净资产 NW_t = A_t - D_t | 质押率 LTV_t = D_t / A_t</code></p>
         <p><code>风控强平条件：当 LTV_t ≥ 强平阈值 (默认65%) 或 NW_t ≤ 0 时</code>，触发 Margin Call 强制平仓抵扣负债。</p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">2. 蒙特卡洛连续 P50 路径锁定算法（解决数据抖动与恒等式失效）</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">2. 蒙特卡洛对数正态采样与连续 P50 路径锁定</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>全路径模拟：独立对 S 次模拟生成全程 T 个季度的完整时间序列路径</code></p>
+        <p><code>几何布朗运动无漂移采样：R_q = exp( μ_{log} - 0.5 σ_{log}^2 + σ_{log} Z ) - 1</code>（消除传统正态连乘的 Volatility Drag 损耗）</p>
         <p><code>锁定连续路径：以终局 Net Worth 排序，锁定最接近 P50 的单一完整路径展示</code></p>
         <p>此算法保证了表格中的 $A, D, NW$ 始终属于同一条真实物理路径，100% 满足 $NW = A - D$ 且无跳跃断层。</p>
       </div>
@@ -743,13 +743,12 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script>
-    // 正态分布随机采样函数 (Box-Muller算法)
-    function randNormal(mean, std) {
+    // 正态分布标准随机变量采样 (Box-Muller 算法)
+    function randNormalStd() {
       let u = 0, v = 0;
       while (u === 0) u = Math.random();
       while (v === 0) v = Math.random();
-      let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-      return mean + z * std;
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     }
 
     // 内部收益率 (IRR) 计算函数 (基于 quarterly 现金流，牛顿迭代法 + 二分兜底)
@@ -900,7 +899,6 @@
         fireAchievedNode: function() {
           var target = this.fireTargetAssets;
           if (!target || target <= 0 || !this.results.length) return null;
-          // 修改为根据 Net Worth（净资产）判定 FIRE 里程碑
           return this.results.find(function(r) { return r.netWorth >= target; }) || null;
         },
         summary: function() {
@@ -1011,9 +1009,7 @@
         calcSellAmountAndTax: function(targetCash, stockVal, cumP) {
           if (stockVal <= 0 || targetCash <= 0) return { grossSell: 0, netCash: 0, taxPaid: 0 };
           var taxRate = (this.capitalGainsTaxRate || 0) / 100;
-          // 成本比例 (Cost basis ratio)
           var costRatio = stockVal > 0 ? Math.min(1.0, Math.max(0.0, cumP / stockVal)) : 1.0;
-          // 每卖1元股票实际拿到的税后现金比例 = 1 - (1 - 成本比例) * 税率
           var netFraction = 1.0 - (1.0 - costRatio) * taxRate;
           if (netFraction <= 0.01) netFraction = 0.01;
 
@@ -1098,12 +1094,12 @@
 
             cumP += qInvest;
 
-            stockVal = stockVal * (1 + stockQR) + qInvest;
+            // 🛑 修复 2.1: 定投资金期初注入，当季享受复利增长
+            stockVal = (stockVal + qInvest) * (1 + stockQR);
             debtVal = debtVal * (1 + loanQR);
 
             var potentialWithdraw = this.calcWithdrawTarget(stockVal, yearsPassed);
             var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
-            // FIRE 达成条件按 Net Worth 判定
             var trigRetireAssets = targetRetireAssets > 0 && (stockVal - debtVal) >= targetRetireAssets;
             var trigRetireWithdraw = this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw;
 
@@ -1117,6 +1113,13 @@
               var targetCash = this.calcWithdrawTarget(stockVal, yearsPassed);
               if (this.withdrawalMechanism === 'sell') {
                 var sellRes = this.calcSellAmountAndTax(targetCash, stockVal, cumP);
+                
+                // 🚨 修复 1.1: 卖股票时同步按比例扣减已累计持仓成本 (cumP)
+                if (stockVal > 0 && sellRes.grossSell > 0) {
+                  var sellRatio = sellRes.grossSell / stockVal;
+                  cumP = cumP * (1 - sellRatio);
+                }
+
                 stockVal -= sellRes.grossSell;
                 wAmount = sellRes.netCash;
               } else {
@@ -1129,7 +1132,6 @@
             var netWorth = stockVal - debtVal;
             var ltv = stockVal > 0 ? (debtVal / stockVal) * 100 : (debtVal > 0 ? 100 : 0);
 
-            // 引入真实 LTV 强平阈值判断 (默认 65% 或 NW <= 0)
             if ((this.withdrawalMechanism === 'pledge' && ltv >= this.liquidationLtv) || netWorth <= 0) {
               isLiquidated = true;
               stockVal = 0;
@@ -1182,8 +1184,9 @@
           var effectiveRate = (this.annualRate / 100) * this.beta;
           var effectiveVol = (this.volatility / 100) * this.beta;
           
-          var qMean = Math.pow(1 + effectiveRate, 0.25) - 1;
-          var qStd = effectiveVol / Math.sqrt(4);
+          // 🛑 修复 3.2: 采用几何布朗运动 (Log-Normal Return) 采样，无偏差消除 Volatility Drag 损耗
+          var qMuLog = Math.log(1 + effectiveRate) / 4;
+          var qStdLog = effectiveVol / Math.sqrt(4);
           var loanQR = Math.pow(1 + (this.loanRate / 100), 0.25) - 1;
 
           var infRate = this.inflationRate / 100;
@@ -1194,7 +1197,6 @@
 
           var targetRetireAssets = this.fireTargetAssets;
 
-          // 储存全部模拟路径的全时间序列数据结构
           var paths = new Array(simCount);
           for (var s = 0; s < simCount; s++) {
             paths[s] = {
@@ -1212,7 +1214,6 @@
 
           var successSims = 0;
 
-          // 核心 Monte Carlo 循环：逐条完整路径独立演化
           for (var s = 0; s < simCount; s++) {
             var curStock = init;
             var curDebt = 0;
@@ -1256,8 +1257,12 @@
 
               cumP += qInvest;
 
-              var randomQReturn = randNormal(qMean, qStd);
-              curStock = curStock * (1 + randomQReturn) + qInvest;
+              // 对数正态准确采样公式：
+              var z = randNormalStd();
+              var randomQReturn = Math.exp(qMuLog - 0.5 * qStdLog * qStdLog + qStdLog * z) - 1;
+
+              // 期初注入定投资金计息
+              curStock = (curStock + qInvest) * (1 + randomQReturn);
               curDebt = curDebt * (1 + loanQR);
 
               var potentialWithdraw = this.calcWithdrawTarget(curStock, yearsPassed);
@@ -1273,6 +1278,13 @@
                 var targetCash = this.calcWithdrawTarget(curStock, yearsPassed);
                 if (this.withdrawalMechanism === 'sell') {
                   var sellRes = this.calcSellAmountAndTax(targetCash, curStock, cumP);
+                  
+                  // 🚨 修复 1.2: 蒙特卡洛卖股模式下同步按比例扣减已累计持仓成本 (cumP)
+                  if (curStock > 0 && sellRes.grossSell > 0) {
+                    var sellRatio = sellRes.grossSell / curStock;
+                    cumP = cumP * (1 - sellRatio);
+                  }
+
                   curStock -= sellRes.grossSell;
                   wAmt = sellRes.netCash;
                 } else {
@@ -1285,7 +1297,6 @@
               curNW = curStock - curDebt;
               var curLTV = curStock > 0 ? (curDebt / curStock) * 100 : (curDebt > 0 ? 100 : 0);
 
-              // 检查风控强平条件 (LTV >= 阈值 或 净资产 <= 0)
               if ((this.withdrawalMechanism === 'pledge' && curLTV >= this.liquidationLtv) || curNW <= 0) {
                 isLiquidated = true;
                 pObj.isLiquidated = true;
@@ -1307,13 +1318,12 @@
             if (!isLiquidated && pObj.finalNW > 0) successSims++;
           }
 
-          // 核心方案 A 修复：依据终局净资产排序，锁定一条最接近 P50 (中位数) 的真实连续路径展示！
           var pathIndices = new Int32Array(simCount);
           for (var i = 0; i < simCount; i++) pathIndices[i] = i;
           pathIndices.sort(function(a, b) { return paths[a].finalNW - paths[b].finalNW; });
 
           var idx10 = pathIndices[Math.floor(simCount * 0.10)];
-          var idx50 = pathIndices[Math.floor(simCount * 0.50)]; // 锁定 P50 路径索引
+          var idx50 = pathIndices[Math.floor(simCount * 0.50)];
           var idx90 = pathIndices[Math.floor(simCount * 0.90)];
 
           var p50Path = paths[idx50];
@@ -1326,13 +1336,12 @@
             var age = cAge + Math.floor((q - 1) / 4);
             var yearsPassed = q / 4;
 
-            // 各季度 截面 P10 / P90 仅用于图表区间展示，主表格彻底使用连续 P50 路径数据
             var p10NW = paths[idx10].nw[q - 1];
             var p90NW = paths[idx90].nw[q - 1];
 
             var p50Stock = p50Path.stock[q - 1];
             var p50Debt = p50Path.debt[q - 1];
-            var p50NW = p50Path.nw[q - 1]; // 恒等式 p50NW = p50Stock - p50Debt 100% 成立！
+            var p50NW = p50Path.nw[q - 1];
             var p50Principal = p50Path.principal[q - 1];
             var wAmount = p50Path.withdrawAmount[q - 1];
             var p50CumWithdrawn = p50Path.totalWithdrawn[q - 1];
@@ -1714,6 +1723,7 @@
           });
         },
 
+        // 🚨 修复 1.3: 正确拼接 UTF-8 BOM 头，防止 Windows Excel 打开乱码
         exportCSV: function() {
           if (!this.results.length) return;
           var isPledge = this.withdrawalMechanism === 'pledge';
@@ -1747,7 +1757,7 @@
             return row.join(',');
           });
 
-          var csvContent = '\uFEFF' + headers.join('\n') ? (headers.join(',') + '\n' + rows.join('\n')) : '';
+          var csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
           var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
           var link = document.createElement('a');
           var url = URL.createObjectURL(blob);
