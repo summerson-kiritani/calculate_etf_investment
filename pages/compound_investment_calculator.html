@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>复利定投计算器（双模式 & 蒙特卡洛 & ETF绩效参考版）</title>
+  <title>复利定投计算器 Pro（含买借死股票质押策略 & 蒙特卡洛压力测试）</title>
+  <!-- Tailwind CSS -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     .text-min {
       font-size: 0.7rem;
@@ -28,7 +31,7 @@
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen relative overflow-x-hidden">
-  <div id="app" class="max-w-5xl mx-auto px-4 py-8 pb-24">
+  <div id="app" class="max-w-6xl mx-auto px-4 py-8 pb-24">
     <!-- 顶部导航与历史记录入口 -->
     <div class="flex justify-between items-center">
       <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm font-medium">&larr; 返回首页</a>
@@ -39,8 +42,8 @@
     </div>
 
     <!-- 标题 -->
-    <h1 class="text-2xl font-bold mt-4">复利定投计算器</h1>
-    <p class="text-gray-500 mt-1">含蒙特卡洛序列收益风险模拟、Beta资产配置调校、ETF绩效快速套用、IRR内部收益率与FIRE退休推演</p>
+    <h1 class="text-2xl font-bold mt-4">复利定投计算器 Pro</h1>
+    <p class="text-gray-500 mt-1">支持“卖股票”与“买借死（股票质押借贷）”双策略、蒙特卡洛序列收益风险模拟、IRR 内部收益率与 FIRE 退休推演</p>
 
     <!-- 模式切换 Tabs -->
     <div class="flex border-b border-gray-200 mt-6 bg-white rounded-t-xl p-1 shadow-sm border">
@@ -54,7 +57,7 @@
         :class="['flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2', 
           calcMode === 'monteCarlo' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100']">
         <span>🎲 蒙特卡洛压力测试</span>
-        <span class="text-xs opacity-80">(考虑波动率 & 序列收益风险)</span>
+        <span class="text-xs opacity-80">(考虑波动率 & 序列收益爆仓风险)</span>
       </button>
     </div>
 
@@ -64,7 +67,7 @@
       <div class="mb-6 pb-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3 flex-1 min-w-[280px]">
           <label class="text-sm font-bold text-gray-700 whitespace-nowrap">🏷️ 方案名称/备注：</label>
-          <input type="text" v-model="planName" placeholder="例如：7股3债稳健方案、QQQ激进FIRE退休" 
+          <input type="text" v-model="planName" placeholder="例如：7股3债卖股模式、QQQ买借死质押方案" 
             class="w-full md:w-80 h-9 px-3 text-sm border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div v-if="editingPlanId" class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
@@ -216,12 +219,36 @@
           </div>
         </div>
 
-        <!-- 分组 4：退休与提领策略 -->
+        <!-- 分组 4：退休与提领/质押借贷策略 -->
         <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-100">
           <h3 class="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
-            <span>🏖️</span> 4. 退休与提领策略
+            <span>🏖️</span> 4. 退休与提领 / 质押借贷策略（Buy, Borrow, Die）
           </h3>
-          <p class="text-xs text-purple-600 mb-3">满足退休条件时开启每年第四季度的退休提领。支持【按资产百分比】与【固定金额（随通胀递增）】两种提领模式。</p>
+          <p class="text-xs text-purple-600 mb-3">满足退休条件时开启每年第四季度的提领。可选择“卖股票提领”或硬核高净值“股票质押借贷（买借死）”策略。</p>
+
+          <!-- 提领途径（卖股 vs 质押）选择区 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-purple-200/60 items-start bg-purple-100/50 p-3 rounded-lg">
+            <div>
+              <label class="block text-xs font-bold text-purple-900 mb-1.5 h-4">提领变现途径</label>
+              <select v-model="withdrawalMechanism" @change="calculate"
+                class="w-full h-9 px-3 bg-white border border-purple-400 rounded-lg focus:border-purple-600 font-bold outline-none text-sm text-purple-900">
+                <option value="sell">卖出股票资产变现（传统卖股模式）</option>
+                <option value="pledge">股票质押借贷（买借死 / Buy, Borrow, Die 策略）</option>
+              </select>
+            </div>
+
+            <!-- 仅在“质押借贷”模式下显示的利率设置 -->
+            <div v-if="withdrawalMechanism === 'pledge'">
+              <label class="block text-xs font-bold text-purple-900 mb-1.5 h-4">质押贷款年利率 (%)</label>
+              <input type="number" v-model.number="loanRate" min="0" max="30" step="0.1" required @input="calculate"
+                class="w-full h-9 px-3 bg-white border border-purple-400 rounded-lg focus:border-purple-600 font-extrabold text-red-600 outline-none text-sm" />
+              <p class="text-min text-purple-700 mt-1">如 4.5%（按季度复利利滚利，不卖股票）</p>
+            </div>
+
+            <div v-else class="flex items-center h-full pt-4">
+              <span class="text-xs text-gray-500 italic">传统卖股模式：卖掉股票换现金，股票份额减少，无借贷债务。</span>
+            </div>
+          </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 pb-4 border-b border-purple-100 items-start">
             <div>
@@ -255,25 +282,25 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1.5 h-4">退休提领模式</label>
+              <label class="block text-xs font-semibold text-gray-700 mb-1.5 h-4">退休提领/借款模式</label>
               <select v-model="withdrawMode" required
                 class="w-full h-9 px-3 bg-white border border-purple-300 rounded-lg focus:border-purple-500 font-semibold outline-none text-sm text-purple-900">
-                <option value="percent">按总资产的百分比提领 (%)</option>
+                <option value="percent">按股票总资产的百分比提领/借款 (%)</option>
                 <option value="fixedInflation">固定金额与通货膨胀率挂钩 (抗通胀递增)</option>
               </select>
             </div>
 
             <div v-if="withdrawMode === 'percent'">
-              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">每年提领总资产比例（%）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">每年提领/借款比例（%）</label>
               <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
                 class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="经典如 4%" />
             </div>
 
             <div v-if="withdrawMode === 'fixedInflation'">
-              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">基准首年提领额（元/年）</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5 h-4">基准首年提领/借款额（元/年）</label>
               <input type="number" v-model.number="fixedWithdrawAmount" min="0" step="1000" required
                 class="w-full h-9 px-3 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="例如：80000" />
-              <p class="text-min text-purple-600 mt-1">按年通胀率（{{ inflationRate }}%）自动复利上调，保持购买力</p>
+              <p class="text-min text-purple-600 mt-1">按年通胀率（{{ inflationRate }}%）自动复利上调，保持实际购买力</p>
             </div>
 
             <div>
@@ -307,31 +334,63 @@
     <div v-if="calcMode === 'monteCarlo' && mcSummary" class="mt-6 bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-xl shadow-lg p-6">
       <div class="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <span class="text-xs bg-purple-200 text-purple-900 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">蒙特卡洛压力测试结果</span>
+          <span class="text-xs bg-purple-200 text-purple-900 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            蒙特卡洛压力测试结果 {{ withdrawalMechanism === 'pledge' ? '（质押买借死策略）' : '（卖股提领策略）' }}
+          </span>
           <h2 class="text-2xl font-black mt-2 flex items-center gap-2">
-            退休提领成功率：
+            退休生存成功率：
             <span :class="mcSummary.successRate >= 85 ? 'text-green-400' : (mcSummary.successRate >= 70 ? 'text-yellow-400' : 'text-red-400')">
               {{ mcSummary.successRate.toFixed(1) }}%
             </span>
           </h2>
-          <p class="text-xs text-purple-200 mt-1">基于 {{ simulationsCount.toLocaleString() }} 次随机采样推演。成功率指在经历序列收益风险后，整个生命周期账户不提前归零破产的概率。</p>
+          <p class="text-xs text-purple-200 mt-1">基于 {{ simulationsCount.toLocaleString() }} 次随机采样推演。成功率指在经历序列收益风险后，整个生命周期账户不破产爆仓（净资产 NW > 0且未触发平仓）的概率。</p>
         </div>
 
         <div class="grid grid-cols-3 gap-3 bg-white/10 p-3 rounded-lg backdrop-blur-sm text-center">
           <div>
-            <div class="text-min text-purple-200">悲观分位数 (P10)</div>
+            <div class="text-min text-purple-200">悲观净资产 (P10)</div>
             <div class="text-sm font-bold text-red-300 mt-0.5">{{ fmtMoney(mcSummary.p10) }}</div>
           </div>
           <div>
-            <div class="text-min text-purple-200">中位数 (P50)</div>
+            <div class="text-min text-purple-200">中位数净资产 (P50)</div>
             <div class="text-sm font-bold text-yellow-300 mt-0.5">{{ fmtMoney(mcSummary.p50) }}</div>
           </div>
           <div>
-            <div class="text-min text-purple-200">乐观分位数 (P90)</div>
+            <div class="text-min text-purple-200">乐观净资产 (P90)</div>
             <div class="text-sm font-bold text-green-300 mt-0.5">{{ fmtMoney(mcSummary.p90) }}</div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 图表展示区 (Chart.js) -->
+    <div v-show="results.length" class="mt-6 bg-white rounded-xl shadow-md p-6 border border-gray-100">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+          <span>📈</span>
+          <span>{{ calcMode === 'monteCarlo' ? '蒙特卡洛资产与净资产分布走势图 (P10/P50/P90)' : '资产、负债与净资产趋势图' }}</span>
+        </h3>
+        <span class="text-xs text-gray-400">（按年度汇总节点绘制）</span>
+      </div>
+      <div class="relative w-full" style="height: 360px;">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- FIRE 里程碑达成提示 -->
+    <div v-if="fireAchievedNode" class="mt-6 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl shadow-md p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🎉</span>
+        <div>
+          <h4 class="font-bold text-base">恭喜！预估将在此节点达成 FIRE 财务自由目标！</h4>
+          <p class="text-xs text-emerald-100 mt-0.5">
+            在第 {{ fireAchievedNode.investYear }} 年（{{ fireAchievedNode.year }}年，{{ fireAchievedNode.age }}岁）时，股票资产达 <strong>￥{{ fmtMoney(fireAchievedNode.stockAssets) }}</strong>，正式覆盖 ￥{{ fmtMoney(fireTargetAssets) }} 的 FIRE 目标。
+          </p>
+        </div>
+      </div>
+      <span class="bg-white text-teal-800 font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap">
+        {{ fireAchievedNode.age }} 岁退休自由
+      </span>
     </div>
 
     <!-- 摘要卡片 -->
@@ -340,39 +399,42 @@
         <div class="text-xs text-gray-500">累计本金</div>
         <div class="text-lg font-bold mt-1">{{ fmtMoney(summary.principal) }}</div>
       </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-indigo-500">
+        <div class="text-xs text-gray-500">期末股票总资产 ($A$)</div>
+        <div class="text-lg font-bold mt-1 text-indigo-600">{{ fmtMoney(summary.stockAssets) }}</div>
+      </div>
+      <div v-if="withdrawalMechanism === 'pledge'" class="bg-white rounded-lg shadow p-4 border-l-4 border-amber-500">
+        <div class="text-xs text-gray-500">期末质押总负债 ($D$)</div>
+        <div class="text-lg font-bold mt-1 text-amber-600">{{ fmtMoney(summary.loanDebt) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-600">
+        <div class="text-xs text-gray-500">期末净资产 ($NW$)</div>
+        <div class="text-lg font-bold mt-1 text-blue-600">{{ fmtMoney(summary.netWorth) }}</div>
+      </div>
+      <div v-if="withdrawalMechanism === 'pledge'" class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
+        <div class="text-xs text-gray-500">期末质押率 ($LTV$)</div>
+        <div class="text-lg font-bold mt-1" :class="summary.ltv >= 80 ? 'text-red-600' : 'text-purple-600'">{{ summary.ltv.toFixed(1) }}%</div>
+      </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-400">
-        <div class="text-xs text-gray-500">累计已提领 (名义)</div>
+        <div class="text-xs text-gray-500">{{ withdrawalMechanism === 'pledge' ? '累计质押借出现金' : '累计已提领现金' }}</div>
         <div class="text-lg font-bold mt-1 text-purple-600">{{ fmtMoney(summary.totalWithdrawn) }}</div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
-        <div class="text-xs text-gray-500">期末余额 (名义数字)</div>
-        <div class="text-lg font-bold mt-1 text-blue-600">{{ fmtMoney(summary.futureValueAfterWithdraw) }}</div>
-      </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
-        <div class="text-xs text-gray-500">期末余额折算 (今日购买力)</div>
-        <div class="text-lg font-bold mt-1 text-red-600">{{ fmtMoney(summary.realValueAfterWithdraw) }}</div>
-      </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-indigo-400">
-        <div class="text-xs text-gray-500">真实总价值 (名义含已领)</div>
-        <div class="text-lg font-bold mt-1 text-indigo-600">{{ fmtMoney(summary.totalWealth) }}</div>
-      </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
-        <div class="text-xs text-gray-500">真实总价值折算 (今日购买力)</div>
-        <div class="text-lg font-bold mt-1 text-yellow-600">{{ fmtMoney(summary.realTotalWealth) }}</div>
+        <div class="text-xs text-gray-500">期末净资产折算 (今日购买力)</div>
+        <div class="text-lg font-bold mt-1 text-red-600">{{ fmtMoney(summary.realNetWorth) }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-400">
-        <div class="text-xs text-gray-500">名义净利润</div>
-        <div class="text-lg font-bold mt-1" :class="summary.profit >= 0 ? 'text-green-600' : 'text-red-500'">{{ fmtMoney(summary.profit) }}</div>
+        <div class="text-xs text-gray-500">净收益倍数 (含已享用现金)</div>
+        <div class="text-lg font-bold mt-1 text-green-600">{{ summary.totalReturnRatio.toFixed(2) }}倍</div>
       </div>
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
         <div class="text-xs text-gray-500">综合年化 (CAGR)</div>
         <div class="text-lg font-bold mt-1">{{ (summary.cagr * 100).toFixed(2) }}%</div>
       </div>
-      <!-- 新增：IRR 卡片 -->
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-teal-500 col-span-2 md:col-span-1">
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-teal-500">
         <div class="text-xs text-gray-500 flex items-center justify-between">
           <span>内部收益率 (IRR)</span>
-          <span class="text-min text-teal-600 font-semibold" title="精准反映定投/提领多笔现金流的时间价值回报率">现金流精准</span>
+          <span class="text-min text-teal-600 font-semibold" title="精准反映买借死/卖股全周期的实际资金回报率">现金流精准</span>
         </div>
         <div class="text-lg font-bold mt-1 text-teal-600">{{ (summary.irr * 100).toFixed(2) }}%</div>
       </div>
@@ -380,12 +442,12 @@
 
     <!-- 收益与事件里程碑报告 -->
     <div v-if="reports.length" class="bg-white rounded-lg shadow p-4 mt-6">
-      <h3 class="text-sm font-semibold text-blue-500 mb-3">收益与关键节点触发报告 {{ calcMode === 'monteCarlo' ? '（基于 P50 中位数采样路径）' : '' }}</h3>
+      <h3 class="text-sm font-semibold text-blue-500 mb-3">关键触发节点与风控爆仓报告 {{ calcMode === 'monteCarlo' ? '（基于 P50 中位数采样路径）' : '' }}</h3>
       <div class="space-y-2">
         <div v-for="r in reports" :key="r.reportId"
           @click="scrollToRow(r.id)"
           :class="['px-3 py-2 rounded cursor-pointer text-sm border-l-4 transition-colors',
-            selectedReportId === r.id ? 'bg-yellow-400 text-white font-semibold border-yellow-500' : 'bg-yellow-50 text-gray-600 hover:bg-yellow-100 border-yellow-400']">
+            r.isAlert ? 'bg-red-100 text-red-900 font-bold border-red-500' : (selectedReportId === r.id ? 'bg-yellow-400 text-white font-semibold border-yellow-500' : 'bg-yellow-50 text-gray-600 hover:bg-yellow-100 border-yellow-400')]">
           {{ r.text }}
         </div>
       </div>
@@ -396,18 +458,21 @@
       <table class="w-full bg-white rounded-lg shadow overflow-hidden text-sm">
         <thead class="bg-blue-500 text-white">
           <tr>
-            <th class="px-3 py-2 text-left w-8"></th>
-            <th class="px-3 py-2">年份</th>
-            <th class="px-3 py-2">年龄</th>
-            <th class="px-3 py-2">累计本金</th>
-            <th v-if="calcMode === 'monteCarlo'" class="px-3 py-2 bg-purple-600">悲观 P10 余额</th>
-            <th class="px-3 py-2">年末账户余额 (P50)</th>
-            <th v-if="calcMode === 'monteCarlo'" class="px-3 py-2 bg-indigo-600">乐观 P90 余额</th>
-            <th class="px-3 py-2">当年提领额</th>
-            <th class="px-3 py-2 text-red-200">余额 (折算购买力)</th>
-            <th class="px-3 py-2">收益倍数 (含已领)</th>
-            <th class="px-3 py-2">综合年化 (CAGR)</th>
-            <th class="px-3 py-2 bg-teal-600">内部收益率 (IRR)</th>
+            <th class="px-2 py-2 text-left w-6"></th>
+            <th class="px-2 py-2">年份</th>
+            <th class="px-2 py-2">年龄</th>
+            <th class="px-2 py-2">累计本金</th>
+            <th class="px-2 py-2">股票总资产 ($A$)</th>
+            <th v-if="withdrawalMechanism === 'pledge'" class="px-2 py-2 bg-amber-600">质押负债 ($D$)</th>
+            <th v-if="calcMode === 'monteCarlo'" class="px-2 py-2 bg-purple-600">悲观 P10 净资产</th>
+            <th class="px-2 py-2">年末净资产 (P50)</th>
+            <th v-if="calcMode === 'monteCarlo'" class="px-2 py-2 bg-indigo-600">乐观 P90 净资产</th>
+            <th v-if="withdrawalMechanism === 'pledge'" class="px-2 py-2 bg-purple-700">质押率 (LTV)</th>
+            <th class="px-2 py-2">{{ withdrawalMechanism === 'pledge' ? '当年借贷额' : '当年提领额' }}</th>
+            <th class="px-2 py-2 text-red-200">净资产 (折算购买力)</th>
+            <th class="px-2 py-2">收益倍数</th>
+            <th class="px-2 py-2">CAGR</th>
+            <th class="px-2 py-2 bg-teal-600">IRR</th>
           </tr>
         </thead>
         <tbody>
@@ -415,37 +480,48 @@
             <!-- 年度汇总行 -->
             <tr :key="'y-'+yearData.year"
               @click="toggleYear(yearData.year)"
-              :class="['cursor-pointer hover:bg-gray-50 border-b border-gray-100 font-medium', selectedReportId === ('year-' + yearData.year) ? 'bg-yellow-200' : 'bg-white']">
-              <td class="px-3 py-2 text-center text-gray-400">{{ expandedYears.has(yearData.year) ? '▼' : '▶' }}</td>
-              <td class="px-3 py-2 text-center font-semibold">{{ yearData.year }}</td>
-              <td class="px-3 py-2 text-center">{{ yearData.age }}</td>
-              <td class="px-3 py-2 text-right">{{ fmtMoney(yearData.principal) }}</td>
-              <td v-if="calcMode === 'monteCarlo'" class="px-3 py-2 text-right font-semibold text-red-500 bg-purple-50">{{ fmtMoney(yearData.p10Balance) }}</td>
-              <td class="px-3 py-2 text-right font-bold text-blue-600">{{ fmtMoney(yearData.futureValueAfterWithdraw) }}</td>
-              <td v-if="calcMode === 'monteCarlo'" class="px-3 py-2 text-right font-semibold text-green-600 bg-indigo-50">{{ fmtMoney(yearData.p90Balance) }}</td>
-              <td class="px-3 py-2 text-right text-purple-600 font-semibold">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '-' }}</td>
-              <td class="px-3 py-2 text-right font-bold text-red-600 bg-red-50">{{ fmtMoney(yearData.realValueAfterWithdraw) }}</td>
-              <td class="px-3 py-2 text-center">{{ yearData.totalReturnRatio.toFixed(2) }}倍</td>
-              <td class="px-3 py-2 text-center">{{ (yearData.cagr * 100).toFixed(2) }}%</td>
-              <td class="px-3 py-2 text-center font-bold text-teal-600 bg-teal-50/50">{{ (yearData.irr * 100).toFixed(2) }}%</td>
+              :class="['cursor-pointer hover:bg-gray-50 border-b border-gray-100 font-medium', 
+                yearData.isLiquidated ? 'bg-red-50 text-red-900 font-bold' : (selectedReportId === ('year-' + yearData.year) ? 'bg-yellow-200' : 'bg-white')]">
+              <td class="px-2 py-2 text-center text-gray-400">{{ expandedYears.has(yearData.year) ? '▼' : '▶' }}</td>
+              <td class="px-2 py-2 text-center font-semibold">{{ yearData.year }}</td>
+              <td class="px-2 py-2 text-center">{{ yearData.age }}</td>
+              <td class="px-2 py-2 text-right">{{ fmtMoney(yearData.principal) }}</td>
+              <td class="px-2 py-2 text-right font-semibold text-indigo-600">{{ fmtMoney(yearData.stockAssets) }}</td>
+              <td v-if="withdrawalMechanism === 'pledge'" class="px-2 py-2 text-right font-semibold text-amber-600 bg-amber-50">{{ fmtMoney(yearData.loanDebt) }}</td>
+              <td v-if="calcMode === 'monteCarlo'" class="px-2 py-2 text-right font-semibold text-red-500 bg-purple-50">{{ fmtMoney(yearData.p10Balance) }}</td>
+              <td class="px-2 py-2 text-right font-bold text-blue-600">{{ fmtMoney(yearData.netWorth) }}</td>
+              <td v-if="calcMode === 'monteCarlo'" class="px-2 py-2 text-right font-semibold text-green-600 bg-indigo-50">{{ fmtMoney(yearData.p90Balance) }}</td>
+              <td v-if="withdrawalMechanism === 'pledge'" class="px-2 py-2 text-center font-bold" :class="yearData.ltv >= 80 ? 'text-red-600' : 'text-purple-700'">
+                {{ yearData.ltv.toFixed(1) }}%
+              </td>
+              <td class="px-2 py-2 text-right text-purple-600 font-semibold">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '-' }}</td>
+              <td class="px-2 py-2 text-right font-bold text-red-600 bg-red-50">{{ fmtMoney(yearData.realNetWorth) }}</td>
+              <td class="px-2 py-2 text-center">{{ yearData.totalReturnRatio.toFixed(2) }}倍</td>
+              <td class="px-2 py-2 text-center">{{ (yearData.cagr * 100).toFixed(2) }}%</td>
+              <td class="px-2 py-2 text-center font-bold text-teal-600 bg-teal-50/50">{{ (yearData.irr * 100).toFixed(2) }}%</td>
             </tr>
             <!-- 季度明细行 -->
             <template v-if="expandedYears.has(yearData.year)">
               <tr v-for="q in yearData.quarters" :key="'q-'+q.year+'-'+q.quarter"
                 :id="'row-' + q.year + '-' + q.quarter + '-' + q.index"
-                :class="['bg-gray-50 text-xs border-b border-gray-100', selectedReportId === ('row-' + q.year + '-' + q.quarter + '-' + q.index) ? 'bg-yellow-200' : '']">
-                <td class="px-3 py-1.5"></td>
-                <td class="px-3 py-1.5 text-center text-gray-500">Q{{ q.quarter }}</td>
-                <td class="px-3 py-1.5 text-center text-gray-500">{{ q.age }}</td>
-                <td class="px-3 py-1.5 text-right text-gray-600">{{ fmtMoney(q.principal) }}</td>
-                <td v-if="calcMode === 'monteCarlo'" class="px-3 py-1.5 text-right text-red-400 bg-purple-50">{{ fmtMoney(q.p10Balance) }}</td>
-                <td class="px-3 py-1.5 text-right font-semibold text-gray-700">{{ fmtMoney(q.futureValueAfterWithdraw) }}</td>
-                <td v-if="calcMode === 'monteCarlo'" class="px-3 py-1.5 text-right text-green-500 bg-indigo-50">{{ fmtMoney(q.p90Balance) }}</td>
-                <td class="px-3 py-1.5 text-right text-purple-600 font-semibold">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '-' }}</td>
-                <td class="px-3 py-1.5 text-right font-semibold text-red-500 bg-red-50">{{ fmtMoney(q.realValueAfterWithdraw) }}</td>
-                <td class="px-3 py-1.5 text-center text-gray-600">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
-                <td class="px-3 py-1.5 text-center text-gray-600">{{ (q.cagr * 100).toFixed(2) }}%</td>
-                <td class="px-3 py-1.5 text-center font-semibold text-teal-600 bg-teal-50/50">{{ (q.irr * 100).toFixed(2) }}%</td>
+                :class="['bg-gray-50 text-xs border-b border-gray-100', q.isLiquidated ? 'bg-red-100 text-red-800' : (selectedReportId === ('row-' + q.year + '-' + q.quarter + '-' + q.index) ? 'bg-yellow-200' : '')]">
+                <td class="px-2 py-1.5"></td>
+                <td class="px-2 py-1.5 text-center text-gray-500">Q{{ q.quarter }}</td>
+                <td class="px-2 py-1.5 text-center text-gray-500">{{ q.age }}</td>
+                <td class="px-2 py-1.5 text-right text-gray-600">{{ fmtMoney(q.principal) }}</td>
+                <td class="px-2 py-1.5 text-right font-medium text-indigo-600">{{ fmtMoney(q.stockAssets) }}</td>
+                <td v-if="withdrawalMechanism === 'pledge'" class="px-2 py-1.5 text-right text-amber-600 bg-amber-50/50">{{ fmtMoney(q.loanDebt) }}</td>
+                <td v-if="calcMode === 'monteCarlo'" class="px-2 py-1.5 text-right text-red-400 bg-purple-50">{{ fmtMoney(q.p10Balance) }}</td>
+                <td class="px-2 py-1.5 text-right font-semibold text-gray-700">{{ fmtMoney(q.netWorth) }}</td>
+                <td v-if="calcMode === 'monteCarlo'" class="px-2 py-1.5 text-right text-green-500 bg-indigo-50">{{ fmtMoney(q.p90Balance) }}</td>
+                <td v-if="withdrawalMechanism === 'pledge'" class="px-2 py-1.5 text-center font-semibold" :class="q.ltv >= 80 ? 'text-red-600' : 'text-purple-600'">
+                  {{ q.ltv.toFixed(1) }}%
+                </td>
+                <td class="px-2 py-1.5 text-right text-purple-600 font-semibold">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '-' }}</td>
+                <td class="px-2 py-1.5 text-right font-semibold text-red-500 bg-red-50">{{ fmtMoney(q.realNetWorth) }}</td>
+                <td class="px-2 py-1.5 text-center text-gray-600">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
+                <td class="px-2 py-1.5 text-center text-gray-600">{{ (q.cagr * 100).toFixed(2) }}%</td>
+                <td class="px-2 py-1.5 text-center font-semibold text-teal-600 bg-teal-50/50">{{ (q.irr * 100).toFixed(2) }}%</td>
               </tr>
             </template>
           </template>
@@ -458,10 +534,10 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-            📊 方案多维对比视图 
+            📊 方案多维对比视图 (卖股 vs 质押买借死)
             <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full">已选 {{ selectedPlans.length }} / 4 个方案</span>
           </h2>
-          <p class="text-xs text-gray-500 mt-1">对比包含不同收益率、Beta配置、波动率及 FIRE 退休策略对终局资产与 IRR 收益率的影响</p>
+          <p class="text-xs text-gray-500 mt-1">对比包含不同提领途径（质押 vs 卖股）、利率成本、波动率及 FIRE 退休策略对终局净资产与 IRR 收益率的影响</p>
         </div>
         <button @click="selectedPlanIds = []" class="text-xs text-gray-400 hover:text-red-500">取消对比</button>
       </div>
@@ -482,21 +558,21 @@
 
             <div class="bg-white bg-opacity-70 rounded-lg p-2.5 text-xs space-y-1 text-gray-600 mb-4 border border-gray-100">
               <div class="flex justify-between">
-                <span>推演模式:</span>
-                <span class="font-semibold text-purple-700">{{ plan.inputs.calcMode === 'monteCarlo' ? '🎲 蒙特卡洛' : '📈 确定性' }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span>月定投:</span>
-                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('monthlyInvestment')}">￥{{ plan.inputs.monthlyInvestment }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span>提领策略:</span>
-                <span class="font-semibold text-purple-700" :class="{'text-blue-600 font-bold': isDiff('withdrawMode') || isDiff('withdrawRate') || isDiff('fixedWithdrawAmount')}">
-                  {{ plan.inputs.withdrawMode === 'fixedInflation' ? ('￥' + fmtMoney(plan.inputs.fixedWithdrawAmount) + '/年(抗通胀)') : (plan.inputs.withdrawRate + '% 比例提领') }}
+                <span>提领途径:</span>
+                <span class="font-bold" :class="plan.inputs.withdrawalMechanism === 'pledge' ? 'text-purple-700' : 'text-blue-700'">
+                  {{ plan.inputs.withdrawalMechanism === 'pledge' ? '🏦 股票质押(买借死)' : '💰 卖股票提领' }}
                 </span>
               </div>
+              <div v-if="plan.inputs.withdrawalMechanism === 'pledge'" class="flex justify-between text-red-600">
+                <span>质押利率:</span>
+                <span class="font-extrabold">{{ plan.inputs.loanRate || 4.5 }}%</span>
+              </div>
+              <div class="flex justify-between">
+                <span>推演模式:</span>
+                <span class="font-semibold text-gray-700">{{ plan.inputs.calcMode === 'monteCarlo' ? '🎲 蒙特卡洛' : '📈 确定性' }}</span>
+              </div>
               <div class="flex justify-between" v-if="plan.inputs.calcMode === 'monteCarlo'">
-                <span>提领成功率:</span>
+                <span>生存成功率:</span>
                 <span class="font-bold text-green-600">{{ plan.mcSummary ? plan.mcSummary.successRate.toFixed(1) + '%' : '-' }}</span>
               </div>
             </div>
@@ -516,28 +592,30 @@
               </div>
 
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-500">总提领额</span>
-                <div class="flex items-center gap-1">
-                  <span v-if="isWinner(plan, 'totalWithdrawn')" class="text-xs" title="总提领最高">👑</span>
-                  <span class="font-bold text-purple-600">￥{{ fmtMoney(plan.summary.totalWithdrawn) }}</span>
-                </div>
+                <span class="text-gray-500">期末股票总资产</span>
+                <span class="font-bold text-indigo-600">￥{{ fmtMoney(plan.summary.stockAssets) }}</span>
+              </div>
+
+              <div v-if="plan.inputs.withdrawalMechanism === 'pledge'" class="flex justify-between items-center text-xs">
+                <span class="text-gray-500">期末质押负债</span>
+                <span class="font-bold text-amber-600">￥{{ fmtMoney(plan.summary.loanDebt) }}</span>
               </div>
 
               <div class="flex justify-between items-center text-xs">
-                <span class="text-gray-500">期末余额(名义)</span>
+                <span class="text-gray-500">期末净资产 ($NW$)</span>
                 <div class="flex items-center gap-1">
-                  <span v-if="isWinner(plan, 'futureValueAfterWithdraw')" class="text-xs" title="该项最高">👑</span>
-                  <span class="font-bold" :class="isWinner(plan, 'futureValueAfterWithdraw') ? 'text-blue-600 text-sm' : 'text-gray-800'">
-                    ￥{{ fmtMoney(plan.summary.futureValueAfterWithdraw) }}
+                  <span v-if="isWinner(plan, 'netWorth')" class="text-xs" title="净资产最高">👑</span>
+                  <span class="font-extrabold" :class="isWinner(plan, 'netWorth') ? 'text-blue-600 text-sm' : 'text-gray-800'">
+                    ￥{{ fmtMoney(plan.summary.netWorth) }}
                   </span>
                 </div>
               </div>
 
               <div class="bg-red-50 p-2 rounded-lg flex justify-between items-center text-xs">
-                <span class="text-red-700 font-medium">今日购买力</span>
+                <span class="text-red-700 font-medium">净资产今日购买力</span>
                 <div class="flex items-center gap-1">
-                  <span v-if="isWinner(plan, 'realValueAfterWithdraw')" class="text-xs" title="购买力保留最高">👑</span>
-                  <span class="font-extrabold text-red-600">￥{{ fmtMoney(plan.summary.realValueAfterWithdraw) }}</span>
+                  <span v-if="isWinner(plan, 'realNetWorth')" class="text-xs" title="购买力保留最高">👑</span>
+                  <span class="font-extrabold text-red-600">￥{{ fmtMoney(plan.summary.realNetWorth) }}</span>
                 </div>
               </div>
             </div>
@@ -583,8 +661,11 @@
                 </div>
 
                 <div class="mt-2 text-xs text-gray-500 space-y-0.5 ml-6">
-                  <div>模式: {{ item.inputs.calcMode === 'monteCarlo' ? '🎲 蒙特卡洛' : '📈 确定性' }} | IRR: {{ (item.summary.irr * 100).toFixed(2) }}%</div>
-                  <div class="font-semibold text-blue-600">期末购买力: ￥{{ fmtMoney(item.summary.realValueAfterWithdraw) }}</div>
+                  <div>
+                    途径: {{ item.inputs.withdrawalMechanism === 'pledge' ? '🏦 质押借贷' : '💰 卖股票' }} | 
+                    IRR: {{ (item.summary.irr * 100).toFixed(2) }}%
+                  </div>
+                  <div class="font-semibold text-blue-600">期末净资产: ￥{{ fmtMoney(item.summary.netWorth) }}</div>
                   <div class="text-gray-400 text-min font-mono">{{ item.createdAt }}</div>
                 </div>
 
@@ -603,32 +684,34 @@
       </div>
     </transition>
 
-    <!-- 公式说明 -->
+    <!-- 公式与买借死原理说明 -->
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算模型、提领策略与蒙特卡洛原理说明</h3>
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算模型、质押借贷（买借死）策略与蒙特卡洛原理说明</h3>
 
-      <h4 class="font-semibold text-gray-800">1. 两种提领算法说明</h4>
+      <h4 class="font-semibold text-gray-800">1. 股票质押借贷（Buy, Borrow, Die / 买借死）策略模型</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>模式一（百分比提领）：当年提领额 = 当前总资产 × 提领比例 (%)</code></p>
-        <p><code>模式二（固定金额抗通胀）：当年提领额 = 基准首年提领额 × (1 + 年通胀率)^(经过年数)</code>（在退休期间每年自动按通胀率调整，确保消费能力恒定）</p>
+        <p><code>股票资产递推：A_t = A_{t-1} × (1 + R_q) + 定投额</code>（股票全额保留在场内享受市场收益，不做任何卖出割肉）</p>
+        <p><code>负债滚雪球：D_t = D_{t-1} × (1 + r_{loan_q}) + 当期借款额 W_t</code>（负债按质押年利率以季度复利累加）</p>
+        <p><code>净资产 NW_t = A_t - D_t | 质押率 LTV_t = D_t / A_t</code></p>
+        <p><code>爆仓清算条件：当 NW_t ≤ 0 (即 LTV_t ≥ 100%) 时</code>，触发强平抵扣负债，净资产归零并标记模拟终止/失败路径。</p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">2. Beta (β) 资产配置调校逻辑</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">2. 提领算法与抗通胀调整</h4>
       <div class="mt-1 ml-4 space-y-1">
-        <p><code>有效收益率 Rate_eff = 基准年化收益率 × Beta</code></p>
-        <p><code>有效波动率 Vol_eff = 年化波动率 σ × Beta</code>（例如：70%股票/30%债券组合可设置 Beta=0.7）</p>
+        <p><code>百分比模式：当期提领/借款额 = 当前股票总资产 × 提领比例 (%)</code></p>
+        <p><code>固定抗通胀模式：当期提领/借款额 = 基准首年额度 × (1 + 年通胀率)^(经过年数)</code></p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">3. 蒙特卡洛随机模拟与序列收益风险（Sequence of Returns Risk）</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">3. 蒙特卡洛随机模拟与序列收益爆仓风险</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>每季度随机收益率 R_q ~ Normal(μ_q, σ_q)</code>（使用 Box-Muller 正态随机采样）</p>
-        <p>蒙特卡洛模拟运行 1000~5000 次可能的人生市场路径，精准捕捉在“退休初期遭遇熊市”等极端序列收益风险下的账户生存概率。</p>
+        <p>在质押借贷模式下，若退休初期遭遇暴跌熊市，股票资产缩水而负债仍按利滚利增长，极易导致 LTV 飙升而爆仓破产。蒙特卡洛模拟能精确评估这一风险概率。</p>
       </div>
 
       <h4 class="font-semibold text-gray-800 mt-4">4. 内部收益率 (IRR) 计算原理</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>使净现值 NPV = ∑ [ CF_t / (1 + IRR_q)^t ] = 0</code></p>
-        <p>IRR 考虑了分批投入（追加本金）与分批取出（退休提领）的时间点和资金体量。比传统的 CAGR（复合年化回报）更能贴切衡量多笔不定期/不定额现金流下的真实真实资金年化回报率。</p>
+        <p>在质押模式中，现金流序列为：前期的追加定投本金（-），退休后质押借出的到手现金（+），以及最后一期清偿负债后的剩余净资产（+$NW_T$）。该 IRR 能精准测量整套质押提领策略的真实资金年化化利用率。</p>
       </div>
     </div>
   </div>
@@ -645,7 +728,7 @@
       return mean + z * std;
     }
 
-    // 内部收益率 (IRR) 计算函数 (基于 quarterly 现金流，使用牛顿迭代法 + 二分兜底)
+    // 内部收益率 (IRR) 计算函数 (基于 quarterly 现金流，牛顿迭代法 + 二分兜底)
     function calculateIRR(cashFlows) {
       if (!cashFlows || cashFlows.length < 2) return 0;
 
@@ -721,7 +804,9 @@
           stopInvestAssets: 500000,
           stopInvestPrincipal: 0,
 
-          // 退休条件与提领模式
+          // 退休条件与提领/质押模式
+          withdrawalMechanism: 'pledge', // 'sell' | 'pledge'
+          loanRate: 4.5, // 质押借贷年利率 (%)
           retirementAge: 50,
           annualExpense: 80000,
           expenseMultiple: 33,
@@ -765,12 +850,13 @@
             'bg-purple-100 text-purple-700', 
             'bg-green-100 text-green-700', 
             'bg-amber-100 text-amber-700'
-          ]
+          ],
+
+          chartInstance: null
         };
       },
       mounted() {
-        localStorage.removeItem('compound_calc_history');
-        this.history = [];
+        this.loadHistoryFromLocalStorage();
         this.calculate();
       },
       watch: {
@@ -786,16 +872,23 @@
           var mult = Number(this.expenseMultiple) || 0;
           return exp * mult;
         },
+        fireAchievedNode: function() {
+          var target = this.fireTargetAssets;
+          if (!target || target <= 0 || !this.results.length) return null;
+          return this.results.find(function(r) { return r.stockAssets >= target; }) || null;
+        },
         summary: function() {
           if (!this.results.length) return {};
           var last = this.results[this.results.length - 1];
           return {
             principal: last.principal,
-            futureValueAfterWithdraw: last.futureValueAfterWithdraw,
-            realValueAfterWithdraw: last.realValueAfterWithdraw,
+            stockAssets: last.stockAssets,
+            loanDebt: last.loanDebt,
+            netWorth: last.netWorth,
+            ltv: last.ltv,
+            realNetWorth: last.realNetWorth,
             totalWithdrawn: last.totalWithdrawn,
-            totalWealth: last.totalWealth,
-            realTotalWealth: last.realTotalWealth,
+            totalReturnRatio: last.totalReturnRatio,
             profit: last.profit,
             cagr: last.cagr,
             irr: last.irr || 0
@@ -811,9 +904,11 @@
             return {
               year: year,
               age: q4.age,
-              futureValue: q4.futureValue,
-              futureValueAfterWithdraw: q4.futureValueAfterWithdraw,
-              realValueAfterWithdraw: q4.realValueAfterWithdraw,
+              stockAssets: q4.stockAssets,
+              loanDebt: q4.loanDebt,
+              netWorth: q4.netWorth,
+              ltv: q4.ltv,
+              realNetWorth: q4.realNetWorth,
               p10Balance: q4.p10Balance || 0,
               p90Balance: q4.p90Balance || 0,
               principal: q4.principal,
@@ -821,6 +916,7 @@
               cagr: q4.cagr,
               irr: q4.irr || 0,
               withdrawAmount: withdrawAmount,
+              isLiquidated: q4.isLiquidated,
               quarters: quarters
             };
           });
@@ -843,6 +939,19 @@
           } else {
             return num.toFixed(2);
           }
+        },
+        loadHistoryFromLocalStorage: function() {
+          var saved = localStorage.getItem('compound_calc_history');
+          if (saved) {
+            try {
+              this.history = JSON.parse(saved);
+            } catch (e) {
+              this.history = [];
+            }
+          }
+        },
+        saveHistoryToLocalStorage: function() {
+          localStorage.setItem('compound_calc_history', JSON.stringify(this.history));
         },
         applyEtfPreset: function(etf) {
           this.annualRate = etf.rate;
@@ -870,11 +979,15 @@
           } else {
             this.runMonteCarlo();
           }
+
+          this.$nextTick(() => {
+            this.renderTrendChart();
+          });
         },
 
-        calcWithdrawAmount: function(currentAssets, yearsPassed) {
+        calcWithdrawAmount: function(currentStockAssets, yearsPassed) {
           if (this.withdrawMode === 'percent') {
-            return currentAssets * (this.withdrawRate / 100);
+            return currentStockAssets * (this.withdrawRate / 100);
           } else {
             var infRate = this.inflationRate / 100;
             return (this.fixedWithdrawAmount || 0) * Math.pow(1 + infRate, yearsPassed);
@@ -889,7 +1002,9 @@
           this.expandedYears = new Set();
 
           var effectiveRate = (this.annualRate / 100) * this.beta;
-          var baseQR = Math.pow(1 + effectiveRate, 0.25) - 1;
+          var stockQR = Math.pow(1 + effectiveRate, 0.25) - 1;
+          var loanQR = Math.pow(1 + (this.loanRate / 100), 0.25) - 1;
+
           var infRate = this.inflationRate / 100;
           var monthly = this.monthlyInvestment;
           var init = this.initialInvestment;
@@ -900,10 +1015,13 @@
           var targetRetireAssets = this.fireTargetAssets;
           var isRetired = false;
           var isInvestStopped = false;
+          var isLiquidated = false;
+
+          var stockVal = init;
+          var debtVal = 0;
           var cumP = init;
           var cumWithdrawn = 0;
 
-          // 现金流序列 (以季度为单位，t=0 为 -init)
           var runningCFs = [-init];
 
           for (var q = 1; q <= totalQ; q++) {
@@ -912,12 +1030,28 @@
             var age = cAge + Math.floor((q - 1) / 4);
             var yearsPassed = q / 4;
 
-            var prevNetBalance = q === 1 ? init : this.results[q - 2].futureValueAfterWithdraw;
-            var prevCumP = q === 1 ? init : this.results[q - 2].principal;
+            if (isLiquidated) {
+              // 若已爆仓强平
+              stockVal = 0;
+              debtVal = 0;
+              var netWorthLiq = 0;
+              var discountFactor = Math.pow(1 + infRate, yearsPassed);
+              this.results.push({
+                year: year, quarter: quarter, age: age,
+                principal: cumP, stockAssets: 0, loanDebt: 0,
+                netWorth: 0, ltv: 0, realNetWorth: 0,
+                withdrawAmount: 0, totalWithdrawn: cumWithdrawn,
+                profit: -cumP, totalReturnRatio: 0, cagr: -1, irr: -1,
+                investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
+                isInvestStopped: true, isRetired: true, isLiquidated: true
+              });
+              continue;
+            }
 
+            var prevNW = stockVal - debtVal;
             var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
-            var trigStopAssets = this.stopInvestAssets > 0 && prevNetBalance >= this.stopInvestAssets;
-            var trigStopPrincipal = this.stopInvestPrincipal > 0 && prevCumP >= this.stopInvestPrincipal;
+            var trigStopAssets = this.stopInvestAssets > 0 && prevNW >= this.stopInvestAssets;
+            var trigStopPrincipal = this.stopInvestPrincipal > 0 && cumP >= this.stopInvestPrincipal;
             var stopByRetirement = isRetired && !this.continueInvestAfterRetirement;
 
             if (stopByRetirement || trigStopAge || trigStopAssets || trigStopPrincipal) {
@@ -933,12 +1067,16 @@
               }
             }
 
-            cumP = prevCumP + qInvest;
-            var fvRaw = prevNetBalance * (1 + baseQR) + qInvest;
+            cumP += qInvest;
 
-            var potentialWithdraw = this.calcWithdrawAmount(fvRaw, yearsPassed);
+            // 1. 股票增长 & 负债计息
+            stockVal = stockVal * (1 + stockQR) + qInvest;
+            debtVal = debtVal * (1 + loanQR);
+
+            // 2. 退休判定与提领/借贷
+            var potentialWithdraw = this.calcWithdrawAmount(stockVal, yearsPassed);
             var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
-            var trigRetireAssets = targetRetireAssets > 0 && fvRaw >= targetRetireAssets;
+            var trigRetireAssets = targetRetireAssets > 0 && stockVal >= targetRetireAssets;
             var trigRetireWithdraw = this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw;
 
             if (!isRetired && (trigRetireAge || trigRetireAssets || trigRetireWithdraw)) {
@@ -948,40 +1086,59 @@
 
             var wAmount = 0;
             if (isRetired && quarter === 4) {
-              wAmount = this.calcWithdrawAmount(fvRaw, yearsPassed);
-              wAmount = Math.min(fvRaw, wAmount);
+              wAmount = this.calcWithdrawAmount(stockVal, yearsPassed);
+            }
+
+            if (this.withdrawalMechanism === 'sell') {
+              // 传统卖股模式：扣减股票资产
+              wAmount = Math.min(stockVal, wAmount);
+              stockVal -= wAmount;
+              debtVal = 0;
+            } else {
+              // 买借死质押模式：保留股票资产，增加借贷负债
+              debtVal += wAmount;
             }
             cumWithdrawn += wAmount;
 
-            var fvAfterWithdraw = Math.max(0, fvRaw - wAmount);
-            var discountFactor = Math.pow(1 + infRate, yearsPassed);
-            var realValueAfterWithdraw = fvAfterWithdraw / discountFactor;
+            // 3. 计算净资产与质押率
+            var netWorth = stockVal - debtVal;
+            var ltv = stockVal > 0 ? (debtVal / stockVal) * 100 : (debtVal > 0 ? 100 : 0);
 
-            var totalWealth = fvAfterWithdraw + cumWithdrawn;
-            var realTotalWealth = totalWealth / discountFactor;
-            var profit = totalWealth - cumP;
-            var ratio = cumP > 0 ? totalWealth / cumP : 0;
+            // 4. 爆仓/清算触发检查 (买借死爆仓条件: NW <= 0 或 LTV >= 100%)
+            if (netWorth <= 0 && (stockVal > 0 || debtVal > 0)) {
+              isLiquidated = true;
+              stockVal = 0;
+              debtVal = 0;
+              netWorth = 0;
+              ltv = 0;
+            }
+
+            var discountFactor = Math.pow(1 + infRate, yearsPassed);
+            var realNetWorth = netWorth / discountFactor;
+
+            var profit = (netWorth + cumWithdrawn) - cumP;
+            var totalReturnRatio = cumP > 0 ? (netWorth + cumWithdrawn) / cumP : 0;
             var cagr = 0;
             var fullY = Math.floor(q / 4);
-            if (cumP > 0 && fullY > 0) cagr = Math.pow(ratio, 1 / fullY) - 1;
+            if (cumP > 0 && fullY > 0 && totalReturnRatio > 0) {
+              cagr = Math.pow(totalReturnRatio, 1 / fullY) - 1;
+            }
 
-            // 计算当前季度的 IRR
+            // 计算该季度的精准 IRR
             var qNetCF = -qInvest + wAmount;
             var currentCFs = runningCFs.slice();
-            currentCFs.push(qNetCF + fvAfterWithdraw);
+            currentCFs.push(qNetCF + netWorth);
             var currentIrr = calculateIRR(currentCFs);
             runningCFs.push(qNetCF);
 
             this.results.push({
               year: year, quarter: quarter, age: age,
-              principal: cumP, futureValue: fvRaw, 
-              futureValueAfterWithdraw: fvAfterWithdraw,
-              realValueAfterWithdraw: realValueAfterWithdraw,
+              principal: cumP, stockAssets: stockVal, loanDebt: debtVal,
+              netWorth: netWorth, ltv: ltv, realNetWorth: realNetWorth,
               withdrawAmount: wAmount, totalWithdrawn: cumWithdrawn,
-              totalWealth: totalWealth, realTotalWealth: realTotalWealth,
-              profit: profit, totalReturnRatio: ratio, cagr: cagr, irr: currentIrr,
+              profit: profit, totalReturnRatio: totalReturnRatio, cagr: cagr, irr: currentIrr,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
-              isInvestStopped: isInvestStopped, isRetired: isRetired
+              isInvestStopped: isInvestStopped, isRetired: isRetired, isLiquidated: isLiquidated
             });
           }
 
@@ -1003,6 +1160,7 @@
           
           var qMean = Math.pow(1 + effectiveRate, 0.25) - 1;
           var qStd = effectiveVol / Math.sqrt(4);
+          var loanQR = Math.pow(1 + (this.loanRate / 100), 0.25) - 1;
 
           var infRate = this.inflationRate / 100;
           var monthly = this.monthlyInvestment;
@@ -1012,19 +1170,26 @@
 
           var targetRetireAssets = this.fireTargetAssets;
 
-          var simMatrix = new Array(totalQ);
+          var simNetWorth = new Array(totalQ);
+          var simStockAssets = new Array(totalQ);
+          var simLoanDebt = new Array(totalQ);
           var simPrincipals = new Array(totalQ);
+
           for (var t = 0; t < totalQ; t++) {
-            simMatrix[t] = new Float64Array(simCount);
+            simNetWorth[t] = new Float64Array(simCount);
+            simStockAssets[t] = new Float64Array(simCount);
+            simLoanDebt[t] = new Float64Array(simCount);
             simPrincipals[t] = new Float64Array(simCount);
           }
 
           var successSims = 0;
 
           for (var s = 0; s < simCount; s++) {
-            var curBalance = init;
+            var curStock = init;
+            var curDebt = 0;
             var isRetired = false;
             var isInvestStopped = false;
+            var isLiquidated = false;
             var cumP = init;
 
             for (var q = 1; q <= totalQ; q++) {
@@ -1032,9 +1197,19 @@
               var quarter = ((q - 1) % 4) + 1;
               var yearsPassed = q / 4;
 
+              if (isLiquidated) {
+                simStockAssets[q - 1][s] = 0;
+                simLoanDebt[q - 1][s] = 0;
+                simNetWorth[q - 1][s] = 0;
+                simPrincipals[q - 1][s] = cumP;
+                continue;
+              }
+
+              var curNW = curStock - curDebt;
               var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
-              var trigStopAssets = this.stopInvestAssets > 0 && curBalance >= this.stopInvestAssets;
+              var trigStopAssets = this.stopInvestAssets > 0 && curNW >= this.stopInvestAssets;
               var trigStopPrincipal = this.stopInvestPrincipal > 0 && cumP >= this.stopInvestPrincipal;
+
               if ((isRetired && !this.continueInvestAfterRetirement) || trigStopAge || trigStopAssets || trigStopPrincipal) {
                 isInvestStopped = true;
               }
@@ -1048,30 +1223,44 @@
               cumP += qInvest;
 
               var randomQReturn = randNormal(qMean, qStd);
-              curBalance = curBalance * (1 + randomQReturn) + qInvest;
+              curStock = curStock * (1 + randomQReturn) + qInvest;
+              curDebt = curDebt * (1 + loanQR);
 
-              var potentialWithdraw = this.calcWithdrawAmount(curBalance, yearsPassed);
+              var potentialWithdraw = this.calcWithdrawAmount(curStock, yearsPassed);
               if (!isRetired && ((this.retirementAge > 0 && age >= this.retirementAge) || 
-                  (targetRetireAssets > 0 && curBalance >= targetRetireAssets) || 
+                  (targetRetireAssets > 0 && curStock >= targetRetireAssets) || 
                   (this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw))) {
                 isRetired = true;
                 if (!this.continueInvestAfterRetirement) isInvestStopped = true;
               }
 
               if (isRetired && quarter === 4) {
-                var wAmt = this.calcWithdrawAmount(curBalance, yearsPassed);
-                curBalance -= wAmt;
+                var wAmt = this.calcWithdrawAmount(curStock, yearsPassed);
+                if (this.withdrawalMechanism === 'sell') {
+                  wAmt = Math.min(curStock, wAmt);
+                  curStock -= wAmt;
+                } else {
+                  curDebt += wAmt;
+                }
               }
 
-              if (curBalance < 0) curBalance = 0;
-              simMatrix[q - 1][s] = curBalance;
+              curNW = curStock - curDebt;
+              if (curNW <= 0 && (curStock > 0 || curDebt > 0)) {
+                isLiquidated = true;
+                curStock = 0;
+                curDebt = 0;
+                curNW = 0;
+              }
+
+              simStockAssets[q - 1][s] = curStock;
+              simLoanDebt[q - 1][s] = curDebt;
+              simNetWorth[q - 1][s] = curNW;
               simPrincipals[q - 1][s] = cumP;
             }
 
-            if (curBalance > 0) successSims++;
+            if (!isLiquidated && curNW > 0) successSims++;
           }
 
-          // --- 基于 P50 中位数采样路径计算渲染表格及报告所需数据 ---
           var p50IsRetired = false;
           var p50CumWithdrawn = 0;
           var runningCFsP50 = [-init];
@@ -1083,93 +1272,218 @@
 
             var indices = new Int32Array(simCount);
             for (var k = 0; k < simCount; k++) indices[k] = k;
-            var qBalances = simMatrix[q - 1];
-            indices.sort(function(a, b) { return qBalances[a] - qBalances[b]; });
+            var qNW = simNetWorth[q - 1];
+            indices.sort(function(a, b) { return qNW[a] - qNW[b]; });
 
             var idx10 = indices[Math.floor(simCount * 0.10)];
             var idx50 = indices[Math.floor(simCount * 0.50)];
             var idx90 = indices[Math.floor(simCount * 0.90)];
 
-            var p10 = qBalances[idx10];
-            var p50 = qBalances[idx50];
-            var p90 = qBalances[idx90];
+            var p10NW = qNW[idx10];
+            var p50NW = qNW[idx50];
+            var p90NW = qNW[idx90];
+
+            var p50Stock = simStockAssets[q - 1][idx50];
+            var p50Debt = simLoanDebt[q - 1][idx50];
             var estPrincipal = simPrincipals[q - 1][idx50];
 
             var yearsPassed = q / 4;
-            var potentialWithdrawP50 = this.calcWithdrawAmount(p50, yearsPassed);
+            var potentialWithdrawP50 = this.calcWithdrawAmount(p50Stock, yearsPassed);
 
-            // 判定 P50 路径下的退休状态
             if (!p50IsRetired && ((this.retirementAge > 0 && age >= this.retirementAge) || 
-                (targetRetireAssets > 0 && p50 >= targetRetireAssets) || 
+                (targetRetireAssets > 0 && p50Stock >= targetRetireAssets) || 
                 (this.retireWithdraw > 0 && potentialWithdrawP50 >= this.retireWithdraw))) {
               p50IsRetired = true;
             }
 
             var wAmount = 0;
             if (p50IsRetired && quarter === 4) {
-              wAmount = this.calcWithdrawAmount(p50, yearsPassed);
-              wAmount = Math.min(p50, wAmount);
+              wAmount = this.calcWithdrawAmount(p50Stock, yearsPassed);
+              if (this.withdrawalMechanism === 'sell') {
+                wAmount = Math.min(p50Stock, wAmount);
+              }
             }
             p50CumWithdrawn += wAmount;
 
+            var ltvP50 = p50Stock > 0 ? (p50Debt / p50Stock) * 100 : (p50Debt > 0 ? 100 : 0);
             var discountFactor = Math.pow(1 + infRate, yearsPassed);
-            var realP50 = p50 / discountFactor;
+            var realP50NW = p50NW / discountFactor;
 
-            var totalWealthP50 = p50 + p50CumWithdrawn;
-            var realTotalWealthP50 = totalWealthP50 / discountFactor;
-
-            var ratio = estPrincipal > 0 ? totalWealthP50 / estPrincipal : 0;
+            var totalReturnRatio = estPrincipal > 0 ? (p50NW + p50CumWithdrawn) / estPrincipal : 0;
             var fullY = Math.floor(q / 4);
-            var cagr = (estPrincipal > 0 && fullY > 0) ? (Math.pow(ratio, 1 / fullY) - 1) : 0;
+            var cagr = (estPrincipal > 0 && fullY > 0 && totalReturnRatio > 0) ? (Math.pow(totalReturnRatio, 1 / fullY) - 1) : 0;
 
-            // P50 路径下的 IRR 计算
             var prevEstP = q === 1 ? init : simPrincipals[q - 2][idx50];
             var qInvestEst = Math.max(0, estPrincipal - prevEstP);
             var qNetCFP50 = -qInvestEst + wAmount;
             var currentCFsP50 = runningCFsP50.slice();
-            currentCFsP50.push(qNetCFP50 + p50);
+            currentCFsP50.push(qNetCFP50 + p50NW);
             var irrP50 = calculateIRR(currentCFsP50);
             runningCFsP50.push(qNetCFP50);
 
             this.results.push({
               year: year, quarter: quarter, age: age,
-              principal: estPrincipal, futureValue: p50,
-              futureValueAfterWithdraw: p50, realValueAfterWithdraw: realP50,
-              p10Balance: p10, p50Balance: p50, p90Balance: p90,
-              withdrawAmount: wAmount,
-              totalWithdrawn: p50CumWithdrawn,
-              totalWealth: totalWealthP50, realTotalWealth: realTotalWealthP50,
-              profit: totalWealthP50 - estPrincipal, totalReturnRatio: ratio, cagr: cagr, irr: irrP50,
+              principal: estPrincipal, stockAssets: p50Stock, loanDebt: p50Debt,
+              netWorth: p50NW, ltv: ltvP50, realNetWorth: realP50NW,
+              p10Balance: p10NW, p50Balance: p50NW, p90Balance: p90NW,
+              withdrawAmount: wAmount, totalWithdrawn: p50CumWithdrawn,
+              profit: (p50NW + p50CumWithdrawn) - estPrincipal,
+              totalReturnRatio: totalReturnRatio, cagr: cagr, irr: irrP50,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
-              isInvestStopped: false,
-              isRetired: p50IsRetired
+              isInvestStopped: false, isRetired: p50IsRetired, isLiquidated: p50NW <= 0 && (p50Stock > 0 || p50Debt > 0)
             });
           }
 
-          var finalBalances = Array.from(simMatrix[totalQ - 1]).sort(function(a,b){return a-b;});
-          var finalP10 = finalBalances[Math.floor(simCount * 0.10)];
-          var finalP50 = finalBalances[Math.floor(simCount * 0.50)];
-          var finalP90 = finalBalances[Math.floor(simCount * 0.90)];
-
+          var finalNWs = Array.from(simNetWorth[totalQ - 1]).sort(function(a,b){return a-b;});
           this.mcSummary = {
             successRate: (successSims / simCount) * 100,
-            p10: finalP10,
-            p50: finalP50,
-            p90: finalP90
+            p10: finalNWs[Math.floor(simCount * 0.10)],
+            p50: finalNWs[Math.floor(simCount * 0.50)],
+            p90: finalNWs[Math.floor(simCount * 0.90)]
           };
 
           this.generateReports();
           this.saveOrUpdatePlan();
         },
 
+        renderTrendChart: function() {
+          var canvas = document.getElementById('trendChart');
+          if (!canvas) return;
+          var ctx = canvas.getContext('2d');
+
+          if (this.chartInstance) {
+            this.chartInstance.destroy();
+          }
+
+          var labels = this.yearlyData.map(function(d) { return d.year + ' (' + d.age + '岁)'; });
+          var datasets = [];
+
+          if (this.calcMode === 'deterministic') {
+            datasets = [
+              {
+                label: '股票总资产 (A)',
+                data: this.yearlyData.map(function(d) { return d.stockAssets; }),
+                borderColor: '#2563EB',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                borderWidth: 2.5,
+                fill: false
+              },
+              {
+                label: '净资产 (NW = A - D)',
+                data: this.yearlyData.map(function(d) { return d.netWorth; }),
+                borderColor: '#059669',
+                backgroundColor: 'rgba(5, 150, 105, 0.12)',
+                borderWidth: 3,
+                fill: true
+              }
+            ];
+
+            if (this.withdrawalMechanism === 'pledge') {
+              datasets.push({
+                label: '质押总负债 (D)',
+                data: this.yearlyData.map(function(d) { return d.loanDebt; }),
+                borderColor: '#D97706',
+                borderDash: [4, 4],
+                borderWidth: 2,
+                fill: false
+              });
+            }
+
+            datasets.push({
+              label: '累计投入本金',
+              data: this.yearlyData.map(function(d) { return d.principal; }),
+              borderColor: '#9CA3AF',
+              borderDash: [2, 2],
+              borderWidth: 1.5,
+              fill: false
+            });
+          } else {
+            datasets = [
+              {
+                label: '乐观分位数净资产 (P90)',
+                data: this.yearlyData.map(function(d) { return d.p90Balance; }),
+                borderColor: '#10B981',
+                borderWidth: 2,
+                fill: false
+              },
+              {
+                label: '中位数净资产 (P50)',
+                data: this.yearlyData.map(function(d) { return d.netWorth; }),
+                borderColor: '#8B5CF6',
+                backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                borderWidth: 3,
+                fill: '-1'
+              },
+              {
+                label: '悲观分位数净资产 (P10)',
+                data: this.yearlyData.map(function(d) { return d.p10Balance; }),
+                borderColor: '#EF4444',
+                borderWidth: 2,
+                fill: false
+              },
+              {
+                label: '累计本金',
+                data: this.yearlyData.map(function(d) { return d.principal; }),
+                borderColor: '#6B7280',
+                borderDash: [4, 4],
+                borderWidth: 1.5,
+                fill: false
+              }
+            ];
+          }
+
+          this.chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      var val = context.raw || 0;
+                      return context.dataset.label + ': ￥' + val.toLocaleString(undefined, { maximumFractionDigits: 0 });
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: { grid: { display: false } },
+                y: {
+                  ticks: {
+                    callback: function(value) {
+                      if (Math.abs(value) >= 100000000) return (value / 100000000).toFixed(1) + '亿';
+                      if (Math.abs(value) >= 10000) return (value / 10000).toFixed(0) + '万';
+                      return value;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        },
+
         generateReports: function() {
           var returnBPs = [2, 5, 10, 20, 50, 100];
           var brokenR = {};
-          var stopReportAdded = false, retireReportAdded = false, rc = 0;
+          var stopReportAdded = false, retireReportAdded = false, liqReportAdded = false, rc = 0;
           var self = this;
 
           this.results.forEach(function(item) {
             var id = 'row-' + item.year + '-' + item.quarter + '-' + item.index;
+
+            if (item.isLiquidated && !liqReportAdded) {
+              liqReportAdded = true;
+              self.reports.push({
+                id: id,
+                isAlert: true,
+                text: '🚨 爆仓警告：第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，质押率 LTV 达到 100%（资不抵债）！资产被强制平仓抵扣负债，净资产归零，策略失效。',
+                reportId: 'report-' + id + '-' + rc++
+              });
+            }
 
             if (item.isInvestStopped && !stopReportAdded) {
               stopReportAdded = true;
@@ -1182,12 +1496,12 @@
 
             if (item.isRetired && !retireReportAdded) {
               retireReportAdded = true;
-              var modeDesc = self.withdrawMode === 'fixedInflation' 
-                ? ('固定抗通胀提领模式（基准首年 ' + self.fmtMoney(self.fixedWithdrawAmount) + ' 元/年）')
-                : ('资产百分比提领模式（每年 ' + self.withdrawRate + '%）');
+              var modeDesc = self.withdrawalMechanism === 'pledge'
+                ? ('股票质押借贷（买借死）模式，借贷利率 ' + self.loanRate + '%')
+                : '传统卖出股票模式';
               self.reports.push({
                 id: id,
-                text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件，正式开启退休提领模式！执行策略：' + modeDesc,
+                text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件，正式开启提领！执行策略：' + modeDesc,
                 reportId: 'report-' + id + '-' + rc++
               });
             }
@@ -1198,7 +1512,7 @@
                 brokenR[bp] = true;
                 self.reports.push({
                   id: id,
-                  text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，真实总收益倍数突破 ' + bp + ' 倍！名义资产余额 ' + self.fmtMoney(item.futureValueAfterWithdraw) + '（IRR: ' + (item.irr * 100).toFixed(2) + '%）。',
+                  text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，总收益倍数突破 ' + bp + ' 倍！期末净资产 ' + self.fmtMoney(item.netWorth) + '（IRR: ' + (item.irr * 100).toFixed(2) + '%）。',
                   reportId: 'report-' + id + '-' + rc++
                 });
                 break;
@@ -1211,10 +1525,13 @@
           var self = this;
           var now = new Date();
           var timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + (now.getMinutes()<10?'0':'')+now.getMinutes();
-          var pName = this.planName.trim() || ('方案 ' + (this.history.length + 1) + ' (' + (this.calcMode === 'monteCarlo' ? '🎲蒙特卡洛 ' : '') + this.annualRate + '%/β=' + this.beta + ')');
+          var modeLabel = this.withdrawalMechanism === 'pledge' ? '🏦质押借贷' : '💰卖股';
+          var pName = this.planName.trim() || ('方案 ' + (this.history.length + 1) + ' (' + modeLabel + ' ' + this.annualRate + '%)');
 
           var inputParams = {
             calcMode: this.calcMode,
+            withdrawalMechanism: this.withdrawalMechanism,
+            loanRate: this.loanRate,
             initialInvestment: this.initialInvestment,
             monthlyInvestment: this.monthlyInvestment,
             annualRate: this.annualRate,
@@ -1266,6 +1583,8 @@
               this.selectedPlanIds.push(newId);
             }
           }
+
+          this.saveHistoryToLocalStorage();
         },
 
         saveAsNewPlan: function() {
@@ -1281,12 +1600,14 @@
           this.history = this.history.filter(function(h) { return h.id !== id; });
           this.selectedPlanIds = this.selectedPlanIds.filter(function(i) { return i !== id; });
           if (this.editingPlanId === id) this.editingPlanId = null;
+          this.saveHistoryToLocalStorage();
         },
         clearAllHistory: function() {
           if (confirm('确定清空所有方案记录吗？')) {
             this.history = [];
             this.selectedPlanIds = [];
             this.editingPlanId = null;
+            this.saveHistoryToLocalStorage();
           }
         },
         loadPlan: function(plan) {
@@ -1294,6 +1615,8 @@
           this.editingPlanId = plan.id;
           this.planName = plan.name;
           this.calcMode = inp.calcMode || 'deterministic';
+          this.withdrawalMechanism = inp.withdrawalMechanism || 'pledge';
+          this.loanRate = inp.loanRate !== undefined ? inp.loanRate : 4.5;
           this.initialInvestment = inp.initialInvestment || 0;
           this.monthlyInvestment = inp.monthlyInvestment || 0;
           this.annualRate = inp.annualRate || 0;
@@ -1324,12 +1647,6 @@
           this.calculate();
         },
 
-        isDiff: function(field) {
-          if (this.selectedPlans.length < 2) return false;
-          var firstVal = this.selectedPlans[0].inputs[field];
-          return this.selectedPlans.some(function(p) { return p.inputs[field] !== firstVal; });
-        },
-
         isWinner: function(plan, metric) {
           if (this.selectedPlans.length < 2) return false;
           var maxVal = Math.max.apply(Math, this.selectedPlans.map(function(p) { return p.summary[metric] || 0; }));
@@ -1358,21 +1675,34 @@
 
         exportCSV: function() {
           if (!this.results.length) return;
-          var headers = ['年份', '季度', '年龄', '累计本金（元）', '期末账户余额-名义（元）', '期末余额-折算今日购买力（元）', '当年提领金额（元）', '收益倍数', '综合年化 CAGR（%）', '内部收益率 IRR（%）'];
+          var isPledge = this.withdrawalMechanism === 'pledge';
+          var headers = ['年份', '季度', '年龄', '累计投入本金（元）', '股票总资产A（元）'];
+          if (isPledge) headers.push('质押负债D（元）');
+          headers.push('净资产NW（元）');
+          if (isPledge) headers.push('质押率LTV（%）');
+          headers.push('当年提领/借款（元）', '净资产今日购买力（元）', '收益倍数', 'CAGR（%）', 'IRR（%）');
+
           var rows = this.results.map(function(item) {
-            return [
+            var row = [
               item.year, 
               'Q' + item.quarter, 
               item.age, 
               item.principal.toFixed(2),
-              item.futureValueAfterWithdraw.toFixed(2),
-              item.realValueAfterWithdraw.toFixed(2),
+              item.stockAssets.toFixed(2)
+            ];
+            if (isPledge) row.push(item.loanDebt.toFixed(2));
+            row.push(item.netWorth.toFixed(2));
+            if (isPledge) row.push(item.ltv.toFixed(2) + '%');
+            row.push(
               item.withdrawAmount.toFixed(2),
+              item.realNetWorth.toFixed(2),
               item.totalReturnRatio.toFixed(2), 
               (item.cagr * 100).toFixed(2),
               (item.irr * 100).toFixed(2)
-            ];
+            );
+            return row;
           });
+
           function safe(f) {
             var s = String(f);
             return (s.indexOf(',') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('"') >= 0)
@@ -1384,7 +1714,7 @@
           var url = URL.createObjectURL(blob);
           var a = document.createElement('a');
           a.href = url;
-          a.download = '复利定投计算结果_' + this.startYear + '_' + this.years + '年.csv';
+          a.download = '复利与买借死质押推演_' + this.startYear + '_' + this.years + '年.csv';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
