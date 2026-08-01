@@ -221,20 +221,20 @@
           </div>
         </div>
 
-        <!-- 分组 4：退休与提领策略 -->
+        <!-- 分组 4：退休与提领策略（已优化提领方式拆分） -->
         <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-100">
           <h3 class="text-sm font-bold text-purple-800 mb-1 flex items-center gap-1.5">
-            <span>🏖️</span> 4. 退休与提领策略（满足任意条件即开启退休提领，填 0 代表不限制）
+            <span>🏖️</span> 4. 退休与提领策略
           </h3>
-          <p class="text-xs text-purple-600 mb-3">通过【年开销 × 目标倍数】复合计算 FIRE 退休目标资产。进入退休后每年第四季度执行提领。</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <p class="text-xs text-purple-600 mb-3">满足退休条件时开启每年第四季度的退休提领。支持【按资产百分比】与【固定金额（随通胀递增）】两种提领模式。</p>
+
+          <!-- 触发退休条件设置 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 pb-4 border-b border-purple-100">
             <div>
               <label class="block text-xs font-semibold text-gray-600">退休年龄（岁）</label>
               <input type="number" v-model.number="retirementAge" min="0" step="1"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
-
-            <!-- FIRE 复合参数输入项：开销 & 倍数 -->
             <div>
               <label class="block text-xs font-semibold text-gray-600">预估退休年开销（元）</label>
               <input type="number" v-model.number="annualExpense" min="0" step="1000"
@@ -245,31 +245,50 @@
               <input type="number" v-model.number="expenseMultiple" min="1" step="0.5"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="默认 33 倍" />
             </div>
-
-            <!-- 复合参数实时联动计算展示卡片 -->
-            <div class="lg:col-span-1">
+            <div>
               <label class="block text-xs font-bold text-purple-900">🎯 FIRE 目标退休总资产</label>
               <div class="w-full px-3 py-2 mt-1 bg-purple-100/80 border border-purple-200 rounded-lg text-purple-900 font-extrabold text-sm flex items-center justify-between min-h-[38px]">
                 <span>{{ fireTargetAssets > 0 ? fmtMoney(fireTargetAssets) : '未设置' }}</span>
                 <span class="text-xs text-purple-600 font-normal" v-if="fireTargetAssets > 0">(联动算出)</span>
               </div>
             </div>
-
             <div>
               <label class="block text-xs font-semibold text-gray-600">年度可提领额达到多少触发退休（元）</label>
               <input type="number" v-model.number="retireWithdraw" min="0" step="1000"
                 class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" placeholder="0 表示不限制" />
             </div>
+          </div>
+
+          <!-- 提领规则细节设置 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-gray-600">每年提领率（%，每年Q4执行）</label>
-              <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
-                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm" />
+              <label class="block text-xs font-semibold text-gray-700">退休提领模式</label>
+              <select v-model="withdrawMode" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-purple-300 rounded-lg focus:border-purple-500 font-semibold outline-none text-sm text-purple-900">
+                <option value="percent">1. 按总资产的百分比提领 (%)</option>
+                <option value="fixedInflation">2. 固定金额与通货膨胀率挂钩 (抗通胀递增)</option>
+              </select>
             </div>
 
-            <div class="lg:col-span-6 flex items-center pt-2">
+            <!-- 模式 1 对应的参数：百分比 -->
+            <div v-if="withdrawMode === 'percent'">
+              <label class="block text-xs font-semibold text-gray-600">每年提领总资产比例（%）</label>
+              <input type="number" v-model.number="withdrawRate" min="0" max="100" step="0.01" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="经典如 4%" />
+            </div>
+
+            <!-- 模式 2 对应的参数：固定基础金额 -->
+            <div v-if="withdrawMode === 'fixedInflation'">
+              <label class="block text-xs font-semibold text-gray-600">基准首年提领额（元/年，按今日购买力计）</label>
+              <input type="number" v-model.number="fixedWithdrawAmount" min="0" step="1000" required
+                class="w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none text-sm font-bold text-purple-700" placeholder="例如：80000" />
+              <p class="text-min text-purple-600 mt-1">未来实际提领额将按预估年通胀率（{{ inflationRate }}%）自动按年复利上调，保持实际购买力。</p>
+            </div>
+
+            <div class="flex items-center pt-2">
               <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
                 <input type="checkbox" v-model="continueInvestAfterRetirement" class="rounded text-blue-500" />
-                退休后依然继续定投（若取消，达到退休条件时将自动停止定投）
+                退休后依然继续定投（若取消，达到退休条件时将自动停止追加本金）
               </label>
             </div>
           </div>
@@ -321,7 +340,7 @@
       </div>
     </div>
 
-    <!-- 摘要卡片 (中位数 / 确定性路径) -->
+    <!-- 摘要卡片 -->
     <div v-if="results.length" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
       <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
         <div class="text-xs text-gray-500">累计本金</div>
@@ -401,7 +420,7 @@
               <td v-if="calcMode === 'monteCarlo'" class="px-3 py-2 text-right font-semibold text-red-500 bg-purple-50">{{ fmtMoney(yearData.p10Balance) }}</td>
               <td class="px-3 py-2 text-right font-bold text-blue-600">{{ fmtMoney(yearData.futureValueAfterWithdraw) }}</td>
               <td v-if="calcMode === 'monteCarlo'" class="px-3 py-2 text-right font-semibold text-green-600 bg-indigo-50">{{ fmtMoney(yearData.p90Balance) }}</td>
-              <td class="px-3 py-2 text-right text-purple-600">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '-' }}</td>
+              <td class="px-3 py-2 text-right text-purple-600 font-semibold">{{ yearData.withdrawAmount > 0 ? fmtMoney(yearData.withdrawAmount) : '-' }}</td>
               <td class="px-3 py-2 text-right font-bold text-red-600 bg-red-50">{{ fmtMoney(yearData.realValueAfterWithdraw) }}</td>
               <td class="px-3 py-2 text-center">{{ yearData.totalReturnRatio.toFixed(2) }}倍</td>
               <td class="px-3 py-2 text-center">{{ (yearData.cagr * 100).toFixed(2) }}%</td>
@@ -418,7 +437,7 @@
                 <td v-if="calcMode === 'monteCarlo'" class="px-3 py-1.5 text-right text-red-400 bg-purple-50">{{ fmtMoney(q.p10Balance) }}</td>
                 <td class="px-3 py-1.5 text-right font-semibold text-gray-700">{{ fmtMoney(q.futureValueAfterWithdraw) }}</td>
                 <td v-if="calcMode === 'monteCarlo'" class="px-3 py-1.5 text-right text-green-500 bg-indigo-50">{{ fmtMoney(q.p90Balance) }}</td>
-                <td class="px-3 py-1.5 text-right text-purple-600">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '-' }}</td>
+                <td class="px-3 py-1.5 text-right text-purple-600 font-semibold">{{ (q.withdrawAmount > 0 && q.quarter === 4) ? fmtMoney(q.withdrawAmount) : '-' }}</td>
                 <td class="px-3 py-1.5 text-right font-semibold text-red-500 bg-red-50">{{ fmtMoney(q.realValueAfterWithdraw) }}</td>
                 <td class="px-3 py-1.5 text-center text-gray-600">{{ q.totalReturnRatio.toFixed(2) }}倍</td>
                 <td class="px-3 py-1.5 text-center text-gray-600">{{ (q.cagr * 100).toFixed(2) }}%</td>
@@ -466,8 +485,10 @@
                 <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('monthlyInvestment')}">￥{{ plan.inputs.monthlyInvestment }}</span>
               </div>
               <div class="flex justify-between">
-                <span>基准年化 / Beta:</span>
-                <span class="font-semibold" :class="{'text-blue-600 font-bold': isDiff('annualRate') || isDiff('beta')}">{{ plan.inputs.annualRate }}% / β={{ plan.inputs.beta }}</span>
+                <span>提领策略:</span>
+                <span class="font-semibold text-purple-700" :class="{'text-blue-600 font-bold': isDiff('withdrawMode') || isDiff('withdrawRate') || isDiff('fixedWithdrawAmount')}">
+                  {{ plan.inputs.withdrawMode === 'fixedInflation' ? ('￥' + fmtMoney(plan.inputs.fixedWithdrawAmount) + '/年(抗通胀)') : (plan.inputs.withdrawRate + '% 比例提领') }}
+                </span>
               </div>
               <div class="flex justify-between" v-if="plan.inputs.calcMode === 'monteCarlo'">
                 <span>提领成功率:</span>
@@ -571,24 +592,24 @@
 
     <!-- 公式说明 -->
     <div class="bg-white rounded-lg shadow p-6 mt-8 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算模型、Beta调校与蒙特卡洛原理说明</h3>
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算模型、提领策略与蒙特卡洛原理说明</h3>
 
-      <h4 class="font-semibold text-gray-800">1. Beta (β) 资产配置调校逻辑</h4>
+      <h4 class="font-semibold text-gray-800">1. 两种提领算法说明</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>模式一（百分比提领）：当年提领额 = 当前总资产 × 提领比例 (%)</code></p>
+        <p><code>模式二（固定金额抗通胀）：当年提领额 = 基准首年提领额 × (1 + 年通胀率)^(经过年数)</code>（在退休期间每年自动按通胀率调整，确保消费能力恒定）</p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">2. Beta (β) 资产配置调校逻辑</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>有效收益率 Rate_eff = 基准年化收益率 × Beta</code></p>
         <p><code>有效波动率 Vol_eff = 年化波动率 σ × Beta</code>（例如：70%股票/30%债券组合可设置 Beta=0.7）</p>
       </div>
 
-      <h4 class="font-semibold text-gray-800 mt-4">2. 蒙特卡洛随机模拟与序列收益风险（Sequence of Returns Risk）</h4>
+      <h4 class="font-semibold text-gray-800 mt-4">3. 蒙特卡洛随机模拟与序列收益风险（Sequence of Returns Risk）</h4>
       <div class="mt-1 ml-4 space-y-1">
         <p><code>每季度随机收益率 R_q ~ Normal(μ_q, σ_q)</code>（使用 Box-Muller 正态随机采样）</p>
         <p>蒙特卡洛模拟运行 1000~5000 次可能的人生市场路径，精准捕捉在“退休初期遭遇熊市”等极端序列收益风险下的账户生存概率。</p>
-      </div>
-
-      <h4 class="font-semibold text-gray-800 mt-4">3. 通货膨胀与实际购买力折算</h4>
-      <div class="mt-1 ml-4 space-y-1">
-        <p><code>折算因素 (Discount Factor) = (1 + 年通胀率)^(经过年数)</code></p>
-        <p><code>期末余额 (今日购买力) = 期末账户余额 ÷ 折算因素</code></p>
       </div>
     </div>
   </div>
@@ -629,13 +650,15 @@
           stopInvestAssets: 500000,
           stopInvestPrincipal: 0,
 
-          // 退休条件
+          // 退休条件与提领模式
           retirementAge: 50,
           annualExpense: 80000,
           expenseMultiple: 33,
           retireWithdraw: 0,
 
-          withdrawRate: 2,
+          withdrawMode: 'percent', // 'percent' | 'fixedInflation'
+          withdrawRate: 4,          // 按资产百分比提领率
+          fixedWithdrawAmount: 80000, // 固定提领金额（抗通胀）
           investmentMode: 'quarterly',
           continueInvestAfterRetirement: false,
 
@@ -679,8 +702,15 @@
         this.history = [];
         this.calculate();
       },
+      watch: {
+        // 当修改预估退休开销时，自动同步设置固定提领额默认值，方便联动
+        annualExpense: function(val) {
+          if (val > 0 && (!this.fixedWithdrawAmount || this.fixedWithdrawAmount === 80000)) {
+            this.fixedWithdrawAmount = val;
+          }
+        }
+      },
       computed: {
-        // 计算属性：FIRE 目标退休总资产 = 年开销 × 目标倍数
         fireTargetAssets: function() {
           var exp = Number(this.annualExpense) || 0;
           var mult = Number(this.expenseMultiple) || 0;
@@ -758,8 +788,8 @@
         calculate: function() {
           if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 ||
               this.inflationRate < 0 || this.beta < 0 || this.years <= 0 || this.currentAge < 0 ||
-              this.startYear < 1900 || this.withdrawRate < 0 || this.withdrawRate > 100) {
-            alert('请输入合理的数值，且提领率在 0-100% 之间！');
+              this.startYear < 1900) {
+            alert('请输入合理的数值！');
             return;
           }
 
@@ -770,7 +800,18 @@
           }
         },
 
-        // 确定性推演计算逻辑
+        // 计算单期提领额 (支持两种模式)
+        calcWithdrawAmount: function(currentAssets, yearsPassed) {
+          if (this.withdrawMode === 'percent') {
+            return currentAssets * (this.withdrawRate / 100);
+          } else {
+            var infRate = this.inflationRate / 100;
+            // 固定金额随通胀逐年递增
+            return (this.fixedWithdrawAmount || 0) * Math.pow(1 + infRate, yearsPassed);
+          }
+        },
+
+        // 1. 确定性推演计算逻辑
         runDeterministic: function() {
           this.results = [];
           this.reports = [];
@@ -786,9 +827,7 @@
           var totalQ = this.years * 4;
           var cAge = this.currentAge;
           var sYear = this.startYear;
-          var wRate = this.withdrawRate / 100;
 
-          // 绑定复合目标资产 (年开销 × 目标倍数)
           var targetRetireAssets = this.fireTargetAssets;
           var isRetired = false;
           var isInvestStopped = false;
@@ -799,11 +838,12 @@
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
             var age = cAge + Math.floor((q - 1) / 4);
+            var yearsPassed = q / 4;
 
             var prevNetBalance = q === 1 ? init : this.results[q - 2].futureValueAfterWithdraw;
             var prevCumP = q === 1 ? init : this.results[q - 2].principal;
 
-            // 判断停止定投条件
+            // 判定停止定投条件
             var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
             var trigStopAssets = this.stopInvestAssets > 0 && prevNetBalance >= this.stopInvestAssets;
             var trigStopPrincipal = this.stopInvestPrincipal > 0 && prevCumP >= this.stopInvestPrincipal;
@@ -825,8 +865,8 @@
             cumP = prevCumP + qInvest;
             var fvRaw = prevNetBalance * (1 + baseQR) + qInvest;
 
-            // 判断退休触发条件（年龄、复合资产目标、提领额）
-            var potentialWithdraw = fvRaw * wRate;
+            // 评估当期可能提领额 (用于触发条件校验)
+            var potentialWithdraw = this.calcWithdrawAmount(fvRaw, yearsPassed);
             var trigRetireAge = this.retirementAge > 0 && age >= this.retirementAge;
             var trigRetireAssets = targetRetireAssets > 0 && fvRaw >= targetRetireAssets;
             var trigRetireWithdraw = this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw;
@@ -836,14 +876,15 @@
               if (!this.continueInvestAfterRetirement) isInvestStopped = true;
             }
 
+            // 执行退休提领 (每年 Q4)
             var wAmount = 0;
             if (isRetired && quarter === 4) {
-              wAmount = fvRaw * wRate;
+              wAmount = this.calcWithdrawAmount(fvRaw, yearsPassed);
+              wAmount = Math.min(fvRaw, wAmount); // 不得超扣至负数
             }
             cumWithdrawn += wAmount;
 
             var fvAfterWithdraw = Math.max(0, fvRaw - wAmount);
-            var yearsPassed = q / 4;
             var discountFactor = Math.pow(1 + infRate, yearsPassed);
             var realValueAfterWithdraw = fvAfterWithdraw / discountFactor;
 
@@ -872,7 +913,7 @@
           this.saveOrUpdatePlan();
         },
 
-        // 蒙特卡洛压力测试计算逻辑
+        // 2. 蒙特卡洛压力测试计算逻辑
         runMonteCarlo: function() {
           this.results = [];
           this.reports = [];
@@ -885,7 +926,6 @@
           var effectiveRate = (this.annualRate / 100) * this.beta;
           var effectiveVol = (this.volatility / 100) * this.beta;
           
-          // 季度均值与标准差
           var qMean = Math.pow(1 + effectiveRate, 0.25) - 1;
           var qStd = effectiveVol / Math.sqrt(4);
 
@@ -894,9 +934,7 @@
           var init = this.initialInvestment;
           var cAge = this.currentAge;
           var sYear = this.startYear;
-          var wRate = this.withdrawRate / 100;
 
-          // 复合目标资产 (年开销 × 目标倍数)
           var targetRetireAssets = this.fireTargetAssets;
 
           var simMatrix = new Array(totalQ);
@@ -917,6 +955,7 @@
             for (var q = 1; q <= totalQ; q++) {
               var age = cAge + Math.floor((q - 1) / 4);
               var quarter = ((q - 1) % 4) + 1;
+              var yearsPassed = q / 4;
 
               // 判定停止定投
               var trigStopAge = this.stopInvestAge > 0 && age >= this.stopInvestAge;
@@ -939,7 +978,7 @@
               curBalance = curBalance * (1 + randomQReturn) + qInvest;
 
               // 判定退休（年龄、复合 FIRE 目标资产、提领额）
-              var potentialWithdraw = curBalance * wRate;
+              var potentialWithdraw = this.calcWithdrawAmount(curBalance, yearsPassed);
               if (!isRetired && ((this.retirementAge > 0 && age >= this.retirementAge) || 
                   (targetRetireAssets > 0 && curBalance >= targetRetireAssets) || 
                   (this.retireWithdraw > 0 && potentialWithdraw >= this.retireWithdraw))) {
@@ -949,7 +988,7 @@
 
               // 提领
               if (isRetired && quarter === 4) {
-                var wAmt = curBalance * wRate;
+                var wAmt = this.calcWithdrawAmount(curBalance, yearsPassed);
                 curBalance -= wAmt;
               }
 
@@ -1038,9 +1077,12 @@
 
             if (item.isRetired && !retireReportAdded) {
               retireReportAdded = true;
+              var modeDesc = self.withdrawMode === 'fixedInflation' 
+                ? ('固定抗通胀提领模式（基准首年 ' + self.fmtMoney(self.fixedWithdrawAmount) + ' 元/年）')
+                : ('资产百分比提领模式（每年 ' + self.withdrawRate + '%）');
               self.reports.push({
                 id: id,
-                text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件（FIRE目标资产 ' + self.fmtMoney(self.fireTargetAssets) + ' 或年龄/提领额阈值），正式开启退休提领模式！',
+                text: '第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，达到退休条件，正式开启退休提领模式！执行策略：' + modeDesc,
                 reportId: 'report-' + id + '-' + rc++
               });
             }
@@ -1085,7 +1127,9 @@
             annualExpense: this.annualExpense,
             expenseMultiple: this.expenseMultiple,
             retireWithdraw: this.retireWithdraw,
+            withdrawMode: this.withdrawMode,
             withdrawRate: this.withdrawRate,
+            fixedWithdrawAmount: this.fixedWithdrawAmount,
             investmentMode: this.investmentMode,
             continueInvestAfterRetirement: this.continueInvestAfterRetirement
           };
@@ -1165,7 +1209,10 @@
           this.expenseMultiple = inp.expenseMultiple || 33;
           this.retireWithdraw = inp.retireWithdraw || 0;
 
-          this.withdrawRate = inp.withdrawRate || 0;
+          this.withdrawMode = inp.withdrawMode || 'percent';
+          this.withdrawRate = inp.withdrawRate !== undefined ? inp.withdrawRate : 4;
+          this.fixedWithdrawAmount = inp.fixedWithdrawAmount !== undefined ? inp.fixedWithdrawAmount : 80000;
+
           this.investmentMode = inp.investmentMode || 'quarterly';
           this.continueInvestAfterRetirement = !!inp.continueInvestAfterRetirement;
 
@@ -1204,7 +1251,6 @@
           });
         },
 
-        // 导出 CSV (带有 BOM 头防 Excel 乱码)
         exportCSV: function() {
           if (!this.results.length) return;
           var headers = ['年份', '季度', '年龄', '累计本金（元）', '期末账户余额-名义（元）', '期末余额-折算今日购买力（元）', '当年提领金额（元）', '收益倍数', '综合年化（%）'];
