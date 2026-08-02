@@ -39,7 +39,7 @@
           <button @click="addNewScenario" class="text-xs bg-blue-50 text-blue-600 font-semibold px-2.5 py-1 rounded-lg border border-blue-200 hover:bg-blue-100 transition">+ 添加方案</button>
         </div>
 
-        <!-- 卡片列表 (参考图1/图2交互设计) -->
+        <!-- 卡片列表 -->
         <div class="space-y-3">
           <div v-for="(sc, idx) in scenarios" :key="sc.id" class="bg-white rounded-xl p-4 border-2 shadow-sm relative transition hover:shadow-md" :style="{ borderColor: sc.color }">
             <div class="flex justify-between items-start">
@@ -54,9 +54,10 @@
               </div>
             </div>
 
-            <div class="text-xs text-gray-500 mt-2 flex items-center gap-2">
+            <div class="text-xs text-gray-500 mt-2 flex items-center gap-2 flex-wrap">
               <span class="bg-gray-100 px-2 py-0.5 rounded font-medium text-gray-600">{{ sc.rebalanceStrategy === 'none' ? '无再平衡' : '年度再平衡' }}</span>
               <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium" v-if="sc.marginLoan.enabled">质押借贷已开启</span>
+              <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold" v-if="getAssetWeightSum(sc, 'init') > 100">⚠️ 权重超标</span>
             </div>
 
             <!-- 资产配比标签 (INIT / DCA) -->
@@ -94,7 +95,7 @@
           </div>
         </div>
 
-        <!-- 图表 2: 最差与年度回报 -->
+        <!-- 图表 2: 年度回报 -->
         <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <h3 class="font-bold text-gray-800 text-base mb-3">📊 年度回报对比 (Annual Return)</h3>
           <div class="relative h-64">
@@ -102,7 +103,7 @@
           </div>
         </div>
 
-        <!-- 图表 3 & 4 (网格分栏): 历史回撤 & 组合 Beta 敞口 -->
+        <!-- 图表 3 & 4: 历史回撤 & 组合 Beta 敞口 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
             <h3 class="font-bold text-gray-800 text-sm mb-2">🌊 历史回撤 (Drawdown)</h3>
@@ -112,16 +113,19 @@
           </div>
 
           <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <h3 class="font-bold text-gray-800 text-sm mb-2">⚡ 投资组合 Beta (风险敞口)</h3>
+            <h3 class="font-bold text-gray-800 text-sm mb-2">⚡ 投资组合 Beta (实际净资产风险敞口)</h3>
             <div class="relative h-48">
               <canvas id="chartBeta"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- 核心表格: 绩效对比表 (参考图2中间表格) -->
+        <!-- 核心表格: 绩效对比表 -->
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" v-if="comparisonResults.length">
-          <div class="p-4 bg-gray-50 border-b font-bold text-gray-800 text-sm">📋 绩效对比表</div>
+          <div class="p-4 bg-gray-50 border-b font-bold text-gray-800 text-sm flex justify-between items-center">
+            <span>📋 绩效对比表</span>
+            <span class="text-xs font-normal text-gray-500">*注：IRR 已采用精确现金流 NPV 迭代算法计算</span>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left">
               <thead class="bg-gray-800 text-white">
@@ -137,10 +141,11 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="res in comparisonResults" :key="res.id" class="hover:bg-gray-50">
+                <tr v-for="res in comparisonResults" :key="res.id" class="hover:bg-gray-50" :class="{'bg-red-50': res.isBankrupt}">
                   <td class="p-3 font-semibold flex items-center gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full inline-block" :style="{ backgroundColor: res.color }"></span>
                     {{ res.name }}
+                    <span v-if="res.isBankrupt" class="text-red-600 font-bold ml-1">[清算穿仓]</span>
                   </td>
                   <td class="p-3 text-right font-bold text-blue-600">{{ fmtMoney(res.finalNetWorth) }}</td>
                   <td class="p-3 text-right font-semibold text-emerald-600">{{ (res.cagr * 100).toFixed(2) }}%</td>
@@ -155,7 +160,7 @@
           </div>
         </div>
 
-        <!-- 冠军指标高亮视角 (参考图2下半部分卡片) -->
+        <!-- 冠军指标高亮视角 -->
         <div class="space-y-4" v-if="comparisonResults.length">
           
           <!-- 绝对收益视角 -->
@@ -165,7 +170,7 @@
               <div class="bg-blue-50 border border-blue-100 p-3.5 rounded-xl">
                 <div class="text-xs text-blue-600 font-semibold">最高最终余额</div>
                 <div class="text-xl font-black text-blue-900 mt-1">{{ fmtMoney(bestStats.highestBalance.val) }}</div>
-                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1" v-if="bestStats.highestBalance.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestBalance.sc.color }"></span>
                   {{ bestStats.highestBalance.sc.name }}
                 </div>
@@ -174,7 +179,7 @@
               <div class="bg-blue-50 border border-blue-100 p-3.5 rounded-xl">
                 <div class="text-xs text-blue-600 font-semibold">最高年化回报 (CAGR)</div>
                 <div class="text-xl font-black text-blue-900 mt-1">{{ (bestStats.highestCAGR.val * 100).toFixed(2) }}%</div>
-                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1" v-if="bestStats.highestCAGR.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestCAGR.sc.color }"></span>
                   {{ bestStats.highestCAGR.sc.name }}
                 </div>
@@ -183,7 +188,7 @@
               <div class="bg-blue-50 border border-blue-100 p-3.5 rounded-xl">
                 <div class="text-xs text-blue-600 font-semibold">最高内部收益率 (IRR)</div>
                 <div class="text-xl font-black text-blue-900 mt-1">{{ (bestStats.highestIRR.val * 100).toFixed(2) }}%</div>
-                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-blue-500 mt-1 flex items-center gap-1" v-if="bestStats.highestIRR.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestIRR.sc.color }"></span>
                   {{ bestStats.highestIRR.sc.name }}
                 </div>
@@ -198,7 +203,7 @@
               <div class="bg-red-50 border border-red-100 p-3.5 rounded-xl">
                 <div class="text-xs text-red-600 font-semibold">最低最大回撤</div>
                 <div class="text-xl font-black text-red-900 mt-1">{{ (bestStats.lowestMDD.val * 100).toFixed(1) }}%</div>
-                <div class="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-red-500 mt-1 flex items-center gap-1" v-if="bestStats.lowestMDD.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.lowestMDD.sc.color }"></span>
                   {{ bestStats.lowestMDD.sc.name }}
                 </div>
@@ -207,7 +212,7 @@
               <div class="bg-red-50 border border-red-100 p-3.5 rounded-xl">
                 <div class="text-xs text-red-600 font-semibold">最短回撤修复期</div>
                 <div class="text-xl font-black text-red-900 mt-1">{{ bestStats.shortestRecovery.val }} 年</div>
-                <div class="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-red-500 mt-1 flex items-center gap-1" v-if="bestStats.shortestRecovery.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.shortestRecovery.sc.color }"></span>
                   {{ bestStats.shortestRecovery.sc.name }}
                 </div>
@@ -216,7 +221,7 @@
               <div class="bg-red-50 border border-red-100 p-3.5 rounded-xl">
                 <div class="text-xs text-red-600 font-semibold">最低痛苦/溃疡指数</div>
                 <div class="text-xl font-black text-red-900 mt-1">{{ bestStats.lowestUlcer.val.toFixed(2) }}</div>
-                <div class="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-red-500 mt-1 flex items-center gap-1" v-if="bestStats.lowestUlcer.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.lowestUlcer.sc.color }"></span>
                   {{ bestStats.lowestUlcer.sc.name }}
                 </div>
@@ -231,7 +236,7 @@
               <div class="bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl">
                 <div class="text-xs text-emerald-600 font-semibold">最高夏普比率</div>
                 <div class="text-xl font-black text-emerald-900 mt-1">{{ bestStats.highestSharpe.val.toFixed(2) }}</div>
-                <div class="text-xs text-emerald-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-emerald-500 mt-1 flex items-center gap-1" v-if="bestStats.highestSharpe.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestSharpe.sc.color }"></span>
                   {{ bestStats.highestSharpe.sc.name }}
                 </div>
@@ -240,7 +245,7 @@
               <div class="bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl">
                 <div class="text-xs text-emerald-600 font-semibold">最高卡玛比率 (收益/风险)</div>
                 <div class="text-xl font-black text-emerald-900 mt-1">{{ bestStats.highestCalmar.val.toFixed(2) }}</div>
-                <div class="text-xs text-emerald-500 mt-1 flex items-center gap-1">
+                <div class="text-xs text-emerald-500 mt-1 flex items-center gap-1" v-if="bestStats.highestCalmar.sc">
                   <span class="w-2 h-2 rounded-full inline-block" :style="{ backgroundColor: bestStats.highestCalmar.sc.color }"></span>
                   {{ bestStats.highestCalmar.sc.name }}
                 </div>
@@ -255,7 +260,7 @@
 
     <!-- 侧边抽屉：编辑方案 -->
     <transition name="drawer">
-      <div v-if="editingScenarioIndex !== null" class="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-40 flex justify-end">
+      <div v-if="editingScenarioIndex !== null && activeScenario" class="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-40 flex justify-end">
         <div class="bg-white w-full max-w-md h-full shadow-2xl flex flex-col justify-between overflow-y-auto p-6 space-y-6">
           
           <div>
@@ -304,13 +309,15 @@
                 </div>
                 <div v-if="activeScenario.dca.enabled" class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-xs text-gray-500">每年定投金额</label>
+                    <label class="block text-xs text-gray-500">每年定投总额</label>
                     <input type="number" v-model.number="activeScenario.dca.amount" min="0" step="500" class="w-full px-2.5 py-1.5 mt-1 border rounded text-xs bg-white" />
                   </div>
                   <div>
                     <label class="block text-xs text-gray-500">频率</label>
                     <select v-model="activeScenario.dca.frequency" class="w-full px-2.5 py-1.5 mt-1 border rounded text-xs bg-white">
                       <option value="annual">每年年初</option>
+                      <option value="quarterly">每季定投 (按季拆分)</option>
+                      <option value="monthly">每月定投 (按月拆分)</option>
                     </select>
                   </div>
                 </div>
@@ -348,7 +355,12 @@
                     </div>
                   </div>
                 </div>
-                <div class="text-right text-xs text-gray-400 mt-1">剩余现金: <span class="font-bold text-gray-700">{{ getCashWeight(activeScenario, 'init') }}%</span></div>
+
+                <!-- 权重提示警告 -->
+                <div class="mt-2 text-xs flex justify-between items-center">
+                  <span class="text-gray-400">剩余现金: <b class="text-gray-700">{{ getCashWeight(activeScenario, 'init') }}%</b></span>
+                  <span v-if="getAssetWeightSum(activeScenario, 'init') > 100" class="text-red-500 font-bold">⚠️ 标的权重超过100%，回测时将自动归一化</span>
+                </div>
               </div>
 
               <!-- 资产质押融资 / 买借死 -->
@@ -373,6 +385,14 @@
                       <label class="block text-gray-700 font-semibold">清算强平 LTV (%)</label>
                       <input type="number" v-model.number="activeScenario.marginLoan.liquidationLTV" min="20" max="90" class="w-full px-2.5 py-1.5 mt-1 border rounded bg-white" />
                     </div>
+                  </div>
+
+                  <!-- 参数校验警告 -->
+                  <div v-if="activeScenario.marginLoan.warningLTV >= activeScenario.marginLoan.liquidationLTV" class="text-xs text-red-600 font-bold bg-red-100 p-2 rounded">
+                    ⚠️ 警戒 LTV 必须小于强平 LTV！
+                  </div>
+                  <div v-if="activeScenario.cashAnnualRate >= activeScenario.marginLoan.borrowRate" class="text-xs text-amber-700 font-medium bg-amber-100 p-2 rounded">
+                    💡 提示：现金收益率 ≥ 借贷利率，系统将处于无套利限制状态。
                   </div>
 
                   <div>
@@ -413,7 +433,6 @@
   <script src="../data/zh1000_data.js"></script>
 
   <script>
-    // 数据源定义（对齐 backtest 页面）
     var dataSources = {
       QQQ: { name: 'QQQ', data: typeof qqqData !== 'undefined' ? qqqData : [] },
       QLD: { name: 'QLD', data: typeof qldData !== 'undefined' ? qldData : [] },
@@ -426,7 +445,6 @@
       ZZ1000: { name: '中证1000ETF', data: typeof zh1000Data !== 'undefined' ? zh1000Data : [] }
     };
 
-    // 从月度收盘价推导年度收益率（输出年份优先结构，兼容旧格式）
     function buildAnnualReturns(sources) {
       var bySymbol = {};
       var allYears = new Set();
@@ -464,6 +482,28 @@
 
     var historicalData = buildAnnualReturns(dataSources);
     var assetBetas = { QQQ: 1.0, QLD: 2.0, TQQQ: 3.0, SPY: 1.0, 'XAU/USD': 0.0, 'BTC/USD': 0.8, HS300: 0.8, ZZ500: 0.9, ZZ1000: 1.0 };
+
+    // 牛顿-拉夫逊 (Newton-Raphson) 现金流 IRR 计算器
+    function calculateExactIRR(cashFlows) {
+      if (!cashFlows || cashFlows.length < 2) return 0;
+      var rate = 0.1; // 初始猜测值 10%
+      for (var i = 0; i < 100; i++) {
+        var npv = 0;
+        var dnpv = 0;
+        for (var t = 0; t < cashFlows.length; t++) {
+          var denom = Math.pow(1 + rate, t);
+          if (denom === 0) break;
+          npv += cashFlows[t] / denom;
+          dnpv -= (t * cashFlows[t]) / (denom * (1 + rate));
+        }
+        if (Math.abs(npv) < 1e-5) return rate;
+        if (Math.abs(dnpv) < 1e-10) break;
+        var newRate = rate - npv / dnpv;
+        if (isNaN(newRate) || !isFinite(newRate)) break;
+        rate = Math.max(-0.99, Math.min(10.0, newRate));
+      }
+      return isNaN(rate) ? 0 : rate;
+    }
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
@@ -476,7 +516,6 @@
         return {
           colorPalette: ['#2563eb', '#f97316', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4'],
           editingScenarioIndex: null,
-          chartInstances: {},
           scenarios: [
             {
               id: 703,
@@ -510,12 +549,15 @@
           comparisonResults: []
         };
       },
+      created: function() {
+        // 非响应式 Chart 实例挂载字典，避免 Vue 深度响应式造成卡顿和内存泄漏
+        this._chartInstances = {};
+      },
       computed: {
         activeScenario: function() {
-          if (this.editingScenarioIndex === null) return null;
+          if (this.editingScenarioIndex === null || !this.scenarios[this.editingScenarioIndex]) return null;
           return this.scenarios[this.editingScenarioIndex];
         },
-        // 计算全维度冠军卡片
         bestStats: function() {
           if (!this.comparisonResults.length) return {};
           var res = this.comparisonResults;
@@ -544,10 +586,13 @@
         }
       },
       methods: {
-        getCashWeight: function(sc, type) {
-          if (!sc) return 100;
+        getAssetWeightSum: function(sc, type) {
+          if (!sc) return 0;
           var key = type === 'init' ? 'initWeight' : 'dcaWeight';
-          var sum = sc.assets.reduce(function(s, a) { return s + (Number(a[key]) || 0); }, 0);
+          return sc.assets.reduce(function(s, a) { return s + (Number(a[key]) || 0); }, 0);
+        },
+        getCashWeight: function(sc, type) {
+          var sum = this.getAssetWeightSum(sc, type);
           return Math.max(0, 100 - sum);
         },
         addNewScenario: function() {
@@ -567,6 +612,11 @@
         deleteScenario: function(idx) {
           if (this.scenarios.length > 1) {
             this.scenarios.splice(idx, 1);
+            if (this.editingScenarioIndex === idx) {
+              this.editingScenarioIndex = null;
+            } else if (this.editingScenarioIndex > idx) {
+              this.editingScenarioIndex--;
+            }
           }
         },
         openEditDrawer: function(idx) {
@@ -583,97 +633,143 @@
           if (!this.activeScenario) return;
           this.activeScenario.assets.splice(aIdx, 1);
         },
-        onSymbolChange: function(ast) {
-        },
         fmtMoney: function(num) {
           if (typeof num !== 'number' || isNaN(num)) return '$0';
+          var sign = num < 0 ? '-' : '';
           var abs = Math.abs(num);
-          if (abs >= 100000000) return '$' + (num / 100000000).toFixed(2) + '亿';
-          if (abs >= 10000) return '$' + (num / 10000).toFixed(2) + '万';
-          return '$' + num.toFixed(0);
+          if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(2) + 'B';
+          if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(2) + 'M';
+          if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(2) + 'K';
+          return sign + '$' + abs.toFixed(0);
         },
 
         // 全量策略对比计算中心
         runComparison: function() {
           var years = Object.keys(historicalData).map(Number).sort(function(a,b){ return a-b; });
           var allResults = [];
+          var self = this;
 
           this.scenarios.forEach(function(sc) {
             var cashFlows = [-sc.initialCapital];
             var totalInvested = sc.initialCapital;
             var debt = 0;
+            var isBankrupt = false;
 
-            // 持仓数量
+            // 权重归一化校验逻辑
+            var sumInitWeights = self.getAssetWeightSum(sc, 'init');
+            var normInitScale = sumInitWeights > 100 ? (100 / sumInitWeights) : 1;
+            
+            var sumDcaWeights = self.getAssetWeightSum(sc, 'dca');
+            var normDcaScale = sumDcaWeights > 100 ? (100 / sumDcaWeights) : 1;
+
             var assetHoldings = {};
             sc.assets.forEach(function(a) {
-              assetHoldings[a.symbol] = sc.initialCapital * (a.initWeight / 100);
+              var effectiveWeight = a.initWeight * normInitScale;
+              assetHoldings[a.symbol] = sc.initialCapital * (effectiveWeight / 100);
             });
-            var cashHolding = sc.initialCapital * (this.getCashWeight(sc, 'init') / 100);
+            var cashHolding = sc.initialCapital * (self.getCashWeight(sc, 'init') / 100);
 
             var timeline = [];
-            var peakNetWorth = -Infinity;
+            var peakNetWorth = sc.initialCapital;
             var squaredDrawdownsSum = 0;
             var currentRecoveryYears = 0;
             var maxRecoveryYears = 0;
 
             years.forEach(function(y) {
-              // 1. 定投投入
-              var yearCF = 0;
-              if (sc.dca.enabled && sc.dca.amount > 0) {
-                totalInvested += sc.dca.amount;
-                yearCF -= sc.dca.amount;
-                sc.assets.forEach(function(a) {
-                  assetHoldings[a.symbol] += sc.dca.amount * (a.dcaWeight / 100);
-                });
-                cashHolding += sc.dca.amount * (this.getCashWeight(sc, 'dca') / 100);
+              if (isBankrupt) {
+                timeline.push({ year: y, netWorth: 0, annualReturn: -1, drawdown: -1, beta: 0 });
+                cashFlows.push(0);
+                return;
               }
 
-              // 2. 增长收益
+              var yearCF = 0;
+
+              // 根据 DCA 频率决定细分周期数 (1: 按年, 4: 按季, 12: 按月)
+              var dcaFreq = (sc.dca && sc.dca.enabled) ? (sc.dca.frequency || 'annual') : 'none';
+              var subPeriods = dcaFreq === 'monthly' ? 12 : (dcaFreq === 'quarterly' ? 4 : 1);
+              var dcaAmountPerPeriod = (sc.dca && sc.dca.enabled && sc.dca.amount > 0) ? (sc.dca.amount / subPeriods) : 0;
+
               var yearRates = historicalData[y] || {};
-              var currentBetaWeighted = 0;
-              var totalAssetValBeforeValuation = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
 
-              sc.assets.forEach(function(a) {
-                var rate = yearRates[a.symbol] || 0;
-                var beta = assetBetas[a.symbol] || 0;
-
-                var weight = totalAssetValBeforeValuation > 0 ? (assetHoldings[a.symbol] / totalAssetValBeforeValuation) : 0;
-                currentBetaWeighted += weight * beta;
-
-                assetHoldings[a.symbol] *= (1 + rate);
-              });
-
-              cashHolding *= (1 + (sc.cashAnnualRate / 100));
-              if (debt > 0) debt *= (1 + (sc.marginLoan.borrowRate / 100));
-
-              var totalAssets = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
-              var curLTV = totalAssets > 0 ? (debt / totalAssets) : 0;
-
-              // 3. 买借死与提领
-              if (sc.marginLoan.enabled) {
-                if (curLTV >= sc.marginLoan.liquidationLTV / 100) {
-                  var payoff = debt - (totalAssets * (sc.marginLoan.warningLTV / 100));
-                  debt -= payoff;
-                  totalAssets -= payoff;
+              for (var p = 0; p < subPeriods; p++) {
+                // 1. 追加定投
+                if (dcaAmountPerPeriod > 0) {
+                  totalInvested += dcaAmountPerPeriod;
+                  yearCF -= dcaAmountPerPeriod;
+                  sc.assets.forEach(function(a) {
+                    var effectiveDcaWeight = a.dcaWeight * normDcaScale;
+                    assetHoldings[a.symbol] += dcaAmountPerPeriod * (effectiveDcaWeight / 100);
+                  });
+                  cashHolding += dcaAmountPerPeriod * (self.getCashWeight(sc, 'dca') / 100);
                 }
-                var wAmt = sc.marginLoan.withdrawType === 'percent' ? (totalAssets * (sc.marginLoan.withdrawValue / 100)) : sc.marginLoan.withdrawValue;
-                debt += wAmt;
-                yearCF += wAmt;
+
+                // 2. 买借死提领现金（增加债务）
+                if (sc.marginLoan.enabled) {
+                  var grossAssetsNow = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
+                  var annualWithdraw = sc.marginLoan.withdrawType === 'percent' ? (grossAssetsNow * (sc.marginLoan.withdrawValue / 100)) : sc.marginLoan.withdrawValue;
+                  var periodWithdraw = annualWithdraw / subPeriods;
+                  debt += periodWithdraw;
+                  yearCF += periodWithdraw;
+                }
+
+                // 3. 资产与利息增殖（按细分周期拆分收益率）
+                sc.assets.forEach(function(a) {
+                  var rate = yearRates[a.symbol] || 0;
+                  var periodRate = Math.pow(1 + rate, 1 / subPeriods) - 1;
+                  assetHoldings[a.symbol] *= (1 + periodRate);
+                });
+
+                var periodCashRate = Math.pow(1 + (sc.cashAnnualRate / 100), 1 / subPeriods) - 1;
+                cashHolding *= (1 + periodCashRate);
+
+                if (debt > 0) {
+                  var periodBorrowRate = Math.pow(1 + (sc.marginLoan.borrowRate / 100), 1 / subPeriods) - 1;
+                  debt *= (1 + periodBorrowRate);
+                }
+
+                // 4. LTV 及强平平仓校验
+                var grossAssets = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
+                var curLTV = grossAssets > 0 ? (debt / grossAssets) : 1.0;
+
+                if (sc.marginLoan.enabled && curLTV >= (sc.marginLoan.liquidationLTV / 100)) {
+                  var warnLTVRatio = (sc.marginLoan.warningLTV / 100);
+                  // 强平解质押计算: Payoff X = (Debt - GrossAssets * WarningLTV) / (1 - WarningLTV)
+                  var payoffNeeded = (debt - grossAssets * warnLTVRatio) / (1 - warnLTVRatio);
+                  payoffNeeded = Math.min(payoffNeeded, grossAssets);
+
+                  debt = Math.max(0, debt - payoffNeeded);
+                  
+                  // 同步等比例扣减持仓资产与现金持仓
+                  var retainRatio = grossAssets > 0 ? Math.max(0, (grossAssets - payoffNeeded) / grossAssets) : 0;
+                  sc.assets.forEach(function(a) {
+                    assetHoldings[a.symbol] *= retainRatio;
+                  });
+                  cashHolding *= retainRatio;
+                }
               }
 
               cashFlows.push(yearCF);
 
-              // 4. 再平衡
-              if (sc.rebalanceStrategy === 'annual' && totalAssets > 0) {
+              var finalGrossAssets = Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding;
+
+              // 5. 年度再平衡
+              if (sc.rebalanceStrategy === 'annual' && finalGrossAssets > 0) {
                 sc.assets.forEach(function(a) {
-                  assetHoldings[a.symbol] = totalAssets * (a.initWeight / 100);
+                  var effectiveWeight = a.initWeight * normInitScale;
+                  assetHoldings[a.symbol] = finalGrossAssets * (effectiveWeight / 100);
                 });
-                cashHolding = totalAssets * (this.getCashWeight(sc, 'init') / 100);
+                cashHolding = finalGrossAssets * (self.getCashWeight(sc, 'init') / 100);
               }
 
-              var finalNetWorth = (Object.values(assetHoldings).reduce(function(s,v){return s+v;}, 0) + cashHolding) - debt;
+              var finalNetWorth = finalGrossAssets - debt;
 
-              // 回撤与溃疡指数计算
+              // 破产穿仓保护
+              if (finalNetWorth <= 0) {
+                isBankrupt = true;
+                finalNetWorth = 0;
+              }
+
+              // 回撤计算
               if (finalNetWorth > peakNetWorth) {
                 peakNetWorth = finalNetWorth;
                 currentRecoveryYears = 0;
@@ -682,25 +778,40 @@
                 if (currentRecoveryYears > maxRecoveryYears) maxRecoveryYears = currentRecoveryYears;
               }
 
-              var ddPercent = peakNetWorth > 0 ? Math.min(0, (finalNetWorth - peakNetWorth) / peakNetWorth) : 0;
+              var ddPercent = isBankrupt ? -1.0 : (peakNetWorth > 0 ? Math.min(0, (finalNetWorth - peakNetWorth) / peakNetWorth) : 0);
               squaredDrawdownsSum += Math.pow(ddPercent * 100, 2);
 
               var prevNW = timeline.length > 0 ? timeline[timeline.length - 1].netWorth : sc.initialCapital;
-              var annualReturn = prevNW > 0 ? (finalNetWorth - prevNW) / prevNW : 0;
+              var annualReturn = prevNW > 0 ? (finalNetWorth - prevNW) / prevNW : -1.0;
+
+              // 6. 计算组合杠杆 Beta 敞口: Gross Assets Beta * (Gross Assets / Net Worth)
+              var currentGrossBeta = 0;
+              sc.assets.forEach(function(a) {
+                var w = finalGrossAssets > 0 ? (assetHoldings[a.symbol] / finalGrossAssets) : 0;
+                var b = assetBetas[a.symbol] || 0;
+                currentGrossBeta += w * b;
+              });
+              var leveragedNetBeta = finalNetWorth > 0 ? (currentGrossBeta * (finalGrossAssets / finalNetWorth)) : 0;
 
               timeline.push({
                 year: y,
                 netWorth: finalNetWorth,
                 annualReturn: annualReturn,
                 drawdown: ddPercent,
-                beta: currentBetaWeighted
+                beta: leveragedNetBeta
               });
-            }.bind(this));
+            });
 
             var lastNetWorth = timeline[timeline.length - 1].netWorth;
-            var cagr = Math.pow(Math.max(0, lastNetWorth) / totalInvested, 1 / years.length) - 1;
             
-            // 计算最大回撤
+            // 真实 CAGR 计算
+            var cagr = (isBankrupt || lastNetWorth <= 0) ? -1.0 : (Math.pow(lastNetWorth / totalInvested, 1 / years.length) - 1);
+            
+            // 精确 XIRR 现金流计算
+            var finalCashFlows = cashFlows.slice();
+            finalCashFlows[finalCashFlows.length - 1] += lastNetWorth;
+            var irr = isBankrupt ? -1.0 : calculateExactIRR(finalCashFlows);
+
             var maxDrawdown = Math.abs(timeline.reduce(function(m, t){ return t.drawdown < m ? t.drawdown : m; }, 0));
             var ulcerIndex = Math.sqrt(squaredDrawdownsSum / years.length);
 
@@ -711,13 +822,11 @@
             var sharpeRatio = stdDev > 0 ? (cagr - 0.02) / stdDev : 0;
             var calmarRatio = maxDrawdown > 0 ? cagr / maxDrawdown : 0;
 
-            // 估算 IRR
-            var irr = cagr; // 近似简易估算
-
             allResults.push({
               id: sc.id,
               name: sc.name,
               color: sc.color,
+              isBankrupt: isBankrupt,
               finalNetWorth: lastNetWorth,
               totalInvested: totalInvested,
               cagr: cagr,
@@ -729,23 +838,28 @@
               ulcerIndex: ulcerIndex,
               timeline: timeline
             });
-          }.bind(this));
+          });
 
           this.comparisonResults = allResults;
           this.$nextTick(this.renderAllCharts);
         },
 
-        // 渲染四个分析图表 (对标图片1 & 2)
+        // 渲染四个分析图表 (安全管理非响应式 Canvas)
         renderAllCharts: function() {
           if (!this.comparisonResults.length) return;
           var years = this.comparisonResults[0].timeline.map(function(t){ return t.year; });
 
           // 销毁旧实例
-          Object.values(this.chartInstances).forEach(function(c){ if(c) c.destroy(); });
-          this.chartInstances = {};
+          var self = this;
+          Object.keys(self._chartInstances).forEach(function(k){
+            if (self._chartInstances[k]) {
+              self._chartInstances[k].destroy();
+              delete self._chartInstances[k];
+            }
+          });
 
           // 1. 资产增长趋势 (净值)
-          this.chartInstances.netWorth = new Chart(document.getElementById('chartNetWorth'), {
+          self._chartInstances.netWorth = new Chart(document.getElementById('chartNetWorth'), {
             type: 'line',
             data: {
               labels: years,
@@ -756,8 +870,8 @@
             options: { responsive: true, maintainAspectRatio: false }
           });
 
-          // 2. 年度回报对比 (Bar Chart)
-          this.chartInstances.annualReturn = new Chart(document.getElementById('chartAnnualReturn'), {
+          // 2. 年度回报对比
+          self._chartInstances.annualReturn = new Chart(document.getElementById('chartAnnualReturn'), {
             type: 'bar',
             data: {
               labels: years,
@@ -769,7 +883,7 @@
           });
 
           // 3. 历史回撤
-          this.chartInstances.drawdown = new Chart(document.getElementById('chartDrawdown'), {
+          self._chartInstances.drawdown = new Chart(document.getElementById('chartDrawdown'), {
             type: 'line',
             data: {
               labels: years,
@@ -781,7 +895,7 @@
           });
 
           // 4. Beta 风险敞口
-          this.chartInstances.beta = new Chart(document.getElementById('chartBeta'), {
+          self._chartInstances.beta = new Chart(document.getElementById('chartBeta'), {
             type: 'line',
             data: {
               labels: years,
