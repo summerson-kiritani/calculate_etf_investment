@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>人生倒计时</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">人生倒计时</h1>
+    <p class="text-gray-500 mt-1">可视化人生剩余时间，珍惜每一刻</p>
+
+    <!-- 输入区域 -->
+    <form @submit.prevent class="bg-white rounded-lg shadow p-6 mt-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">出生日期</label>
+          <input type="date" v-model="birthDate" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">预期寿命（岁）</label>
+          <input type="number" v-model.number="lifeExpectancy" min="1" max="150" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+    </form>
+
+    <!-- 顶部大数字区 -->
+    <div class="bg-white rounded-lg shadow p-8 mt-6 text-center">
+      <div class="text-xs text-gray-400 uppercase tracking-widest mb-2">余生剩余天数</div>
+      <div class="text-6xl font-bold text-blue-600">{{ daysRemaining.toLocaleString() }}</div>
+      <div class="text-sm text-gray-500 mt-3">已活 <span class="font-bold text-gray-700">{{ daysLived.toLocaleString() }}</span> 天 · 人生进度 <span class="font-bold" :class="lifeProgress >= 50 ? 'text-red-500' : 'text-blue-500'">{{ lifeProgress.toFixed(1) }}%</span></div>
+      <!-- 进度条 -->
+      <div class="w-full bg-gray-200 rounded-full h-3 mt-4 overflow-hidden">
+        <div class="h-full transition-all duration-1000" :class="lifeProgress >= 50 ? 'bg-red-500' : 'bg-blue-500'" :style="{ width: lifeProgress + '%' }"></div>
+      </div>
+    </div>
+
+    <!-- 4张倒计时卡片 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-xs text-gray-500">今年剩余</div>
+        <div class="text-3xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }}</div>
+        <div class="text-xs text-gray-400 mt-1">天 {{ yearRemainingHMS }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-400">
+        <div class="text-xs text-gray-500">本月剩余</div>
+        <div class="text-3xl font-bold text-purple-600 mt-1">{{ monthRemainingDays }}</div>
+        <div class="text-xs text-gray-400 mt-1">天</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-400">
+        <div class="text-xs text-gray-500">本周剩余</div>
+        <div class="text-3xl font-bold text-green-600 mt-1">{{ weekRemainingDays }}</div>
+        <div class="text-xs text-gray-400 mt-1">天</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-400">
+        <div class="text-xs text-gray-500">今天剩余</div>
+        <div class="text-3xl font-bold text-red-600 mt-1 tabular-nums">{{ todayRemaining }}</div>
+        <div class="text-xs text-gray-400 mt-1">时:分:秒</div>
+      </div>
+    </div>
+
+    <!-- 已度过时间统计 -->
+    <div class="bg-white rounded-lg shadow p-6 mt-6">
+      <h3 class="text-sm font-semibold text-gray-700 mb-4">已度过时间统计</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-gray-800">{{ daysLived.toLocaleString() }}</div>
+          <div class="text-xs text-gray-500 mt-1">天</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-gray-800">{{ livedWeeks.toLocaleString() }}</div>
+          <div class="text-xs text-gray-500 mt-1">周</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-gray-800">{{ livedMonths.toLocaleString() }}</div>
+          <div class="text-xs text-gray-500 mt-1">月</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-gray-800">{{ livedYears.toFixed(1) }}</div>
+          <div class="text-xs text-gray-500 mt-1">年</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 本月每周倒计时 -->
+    <div class="bg-white rounded-lg shadow p-6 mt-6">
+      <h3 class="text-sm font-semibold text-gray-700 mb-4">本月每周倒计时</h3>
+      <div class="space-y-2">
+        <div v-for="week in weeklyCountdown" :key="week.dateStr"
+          class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0"
+          :class="week.isPast ? 'opacity-40' : ''">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-mono text-gray-400">{{ week.dateStr }}</span>
+            <span class="text-sm text-gray-700">{{ week.label }}</span>
+          </div>
+          <span class="text-sm font-semibold" :class="week.isPast ? 'text-gray-400' : (week.daysLeft === 0 ? 'text-red-500' : 'text-blue-600')">
+            {{ week.isPast ? '已过' : (week.daysLeft === 0 ? '本周' : '还有 ' + week.daysLeft + ' 天') }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          birthDate: '1996-01-01',
+          lifeExpectancy: 80,
+          now: new Date(),
+          timer: null
+        };
+      },
+      computed: {
+        birthDateObj: function() {
+          return new Date(this.birthDate);
+        },
+        endDay: function() {
+          var b = new Date(this.birthDateObj);
+          b.setFullYear(b.getFullYear() + this.lifeExpectancy);
+          return b;
+        },
+        daysLived: function() {
+          return Math.floor((this.now - this.birthDateObj) / 86400000);
+        },
+        daysRemaining: function() {
+          var d = Math.floor((this.endDay - this.now) / 86400000);
+          return d > 0 ? d : 0;
+        },
+        lifeProgress: function() {
+          var total = this.daysLived + this.daysRemaining;
+          return total > 0 ? (this.daysLived / total) * 100 : 0;
+        },
+        livedWeeks: function() {
+          return Math.floor(this.daysLived / 7);
+        },
+        livedMonths: function() {
+          return Math.floor(this.daysLived / 30.44);
+        },
+        livedYears: function() {
+          return this.daysLived / 365.25;
+        },
+        yearRemainingDays: function() {
+          var end = new Date(this.now.getFullYear(), 11, 31, 23, 59, 59);
+          return Math.ceil((end - this.now) / 86400000);
+        },
+        yearRemainingHMS: function() {
+          var end = new Date(this.now.getFullYear(), 11, 31, 23, 59, 59);
+          var diff = end - this.now;
+          var h = Math.floor(diff / 3600000) % 24;
+          var m = Math.floor(diff / 60000) % 60;
+          var s = Math.floor(diff / 1000) % 60;
+          return this.pad(h) + ':' + this.pad(m) + ':' + this.pad(s);
+        },
+        monthRemainingDays: function() {
+          var end = new Date(this.now.getFullYear(), this.now.getMonth() + 1, 0, 23, 59, 59);
+          return Math.ceil((end - this.now) / 86400000);
+        },
+        weekRemainingDays: function() {
+          var day = this.now.getDay();
+          day = day === 0 ? 7 : day;
+          return 7 - day + 1;
+        },
+        todayRemaining: function() {
+          var end = new Date(this.now);
+          end.setHours(23, 59, 59, 999);
+          var diff = end - this.now;
+          var h = Math.floor(diff / 3600000);
+          var m = Math.floor(diff / 60000) % 60;
+          var s = Math.floor(diff / 1000) % 60;
+          return this.pad(h) + ':' + this.pad(m) + ':' + this.pad(s);
+        },
+        weeklyCountdown: function() {
+          var year = this.now.getFullYear();
+          var month = this.now.getMonth();
+          var firstDay = new Date(year, month, 1);
+          var firstWeekday = firstDay.getDay();
+          var offset = firstWeekday === 0 ? 1 : (8 - firstWeekday);
+          var firstMonday = new Date(year, month, 1 + (firstWeekday === 1 ? 0 : offset));
+
+          var weeks = [];
+          var monday = new Date(firstMonday);
+          var monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+
+          while (monday.getMonth() === month) {
+            var daysLeft = Math.floor((monday - this.now) / 86400000);
+            weeks.push({
+              dateStr: monday.getFullYear() + '-' + this.pad(monday.getMonth() + 1) + '-' + this.pad(monday.getDate()),
+              label: monthNames[month] + '第' + (weeks.length + 1) + '周',
+              daysLeft: daysLeft,
+              isPast: daysLeft < 0
+            });
+            monday.setDate(monday.getDate() + 7);
+          }
+          return weeks;
+        }
+      },
+      methods: {
+        pad: function(n) {
+          return n < 10 ? '0' + n : String(n);
+        }
+      },
+      mounted: function() {
+        var self = this;
+        this.timer = setInterval(function() {
+          self.now = new Date();
+        }, 1000);
+      },
+      beforeDestroy: function() {
+        if (this.timer) clearInterval(this.timer);
+      }
+    });
+  </script>
+</body>
+</html>
