@@ -320,11 +320,15 @@
           return Math.min(100, Math.max(0, prog));
         },
 
-        /* --- 结构化矩阵（依赖 todayDate，不会每秒销毁重绘） --- */
+        /* --- 结构化矩阵（修正后） --- */
         lifeDecades: function() {
           var decades = [];
-          var currentGlobalMonth = this.livedMonths;
-          var fireGlobalMonth = this.safeFireAge * 12;
+          
+          // 1. 修正当前自然月的全局索引（基于出生年1月算起，不减出生月）
+          var currentGlobalMonth = (this.todayDate.getFullYear() - this.birthDateObj.getFullYear()) * 12 + this.todayDate.getMonth();
+          
+          // 2. 修正 FIRE 节点索引（对应 safeFireAge 岁时的生日月份）
+          var fireGlobalMonth = this.safeFireAge * 12 + this.birthDateObj.getMonth();
 
           for (var decadeStart = 0; decadeStart < this.safeLifeExpectancy; decadeStart += 10) {
             var decadeEnd = Math.min(decadeStart + 9, this.safeLifeExpectancy - 1);
