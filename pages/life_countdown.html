@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>人生倒计时 & FIRE 计划</title>
-  <!-- 升级为 Tailwind v3 CDN，支持任意值与 JIT 语法 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>人生倒计时 & FIRE 深度规划</title>
+  <!-- Tailwind CSS v3 CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .month-box {
@@ -25,153 +25,181 @@
     .current-month {
       animation: pulse-ring 1.8s infinite;
     }
+    /* 隐藏滚动条 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen pb-12">
-  <div id="app" class="max-w-5xl mx-auto px-4 py-8">
-    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
-    <h1 class="text-2xl font-bold mt-4">人生倒计时 & FIRE 计划</h1>
-    <p class="text-gray-500 mt-1">可视化人生余量，加速夺回人生主导权</p>
+<body class="bg-gray-100 text-gray-800 min-h-screen pb-24">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-6">
+    <!-- 头部说明 -->
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">人生倒计时 & FIRE 深度规划</h1>
+        <p class="text-xs text-gray-500 mt-1">可视化生命余量与健康质量，夺回人生主导权</p>
+      </div>
+    </div>
 
-    <!-- 输入区域 -->
-    <form @submit.prevent class="bg-white rounded-lg shadow p-6 mt-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- 输入与快捷预设卡片 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-gray-700">出生日期</label>
-          <input type="date" v-model="birthDate" @change="saveUserSettings" required
-            class="w-full px-3 py-2 mt-1 bg-white text-gray-800 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-600 mb-1">出生日期</label>
+          <input type="date" v-model="birthDate" @change="saveUserSettings"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700">FIRE 目标年龄（岁）</label>
-          <input type="number" v-model.number="fireAge" @change="saveUserSettings" min="1" max="120" step="1" required
-            class="w-full px-3 py-2 mt-1 bg-white text-gray-800 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-600 mb-1">性别预设（寿命）</label>
+          <div class="flex gap-2">
+            <button @click="setGenderPreset('male')" :class="gender === 'male' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">男 (75岁)</button>
+            <button @click="setGenderPreset('female')" :class="gender === 'female' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'"
+              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">女 (80岁)</button>
+          </div>
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700">预期寿命（岁）</label>
-          <input type="number" v-model.number="lifeExpectancy" @change="saveUserSettings" min="1" max="150" step="1" required
-            class="w-full px-3 py-2 mt-1 bg-white text-gray-800 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-600 mb-1">FIRE 目标年龄</label>
+          <input type="number" v-model.number="fireAge" @change="saveUserSettings" min="1" max="100"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">预期寿命（岁）</label>
+          <input type="number" v-model.number="lifeExpectancy" @change="saveUserSettings" min="1" max="120"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
         </div>
       </div>
-    </form>
+    </div>
 
-    <!-- FIRE 倒计时卡片 -->
-    <div class="bg-gradient-to-r from-amber-600 via-emerald-600 to-teal-700 rounded-lg shadow-lg p-6 mt-6 text-white">
+    <!-- FIRE 阶段卡片 -->
+    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 rounded-xl shadow-md p-6 mb-6 text-white">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <span class="bg-white text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full uppercase shadow-sm">
+            <span class="bg-white text-teal-800 text-xs font-bold px-3 py-1 rounded-full uppercase shadow-sm">
               FIRE 目标: {{ safeFireAge }} 岁
             </span>
-            <span class="text-xs text-amber-100 font-medium">（预计 {{ fireDateStr }} 达成）</span>
+            <span class="text-xs text-teal-100 font-medium">（预计 {{ fireDateStr }} 达成）</span>
           </div>
           <div class="mt-3">
             <template v-if="!isFireReached">
               <span class="text-xs text-white opacity-90 block mb-1 font-medium">距离摆脱打工、实现自由还有</span>
-              <div class="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-sm">
-                {{ daysToFire.toLocaleString() }} <span class="text-lg font-normal text-amber-100">天</span>
-                <span class="text-2xl font-light text-amber-200">（约 {{ fireYearsLeft }} 年）</span>
+              <div class="text-4xl md:text-5xl font-extrabold tracking-tight">
+                {{ daysToFire.toLocaleString() }} <span class="text-base font-normal text-teal-100">天</span>
+                <span class="text-xl font-light text-teal-200">（约 {{ fireYearsLeft }} 年）</span>
               </div>
             </template>
             <template v-else>
-              <div class="text-3xl font-bold">🎉 恭喜！你已进入 FIRE 自由人生阶段！</div>
-              <p class="text-sm mt-1 opacity-90">已自由度过 {{ Math.abs(daysToFire).toLocaleString() }} 天</p>
+              <div class="text-2xl font-bold">🎉 恭喜！你已进入 FIRE 自由人生阶段！</div>
+              <p class="text-xs mt-1 opacity-90">已自由度过 {{ Math.abs(daysToFire).toLocaleString() }} 天</p>
             </template>
           </div>
         </div>
 
-        <div class="rounded-lg p-4 w-full md:w-64 flex-shrink-0 border border-white border-opacity-20 shadow-inner" style="background-color: rgba(0, 0, 0, 0.25);">
-          <div class="flex justify-between text-xs mb-1.5 text-white opacity-90 font-medium">
+        <div class="rounded-xl p-4 w-full md:w-64 flex-shrink-0 bg-black/20 border border-white/20">
+          <div class="flex justify-between text-xs mb-1.5 opacity-90 font-medium">
             <span>打工积累进度 (从18岁计)</span>
-            <span class="font-bold text-white">{{ fireProgress.toFixed(1) }}%</span>
+            <span class="font-bold text-amber-300">{{ fireProgress.toFixed(1) }}%</span>
           </div>
-          <div class="w-full bg-black bg-opacity-40 rounded-full h-3 overflow-hidden p-0.5 border border-white border-opacity-10">
+          <div class="w-full bg-black/40 rounded-full h-3 overflow-hidden p-0.5 border border-white/10">
             <div class="bg-amber-400 h-full rounded-full transition-all duration-1000 shadow" :style="{ width: fireProgress + '%' }"></div>
           </div>
-          <div class="mt-3 text-xs text-white opacity-90 flex justify-between items-center">
+          <div class="mt-3 text-xs opacity-90 flex justify-between items-center">
             <span>剩余打工月数：<strong class="text-amber-300 text-sm font-bold">{{ monthsToFire > 0 ? monthsToFire : 0 }}</strong> 个月</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 顶部总人生剩余天数卡片 -->
-    <div class="bg-white rounded-lg shadow p-6 mt-6 text-center">
-      <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">余生总剩余天数</div>
-      <div class="text-5xl font-bold text-gray-800">{{ daysRemaining.toLocaleString() }}</div>
-      <div class="text-sm text-gray-500 mt-2">
-        已活 <span class="font-bold text-gray-700">{{ daysLived.toLocaleString() }}</span> 天 · 人生进度 
-        <span class="font-bold" :class="lifeProgress >= 50 ? 'text-red-500' : 'text-blue-500'">{{ lifeProgress.toFixed(1) }}%</span>
+    <!-- 生命健康质量概览（结合图片特色） -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+      <h3 class="text-sm font-bold text-gray-800 mb-3">生命健康质量概览 (基于预期 {{ safeLifeExpectancy }} 岁)</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center mb-4">
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <div class="text-xs text-gray-500">当前年龄</div>
+          <div class="text-xl font-bold text-gray-800 mt-0.5">{{ currentAge.toFixed(1) }} 岁</div>
+        </div>
+        <div class="p-3 bg-emerald-50 rounded-lg">
+          <div class="text-xs text-emerald-600">距离衰弱期 (60岁)</div>
+          <div class="text-xl font-bold text-emerald-700 mt-0.5">{{ yearsToFrail > 0 ? yearsToFrail.toFixed(1) + ' 年' : '已进入' }}</div>
+        </div>
+        <div class="p-3 bg-yellow-50 rounded-lg">
+          <div class="text-xs text-yellow-600">距离失能期 (70岁)</div>
+          <div class="text-xl font-bold text-yellow-700 mt-0.5">{{ yearsToDisabled > 0 ? yearsToDisabled.toFixed(1) + ' 年' : '已进入' }}</div>
+        </div>
+        <div class="p-3 bg-rose-50 rounded-lg">
+          <div class="text-xs text-rose-600">余生总剩余</div>
+          <div class="text-xl font-bold text-rose-700 mt-0.5">{{ (daysRemaining / 365.25).toFixed(1) }} 年</div>
+        </div>
       </div>
-      <div class="w-full bg-gray-200 rounded-full h-2.5 mt-3 overflow-hidden">
-        <div class="h-full transition-all duration-1000" :class="lifeProgress >= 50 ? 'bg-red-500' : 'bg-blue-500'" :style="{ width: lifeProgress + '%' }"></div>
+
+      <!-- 综合进度条 -->
+      <div class="space-y-2 text-xs">
+        <div>
+          <div class="flex justify-between text-gray-600 mb-1">
+            <span>总寿命使用进度</span>
+            <span class="font-semibold">{{ lifeProgress.toFixed(1) }}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div class="bg-blue-600 h-full transition-all duration-1000" :style="{ width: lifeProgress + '%' }"></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 人生时间格矩阵 -->
-    <div class="bg-white rounded-lg shadow p-6 mt-6">
+    <!-- 人生月份画卷矩阵 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div>
           <h3 class="text-base font-bold text-gray-800">人生月份画卷 (每行 12 个月 = 1 年)</h3>
-          <p class="text-xs text-gray-500 mt-0.5">直观感受时间的流逝：灰暗色代表已逝去，亮色代表未来的可能性</p>
+          <p class="text-xs text-gray-500 mt-0.5">直观感受时间流逝：灰色代表过去，亮色代表未来不同生命质量阶段</p>
         </div>
       </div>
 
-      <!-- 生命周期图例 -->
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs mb-6 p-3 bg-gray-50 rounded-lg border border-gray-100 text-gray-700">
-        <div class="flex items-center gap-2">
-          <span class="w-3.5 h-3.5 bg-blue-400 rounded-sm"></span>
-          <span>0-18岁：成长学业</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-3.5 h-3.5 bg-amber-500 rounded-sm"></span>
-          <span>18-{{ safeFireAge }}岁：打工奋斗</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-3.5 h-3.5 bg-emerald-500 rounded-sm"></span>
-          <span>{{ safeFireAge }}-65岁：FIRE自由</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-3.5 h-3.5 bg-purple-400 rounded-sm"></span>
-          <span>65岁+：晚年休养</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-3.5 h-3.5 bg-gray-300 border border-gray-400 rounded-sm"></span>
-          <span>已过时间（消耗）</span>
-        </div>
+      <!-- 图例说明 -->
+      <div class="flex flex-wrap gap-3 text-xs mb-5 p-3 bg-gray-50 rounded-lg border border-gray-100 text-gray-600">
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-blue-400 rounded-xs"></span> 成长学业(0-18岁)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-amber-500 rounded-xs"></span> 打工奋斗(18-FIRE)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-emerald-500 rounded-xs"></span> FIRE黄金自由期</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-400 rounded-xs"></span> 晚年衰弱期(60-69岁)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-rose-400 rounded-xs"></span> 晚年失能期(70岁+)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-gray-300 rounded-xs"></span> 已过时间</div>
       </div>
 
-      <!-- 时间矩阵表格 -->
-      <div class="space-y-6">
-        <div v-for="decade in lifeDecades" :key="decade.decadeStart" class="border border-gray-100 rounded-lg p-3 sm:p-4 bg-gray-50/50">
-          <div class="flex items-center justify-between pb-2 mb-3 border-b border-gray-200">
-            <span class="text-sm font-bold text-gray-700">
-              {{ decade.decadeStart }}s <span class="text-xs font-normal text-gray-500">({{ decade.decadeStart }} - {{ decade.decadeEnd }} 岁)</span>
+      <!-- 年代矩阵 -->
+      <div class="space-y-5">
+        <div v-for="decade in lifeDecades" :key="decade.decadeStart" class="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50/50">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
+            <span class="text-xs font-bold text-gray-700">
+              {{ decade.decadeStart }}s <span class="font-normal text-gray-500">({{ decade.decadeStart }} - {{ decade.decadeEnd }} 岁)</span>
             </span>
-            <span class="text-xs px-2 py-0.5 rounded font-medium" :class="decade.stageBadgeClass">
+            <span class="text-[10px] px-2 py-0.5 rounded font-medium" :class="decade.stageBadgeClass">
               {{ decade.stageName }}
             </span>
           </div>
 
-          <!-- 月份标头 -->
-          <div class="grid grid-cols-12 gap-1 mb-1 text-center text-gray-500 text-[10px] font-mono font-semibold">
+          <div class="grid grid-cols-12 gap-1 mb-1 text-center text-gray-400 text-[9px] font-mono">
             <span v-for="m in 12" :key="m">{{ m }}月</span>
           </div>
 
-          <div class="space-y-1.5">
+          <div class="space-y-1">
             <div v-for="year in decade.years" :key="year.age" class="flex items-center gap-2">
-              <div class="w-16 flex-shrink-0 text-right text-xs font-mono" :class="year.age === safeFireAge ? 'text-emerald-600 font-bold' : 'text-gray-500'">
-                {{ year.age }}岁 <span v-if="year.age === safeFireAge" class="text-[10px]">🔥</span>
+              <div class="w-12 flex-shrink-0 text-right text-xs font-mono" :class="year.age === safeFireAge ? 'text-emerald-600 font-bold' : 'text-gray-400'">
+                {{ year.age }}岁
               </div>
-
               <div class="grid grid-cols-12 gap-1 flex-grow">
                 <div v-for="month in year.months" :key="month.globalMonthIndex"
                   class="month-box cursor-pointer relative flex items-center justify-center text-[9px] font-mono transition-all"
                   :title="month.tooltip"
                   :class="[
                     month.isCurrent ? 'bg-red-500 ring-2 ring-red-400 z-10 current-month text-white' : (
-                      month.isPast ? 'bg-gray-300 opacity-60 text-gray-700' : month.stageColorClass + ' text-white'
+                      month.isPast ? 'bg-gray-300 opacity-50 text-gray-600' : month.stageColorClass + ' text-white'
                     ),
-                    month.isFireMonth ? 'ring-2 ring-emerald-400 ring-offset-1' : ''
+                    month.isFireMonth ? 'ring-2 ring-emerald-400' : ''
                   ]">
                   <span v-if="month.isFireMonth" class="text-[8px]">🔥</span>
                 </div>
@@ -182,50 +210,25 @@
       </div>
     </div>
 
-    <!-- 日常倒计时卡片 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+    <!-- 实时秒级倒计时组件 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
         <div class="text-xs text-gray-500">今年剩余</div>
-        <div class="text-3xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }}</div>
-        <div class="text-xs text-gray-400 mt-1">天 {{ yearRemainingHMS }}</div>
+        <div class="text-2xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }} 天</div>
+        <div class="text-[10px] text-gray-400 mt-0.5 font-mono">{{ yearRemainingHMS }}</div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-400">
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
         <div class="text-xs text-gray-500">本月剩余</div>
-        <div class="text-3xl font-bold text-purple-600 mt-1">{{ monthRemainingDays }}</div>
-        <div class="text-xs text-gray-400 mt-1">天</div>
+        <div class="text-2xl font-bold text-purple-600 mt-1">{{ monthRemainingDays }} 天</div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-400">
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
         <div class="text-xs text-gray-500">本周剩余</div>
-        <div class="text-3xl font-bold text-green-600 mt-1">{{ weekRemainingDays }}</div>
-        <div class="text-xs text-gray-400 mt-1">天</div>
+        <div class="text-2xl font-bold text-green-600 mt-1">{{ weekRemainingDays }} 天</div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-400">
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-500">
         <div class="text-xs text-gray-500">今天剩余</div>
-        <div class="text-3xl font-bold text-red-600 mt-1 tabular-nums">{{ todayRemaining }}</div>
-        <div class="text-xs text-gray-400 mt-1">时:分:秒</div>
-      </div>
-    </div>
-
-    <!-- 已度过时间统计 -->
-    <div class="bg-white rounded-lg shadow p-6 mt-6">
-      <h3 class="text-sm font-semibold text-gray-700 mb-4">已度过时间统计</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="text-center">
-          <div class="text-2xl font-bold text-gray-800">{{ daysLived.toLocaleString() }}</div>
-          <div class="text-xs text-gray-500 mt-1">天</div>
-        </div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-gray-800">{{ livedWeeks.toLocaleString() }}</div>
-          <div class="text-xs text-gray-500 mt-1">周</div>
-        </div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-gray-800">{{ livedMonths.toLocaleString() }}</div>
-          <div class="text-xs text-gray-500 mt-1">月</div>
-        </div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-gray-800">{{ livedYears.toFixed(1) }}</div>
-          <div class="text-xs text-gray-500 mt-1">年</div>
-        </div>
+        <div class="text-2xl font-bold text-red-600 mt-1 font-mono tabular-nums">{{ todayRemaining }}</div>
+        <div class="text-[10px] text-gray-400 mt-0.5">时:分:秒</div>
       </div>
     </div>
   </div>
@@ -237,20 +240,17 @@
       data: function() {
         return {
           birthDate: '1996-06-01',
+          gender: 'custom',
           fireAge: 45,
           lifeExpectancy: 100,
-          now: new Date(), // 仅用于秒级倒计时
-          todayDate: new Date(), // 仅按天更新，防止每秒触发 1200 个 DOM 节点全量重绘
+          now: new Date(),
+          todayDate: new Date(),
           timer: null
         };
       },
       computed: {
-        safeFireAge: function() {
-          return Number(this.fireAge) || 45;
-        },
-        safeLifeExpectancy: function() {
-          return Number(this.lifeExpectancy) || 100;
-        },
+        safeFireAge: function() { return Number(this.fireAge) || 45; },
+        safeLifeExpectancy: function() { return Number(this.lifeExpectancy) || 75; },
         birthDateObj: function() {
           if (!this.birthDate) return new Date('1996-06-01');
           var d = new Date(this.birthDate + 'T00:00:00');
@@ -260,6 +260,9 @@
           var b = new Date(this.birthDateObj);
           b.setFullYear(b.getFullYear() + this.safeLifeExpectancy);
           return b;
+        },
+        currentAge: function() {
+          return this.daysLived / 365.25;
         },
         daysLived: function() {
           var diff = this.todayDate - this.birthDateObj;
@@ -273,19 +276,14 @@
           var total = this.daysLived + this.daysRemaining;
           return total > 0 ? (this.daysLived / total) * 100 : 0;
         },
-        livedWeeks: function() {
-          return Math.floor(this.daysLived / 7);
+        yearsToFrail: function() {
+          return 60 - this.currentAge;
         },
-        livedMonths: function() {
-          var y = this.todayDate.getFullYear() - this.birthDateObj.getFullYear();
-          var m = this.todayDate.getMonth() - this.birthDateObj.getMonth();
-          return Math.max(0, y * 12 + m);
-        },
-        livedYears: function() {
-          return this.daysLived / 365.25;
+        yearsToDisabled: function() {
+          return 70 - this.currentAge;
         },
 
-        /* --- FIRE 核心计算 --- */
+        /* FIRE 计算 */
         fireDateObj: function() {
           var d = new Date(this.birthDateObj);
           d.setFullYear(d.getFullYear() + this.safeFireAge);
@@ -298,36 +296,23 @@
         daysToFire: function() {
           return Math.ceil((this.fireDateObj - this.todayDate) / 86400000);
         },
-        isFireReached: function() {
-          return this.daysToFire <= 0;
-        },
-        fireYearsLeft: function() {
-          return (this.daysToFire / 365.25).toFixed(1);
-        },
-        monthsToFire: function() {
-          return Math.ceil(this.daysToFire / 30.44);
-        },
+        isFireReached: function() { return this.daysToFire <= 0; },
+        fireYearsLeft: function() { return (this.daysToFire / 365.25).toFixed(1); },
+        monthsToFire: function() { return Math.ceil(this.daysToFire / 30.44); },
         fireProgress: function() {
           var workStartAge = 18;
-          var currentAge = this.daysLived / 365.25;
+          var currentAge = this.currentAge;
           if (currentAge < workStartAge) return 0;
-          
           var totalWorkYears = this.safeFireAge - workStartAge;
           if (totalWorkYears <= 0) return 100;
-          
           var workedYears = currentAge - workStartAge;
-          var prog = (workedYears / totalWorkYears) * 100;
-          return Math.min(100, Math.max(0, prog));
+          return Math.min(100, Math.max(0, (workedYears / totalWorkYears) * 100));
         },
 
-        /* --- 结构化矩阵（修正后） --- */
+        /* 月份矩阵 */
         lifeDecades: function() {
           var decades = [];
-          
-          // 1. 修正当前自然月的全局索引（基于出生年1月算起，不减出生月）
           var currentGlobalMonth = (this.todayDate.getFullYear() - this.birthDateObj.getFullYear()) * 12 + this.todayDate.getMonth();
-          
-          // 2. 修正 FIRE 节点索引（对应 safeFireAge 岁时的生日月份）
           var fireGlobalMonth = this.safeFireAge * 12 + this.birthDateObj.getMonth();
 
           for (var decadeStart = 0; decadeStart < this.safeLifeExpectancy; decadeStart += 10) {
@@ -345,18 +330,21 @@
                 var stageColorClass = 'bg-blue-400';
                 var stageName = '成长学业';
 
-                if (age >= 0 && age < 18) {
+                if (age < 18) {
                   stageColorClass = 'bg-blue-400';
                   stageName = '成长学业';
-                } else if (age >= 18 && age < this.safeFireAge) {
+                } else if (age < this.safeFireAge) {
                   stageColorClass = 'bg-amber-500';
                   stageName = '打工奋斗';
-                } else if (age >= this.safeFireAge && age < 65) {
+                } else if (age < 60) {
                   stageColorClass = 'bg-emerald-500';
-                  stageName = 'FIRE自由';
+                  stageName = 'FIRE黄金自由期';
+                } else if (age < 70) {
+                  stageColorClass = 'bg-yellow-400';
+                  stageName = '晚年衰弱期';
                 } else {
-                  stageColorClass = 'bg-purple-400';
-                  stageName = '晚年休养';
+                  stageColorClass = 'bg-rose-400';
+                  stageName = '晚年失能期';
                 }
 
                 months.push({
@@ -377,22 +365,21 @@
               });
             }
 
-            var mainAgeInDecade = decadeStart + 5;
-            var stageBadgeClass = 'bg-blue-100 text-blue-700';
             var decadeStageName = '成长学业期';
-
-            if (mainAgeInDecade < 18) {
-              stageBadgeClass = 'bg-blue-100 text-blue-700';
-              decadeStageName = '成长学业期';
-            } else if (mainAgeInDecade < this.safeFireAge) {
-              stageBadgeClass = 'bg-amber-100 text-amber-700';
+            var stageBadgeClass = 'bg-blue-100 text-blue-700';
+            var midAge = decadeStart + 5;
+            if (midAge >= 18 && midAge < this.safeFireAge) {
               decadeStageName = '打工奋斗期';
-            } else if (mainAgeInDecade < 65) {
+              stageBadgeClass = 'bg-amber-100 text-amber-700';
+            } else if (midAge >= this.safeFireAge && midAge < 60) {
+              decadeStageName = 'FIRE黄金自由期';
               stageBadgeClass = 'bg-emerald-100 text-emerald-700';
-              decadeStageName = 'FIRE 自由期';
-            } else {
-              stageBadgeClass = 'bg-purple-100 text-purple-700';
-              decadeStageName = '晚年休养期';
+            } else if (midAge >= 60 && midAge < 70) {
+              decadeStageName = '晚年衰弱期';
+              stageBadgeClass = 'bg-yellow-100 text-yellow-700';
+            } else if (midAge >= 70) {
+              decadeStageName = '晚年失能期';
+              stageBadgeClass = 'bg-rose-100 text-rose-700';
             }
 
             decades.push({
@@ -407,7 +394,7 @@
           return decades;
         },
 
-        /* --- 仅秒级倒计时依赖 this.now --- */
+        /* 秒级倒计时 */
         yearRemainingDays: function() {
           var end = new Date(this.now.getFullYear(), 11, 31, 23, 59, 59);
           return Math.ceil((end - this.now) / 86400000);
@@ -440,21 +427,31 @@
         }
       },
       methods: {
-        pad: function(n) {
-          return n < 10 ? '0' + n : String(n);
+        pad: function(n) { return n < 10 ? '0' + n : String(n); },
+        setGenderPreset: function(g) {
+          this.gender = g;
+          if (g === 'male') {
+            this.lifeExpectancy = 75;
+          } else if (g === 'female') {
+            this.lifeExpectancy = 80;
+          }
+          this.saveUserSettings();
         },
         saveUserSettings: function() {
           localStorage.setItem('life_countdown_birth', this.birthDate);
           localStorage.setItem('life_countdown_fire', this.fireAge);
           localStorage.setItem('life_countdown_expectancy', this.lifeExpectancy);
+          localStorage.setItem('life_countdown_gender', this.gender);
         },
         loadUserSettings: function() {
           var savedBirth = localStorage.getItem('life_countdown_birth');
           var savedFire = localStorage.getItem('life_countdown_fire');
           var savedExp = localStorage.getItem('life_countdown_expectancy');
+          var savedGender = localStorage.getItem('life_countdown_gender');
           if (savedBirth) this.birthDate = savedBirth;
           if (savedFire) this.fireAge = parseInt(savedFire, 10);
           if (savedExp) this.lifeExpectancy = parseInt(savedExp, 10);
+          if (savedGender) this.gender = savedGender;
         }
       },
       mounted: function() {
