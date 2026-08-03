@@ -35,8 +35,8 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 text-gray-800 min-h-screen pb-24">
-  <div id="app" class="max-w-5xl mx-auto px-4 py-6">
+<body class="bg-gray-100 text-gray-800 min-h-screen py-6">
+  <div id="app" class="max-w-5xl mx-auto px-4">
     <!-- 头部说明 -->
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -115,7 +115,7 @@
       </div>
     </div>
 
-    <!-- 生命健康质量概览（结合图片特色） -->
+    <!-- 生命健康质量概览 -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
       <h3 class="text-sm font-bold text-gray-800 mb-3">生命健康质量概览 (基于预期 {{ safeLifeExpectancy }} 岁)</h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center mb-4">
@@ -182,8 +182,12 @@
             </span>
           </div>
 
-          <div class="grid grid-cols-12 gap-1 mb-1 text-center text-gray-400 text-[9px] font-mono">
-            <span v-for="m in 12" :key="m">{{ m }}月</span>
+          <!-- 月份表头：增加占位块对齐格子 -->
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-12 flex-shrink-0"></div>
+            <div class="grid grid-cols-12 gap-1 flex-grow text-center text-gray-400 text-[9px] font-mono">
+              <span v-for="m in 12" :key="m">{{ m }}月</span>
+            </div>
           </div>
 
           <div class="space-y-1">
@@ -211,7 +215,7 @@
     </div>
 
     <!-- 实时秒级倒计时组件 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-0">
       <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
         <div class="text-xs text-gray-500">今年剩余</div>
         <div class="text-2xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }} 天</div>
