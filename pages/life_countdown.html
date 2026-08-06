@@ -41,37 +41,105 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">人生倒计时 & FIRE 深度规划</h1>
-        <p class="text-xs text-gray-500 mt-1">可视化生命余量与健康质量，夺回人生主导权</p>
+        <p class="text-xs text-gray-500 mt-1">可视化生命余量与健康质量，结合未来生命科学科技加速预测</p>
       </div>
     </div>
 
     <!-- 输入与快捷预设卡片 -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">出生日期</label>
-          <input type="date" v-model="birthDate" @change="saveUserSettings"
+          <input type="date" v-model="birthDate" @change="onBirthDateOrRegionChange"
             class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
         </div>
+        
+        <!-- 地区选择 -->
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">性别预设（寿命）</label>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">选择地区</label>
+          <select v-model="selectedRegion" @change="onBirthDateOrRegionChange"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="cn">中国大陆</option>
+            <option value="us">美国</option>
+            <option value="hk">中国香港</option>
+            <option value="sg">新加坡</option>
+            <option value="tw">台湾地区</option>
+          </select>
+        </div>
+
+        <!-- 性别预设 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">性别预设</label>
           <div class="flex gap-2">
             <button @click="setGenderPreset('male')" :class="gender === 'male' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
-              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">男 (75岁)</button>
+              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">
+              男
+            </button>
             <button @click="setGenderPreset('female')" :class="gender === 'female' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'"
-              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">女 (80岁)</button>
+              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">
+              女
+            </button>
           </div>
         </div>
+
+        <!-- 生命科学/医疗技术发展加成预期 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">
+            医疗科技加成预期
+          </label>
+          <select v-model="techDividendLevel" @change="applyRegionPreset"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="0">无加成 (传统静态)</option>
+            <option value="1">标准加成 (常规医学进步)</option>
+            <option value="1.5">乐观加成 (AI/基因疗法爆发)</option>
+            <option value="2">激进加成 (器官再生与抗衰)</option>
+          </select>
+        </div>
+
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1">FIRE 目标年龄</label>
-          <input type="number" v-model.number="fireAge" @change="saveUserSettings" min="1" max="100"
+          <input type="number" v-model.number="fireAge" min="1" max="100"
             class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
         </div>
+
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">预期寿命（岁）</label>
-          <input type="number" v-model.number="lifeExpectancy" @change="saveUserSettings" min="1" max="120"
-            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          <label class="block text-xs font-semibold text-gray-600 mb-1">最终预期寿命（岁）</label>
+          <input type="number" v-model.number="lifeExpectancy" min="1" max="120"
+            class="w-full px-3 py-2 text-sm bg-blue-50 border border-blue-300 text-blue-900 font-bold rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
         </div>
+      </div>
+
+      <!-- 科学发展加成说明条 -->
+      <div class="mt-3 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 flex flex-wrap justify-between items-center gap-2">
+        <div>
+          🧬 <strong>寿命预测计算公式：</strong> 
+          {{ currentRegionStats.name }}静态基准 ({{ gender === 'male' ? currentRegionStats.male : currentRegionStats.female }}岁) 
+          + {{ generationName }}世代生命科学红利 ({{ baseGenerationBonus }}岁 × {{ techDividendLevel }}倍) 
+          = <strong>{{ calculatedExpectancy }} 岁</strong>
+        </div>
+        <button @click="applyRegionPreset" class="text-[11px] underline text-blue-600 hover:text-blue-800">重置为公式推算值</button>
+      </div>
+    </div>
+
+    <!-- 实时秒级倒计时组件 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-0 py-6">
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+        <div class="text-xs text-gray-500">今年剩余</div>
+        <div class="text-2xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }} 天</div>
+        <div class="text-[10px] text-gray-400 mt-0.5 font-mono">{{ yearRemainingHMS }}</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
+        <div class="text-xs text-gray-500">本月剩余</div>
+        <div class="text-2xl font-bold text-purple-600 mt-1">{{ monthRemainingDays }} 天</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
+        <div class="text-xs text-gray-500">本周剩余</div>
+        <div class="text-2xl font-bold text-green-600 mt-1">{{ weekRemainingDays }} 天</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-500">
+        <div class="text-xs text-gray-500">今天剩余</div>
+        <div class="text-2xl font-bold text-red-600 mt-1 font-mono tabular-nums">{{ todayRemaining }}</div>
+        <div class="text-[10px] text-gray-400 mt-0.5">时:分:秒</div>
       </div>
     </div>
 
@@ -117,18 +185,18 @@
 
     <!-- 生命健康质量概览 -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-      <h3 class="text-sm font-bold text-gray-800 mb-3">生命健康质量概览 (基于预期 {{ safeLifeExpectancy }} 岁)</h3>
+      <h3 class="text-sm font-bold text-gray-800 mb-3">生命健康质量概览 (基于预测寿命 {{ safeLifeExpectancy }} 岁)</h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center mb-4">
         <div class="p-3 bg-gray-50 rounded-lg">
           <div class="text-xs text-gray-500">当前年龄</div>
           <div class="text-xl font-bold text-gray-800 mt-0.5">{{ currentAge.toFixed(1) }} 岁</div>
         </div>
         <div class="p-3 bg-emerald-50 rounded-lg">
-          <div class="text-xs text-emerald-600">距离衰弱期 (60岁)</div>
+          <div class="text-xs text-emerald-600">距离衰弱期 (65岁)</div>
           <div class="text-xl font-bold text-emerald-700 mt-0.5">{{ yearsToFrail > 0 ? yearsToFrail.toFixed(1) + ' 年' : '已进入' }}</div>
         </div>
         <div class="p-3 bg-yellow-50 rounded-lg">
-          <div class="text-xs text-yellow-600">距离失能期 (70岁)</div>
+          <div class="text-xs text-yellow-600">距离失能期 (75岁)</div>
           <div class="text-xl font-bold text-yellow-700 mt-0.5">{{ yearsToDisabled > 0 ? yearsToDisabled.toFixed(1) + ' 年' : '已进入' }}</div>
         </div>
         <div class="p-3 bg-rose-50 rounded-lg">
@@ -152,7 +220,7 @@
     </div>
 
     <!-- 人生月份画卷矩阵 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div>
           <h3 class="text-base font-bold text-gray-800">人生月份画卷 (每行 12 个月 = 1 年)</h3>
@@ -165,8 +233,8 @@
         <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-blue-400 rounded-xs"></span> 成长学业(0-18岁)</div>
         <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-amber-500 rounded-xs"></span> 打工奋斗(18-FIRE)</div>
         <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-emerald-500 rounded-xs"></span> FIRE黄金自由期</div>
-        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-400 rounded-xs"></span> 晚年衰弱期(60-69岁)</div>
-        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-rose-400 rounded-xs"></span> 晚年失能期(70岁+)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-400 rounded-xs"></span> 晚年衰弱期(65-74岁)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-rose-400 rounded-xs"></span> 晚年失能期(75岁+)</div>
         <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-gray-300 rounded-xs"></span> 已过时间</div>
       </div>
 
@@ -182,7 +250,7 @@
             </span>
           </div>
 
-          <!-- 月份表头：增加占位块对齐格子 -->
+          <!-- 月份表头 -->
           <div class="flex items-center gap-2 mb-1">
             <div class="w-12 flex-shrink-0"></div>
             <div class="grid grid-cols-12 gap-1 flex-grow text-center text-gray-400 text-[9px] font-mono">
@@ -214,27 +282,6 @@
       </div>
     </div>
 
-    <!-- 实时秒级倒计时组件 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-0">
-      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
-        <div class="text-xs text-gray-500">今年剩余</div>
-        <div class="text-2xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }} 天</div>
-        <div class="text-[10px] text-gray-400 mt-0.5 font-mono">{{ yearRemainingHMS }}</div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
-        <div class="text-xs text-gray-500">本月剩余</div>
-        <div class="text-2xl font-bold text-purple-600 mt-1">{{ monthRemainingDays }} 天</div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
-        <div class="text-xs text-gray-500">本周剩余</div>
-        <div class="text-2xl font-bold text-green-600 mt-1">{{ weekRemainingDays }} 天</div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-500">
-        <div class="text-xs text-gray-500">今天剩余</div>
-        <div class="text-2xl font-bold text-red-600 mt-1 font-mono tabular-nums">{{ todayRemaining }}</div>
-        <div class="text-[10px] text-gray-400 mt-0.5">时:分:秒</div>
-      </div>
-    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
@@ -244,17 +291,55 @@
       data: function() {
         return {
           birthDate: '1996-06-01',
-          gender: 'custom',
+          selectedRegion: 'cn',
+          gender: 'male',
+          techDividendLevel: '1', // 1: 标准科技加成
           fireAge: 45,
-          lifeExpectancy: 100,
+          lifeExpectancy: 81, // 初始默认由计算结果覆盖
           now: new Date(),
           todayDate: new Date(),
-          timer: null
+          timer: null,
+          regionData: {
+            cn: { name: '中国大陆', male: 76, female: 81 },
+            us: { name: '美国', male: 76, female: 81 },
+            hk: { name: '中国香港', male: 83, female: 88 },
+            sg: { name: '新加坡', male: 82, female: 86 },
+            tw: { name: '台湾地区', male: 77, female: 84 }
+          }
         };
       },
       computed: {
+        currentRegionStats: function() {
+          return this.regionData[this.selectedRegion] || this.regionData.cn;
+        },
+        birthYear: function() {
+          return this.birthDateObj.getFullYear();
+        },
+        // 根据出生年份计算不同世代的科技红利基数
+        baseGenerationBonus: function() {
+          var year = this.birthYear;
+          if (year < 1960) return 0;       // 1960前：平稳期
+          if (year < 1980) return 2;       // 60-70后：现代抗生素/心血管控制
+          if (year < 2000) return 5;       // 80-90后：精准医疗/靶向药/AI辅助
+          if (year < 2020) return 8;       // 00-10后：细胞疗法/基因编辑
+          return 12;                       // 20后+: 器官再生/长寿干预
+        },
+        generationName: function() {
+          var year = this.birthYear;
+          if (year < 1960) return '60前';
+          if (year < 1980) return '60-70后';
+          if (year < 2000) return '80-90后';
+          if (year < 2020) return '00-10后';
+          return '20后';
+        },
+        // 计算出的预期寿命公式
+        calculatedExpectancy: function() {
+          var base = this.gender === 'male' ? this.currentRegionStats.male : this.currentRegionStats.female;
+          var bonus = Math.round(this.baseGenerationBonus * parseFloat(this.techDividendLevel));
+          return base + bonus;
+        },
         safeFireAge: function() { return Number(this.fireAge) || 45; },
-        safeLifeExpectancy: function() { return Number(this.lifeExpectancy) || 75; },
+        safeLifeExpectancy: function() { return Number(this.lifeExpectancy) || 80; },
         birthDateObj: function() {
           if (!this.birthDate) return new Date('1996-06-01');
           var d = new Date(this.birthDate + 'T00:00:00');
@@ -281,10 +366,10 @@
           return total > 0 ? (this.daysLived / total) * 100 : 0;
         },
         yearsToFrail: function() {
-          return 60 - this.currentAge;
+          return 65 - this.currentAge;
         },
         yearsToDisabled: function() {
-          return 70 - this.currentAge;
+          return 75 - this.currentAge;
         },
 
         /* FIRE 计算 */
@@ -340,10 +425,10 @@
                 } else if (age < this.safeFireAge) {
                   stageColorClass = 'bg-amber-500';
                   stageName = '打工奋斗';
-                } else if (age < 60) {
+                } else if (age < 65) {
                   stageColorClass = 'bg-emerald-500';
                   stageName = 'FIRE黄金自由期';
-                } else if (age < 70) {
+                } else if (age < 75) {
                   stageColorClass = 'bg-yellow-400';
                   stageName = '晚年衰弱期';
                 } else {
@@ -375,13 +460,13 @@
             if (midAge >= 18 && midAge < this.safeFireAge) {
               decadeStageName = '打工奋斗期';
               stageBadgeClass = 'bg-amber-100 text-amber-700';
-            } else if (midAge >= this.safeFireAge && midAge < 60) {
+            } else if (midAge >= this.safeFireAge && midAge < 65) {
               decadeStageName = 'FIRE黄金自由期';
               stageBadgeClass = 'bg-emerald-100 text-emerald-700';
-            } else if (midAge >= 60 && midAge < 70) {
+            } else if (midAge >= 65 && midAge < 75) {
               decadeStageName = '晚年衰弱期';
               stageBadgeClass = 'bg-yellow-100 text-yellow-700';
-            } else if (midAge >= 70) {
+            } else if (midAge >= 75) {
               decadeStageName = '晚年失能期';
               stageBadgeClass = 'bg-rose-100 text-rose-700';
             }
@@ -432,34 +517,22 @@
       },
       methods: {
         pad: function(n) { return n < 10 ? '0' + n : String(n); },
+        applyRegionPreset: function() {
+          // 根据地区和科学公式计算预期寿命
+          this.lifeExpectancy = this.calculatedExpectancy;
+        },
+        onBirthDateOrRegionChange: function() {
+          this.applyRegionPreset();
+        },
         setGenderPreset: function(g) {
           this.gender = g;
-          if (g === 'male') {
-            this.lifeExpectancy = 75;
-          } else if (g === 'female') {
-            this.lifeExpectancy = 80;
-          }
-          this.saveUserSettings();
-        },
-        saveUserSettings: function() {
-          localStorage.setItem('life_countdown_birth', this.birthDate);
-          localStorage.setItem('life_countdown_fire', this.fireAge);
-          localStorage.setItem('life_countdown_expectancy', this.lifeExpectancy);
-          localStorage.setItem('life_countdown_gender', this.gender);
-        },
-        loadUserSettings: function() {
-          var savedBirth = localStorage.getItem('life_countdown_birth');
-          var savedFire = localStorage.getItem('life_countdown_fire');
-          var savedExp = localStorage.getItem('life_countdown_expectancy');
-          var savedGender = localStorage.getItem('life_countdown_gender');
-          if (savedBirth) this.birthDate = savedBirth;
-          if (savedFire) this.fireAge = parseInt(savedFire, 10);
-          if (savedExp) this.lifeExpectancy = parseInt(savedExp, 10);
-          if (savedGender) this.gender = savedGender;
+          this.applyRegionPreset();
         }
       },
       mounted: function() {
-        this.loadUserSettings();
+        // 初始化计算一次默认预设
+        this.applyRegionPreset();
+        
         var self = this;
         this.timer = setInterval(function() {
           self.now = new Date();
