@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CLEC 投资哲学：Beta + Alpha 个人财富增长框架</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css" />
+  <style>
+    .article-content h1 { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; }
+    .article-content h3 { font-size: 1.25rem; font-weight: 600; color: #1e40af; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .article-content h4 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .article-content p { color: #4b5563; line-height: 1.8; margin-bottom: 0.75rem; }
+    .article-content ul { margin-left: 1.5rem; margin-bottom: 1rem; }
+    .article-content li { color: #4b5563; line-height: 1.8; margin-bottom: 0.4rem; list-style-type: disc; }
+    .article-content strong { color: #1e293b; font-weight: 600; }
+    .article-content code { background: #eff6ff; padding: 2px 6px; border-radius: 3px; font-family: Consolas, "Courier New", monospace; font-size: 0.9rem; color: #1d4ed8; }
+    .article-content hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-3xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:underline text-sm">← 返回首页</a>
+    <header class="mt-4 mb-8">
+      <h1 class="text-2xl font-bold text-gray-800">CLEC投资哲学之个人财富增长框架</h1>
+      <p class="text-gray-500 mt-1">Beta + Alpha 战略模型</p>
+    </header>
+    <div class="article-content" v-html="renderedContent"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    var mdContent = '\
+# CLEC 投资哲学之个人财富增长框架：Beta + Alpha 战略模型\n\
+\n\
+### 核心哲学\n\
+\n\
+* **Beta（底层基石）**：放弃战胜市场，绑定顶尖企业增长红利，靠**制度与时间**拿满市场平均收益。\n\
+* **Alpha（个人引擎）**：放弃二级市场选股择时，转而在**开源节流、避坑防守、资本结构与人生经营**上创造超额杠杆。\n\
+* **提领与退休（终局思维）**：建立极高安全边际的提领机制与资产传承闭环，实现终身现金流无忧与资产永续。\n\
+\n\
+---\n\
+\n\
+### Ⅰ. Beta 策略：锚定财富底座（不折腾，打死不离场）\n\
+\n\
+* **优质标的**：买入并聚焦美国优质宽基指数 ETF（如 **SPY**、**QQQ**），直接分享顶尖企业的长期盈利能力。\n\
+* **资产配置**：根据个人风险偏好建立科学的资产比例（如股票/债券/现金），不过度押注单一赛道。\n\
+* **放弃择时**：承认无法预测宏观周期与大盘顶底，摒弃贪婪与恐慌情绪对交易的干扰。\n\
+* **持续定投**：建立自动扣款纪律，将未来的增量现金流源源不断地转化为资本筹码。\n\
+* **长期持有**：拉长资金在场时间（Time in the Market），给复利的指数增长留足时间空间。\n\
+\n\
+---\n\
+\n\
+### Ⅱ. Alpha 策略：打造超额杠杆（降维打击，拓宽上限）\n\
+\n\
+#### 1. 开源：本金与资本放大\n\
+\n\
+* **提高主动收入**：打造最强本金催化剂——在财富积累前期，大幅增加本金注入速度比死磕收益率有效得多。\n\
+* **合理低息借贷**：在借贷成本低于资产预期长期回报率（利息 $i < r$ 回报率）时，利用低息、无爆仓风险的廉价资金（如优质房贷、经营贷、信贷）放大资本基数。\n\
+\n\
+#### 2. 防守与避坑：阻断资本流失（防守型 Alpha）\n\
+\n\
+* **远离低效理财陷阱**：坚决避开储蓄型/增额终身寿险、分红险及商业年金等产品。这类产品流动性极差、实际收益率（IRR）低且严重侵蚀机会成本，仅用纯消费型定期险解决基础保障即可。\n\
+* **拒绝高贬值负债**：坚决不买落地即打折的新车或奢侈耗品，避免现金流被折旧和养护成本持续吞噬。\n\
+* **克制自住房陷阱**：避免过早将大额流动资金沉淀在流动性差、持有成本高（利息、税费、物业、装修）的过度住房上。\n\
+* **抑制生活方式通胀**：警惕“消费升级”（Lifestyle Creep），不随收入增加而盲目拉高日常消费，保持高储蓄率与高投资转化率。\n\
+\n\
+#### 3. 时间与纪律：收割复利与波动\n\
+\n\
+* **尽早投入资金**：越早将闲置资金置入 Beta 资产，越早启动复利公式中的时间起点。\n\
+* **保持健康长寿**：拉长复利时间的终点——活得够久本身就是最可怕的指数级放大器（巴菲特 90% 以上财富来自 60 岁之后）。\n\
+* **定期动态再平衡**：设定每年或固定偏差阈值进行再平衡，用客观纪律取代主观判断，强制实现“高抛低吸”并收割市场波动率。\n\
+\n\
+---\n\
+\n\
+### Ⅲ. 提领与退休策略：安全退出与永续现金流（终局闭环）\n\
+\n\
+#### 1. 践行“买、借、死”策略（Buy, Borrow, Die）\n\
+\n\
+* **极致税费与复利优化**：退休后尽量不直接卖出核心 Beta 资产，避免触发大额资本利得税和中断复利。\n\
+* **以借代卖获取现金流**：利用高净值资产进行低息抵押借贷（如证券质押贷款 / PAL），用借出的廉价流动性支付日常开销，直至最终资产无缝继承，实现税务与资产效率的终极闭环。\n\
+\n\
+#### 2. 建立极高安全边际的退休门槛\n\
+\n\
+* **充裕的资产储备**：准备达到退休后年开销 **25~33 倍甚至更多** 的净资产规模，从根本上降低“序列收益率风险”（Sequence of Returns Risk）和退休中断风险。\n\
+* **保守的安全提领率（SWR）**：将每年资产提领率严格控制在 **2%~3%**（低于传统 4% 法则），确保资产本金在退休后仍能抵御通胀并持续自我增值。\n\
+\n\
+#### 3. 动态退休调节机制（安全防御网）\n\
+\n\
+* **未达标防线与缓冲预案**：若资产未达到年开销 25~33 倍、或算出提领率必须高于 3%，即表明尚未具备完全退休的客观条件。\n\
+* **柔性补充现金流**：此时应优先通过配置**低波红利资产**提供现金流垫片，或采用半退休/打零工（Barista FIRE）等轻度工作方式补充生活开销，绝不强制提领或变卖核心资产。\n\
+';
+
+    new Vue({
+      el: '#app',
+      data: function() {
+        return { renderedContent: '' };
+      },
+      mounted: function() {
+        this.renderedContent = marked.parse(mdContent);
+        this.$nextTick(function() {
+          renderMathInElement(this.$el, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

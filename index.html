@@ -27,6 +27,22 @@
       </div>
     </main>
 
+    <!-- 投资文章 -->
+    <section class="max-w-5xl mx-auto px-4 pb-8">
+      <div class="border-t border-gray-200 pt-6">
+        <h2 class="text-lg font-semibold mb-3">投资文章</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <a v-for="item in articleItems" :key="item.file"
+             :href="item.file"
+             target="_blank" rel="noopener noreferrer"
+             class="block bg-white rounded-lg shadow hover:shadow-md border-l-4 border-green-400 p-5 transition-shadow duration-200 no-underline">
+            <h2 class="text-lg font-semibold text-gray-800">{{ item.name }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ item.desc }}</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- 站外链接 -->
     <section class="max-w-5xl mx-auto px-4 pb-8">
       <div class="border-t border-gray-200 pt-6">
@@ -72,6 +88,9 @@
           { name: '模拟涨跌计算器', file: 'pages/stock_change_sequence_calculator.html', desc: '模拟股票价格的随机涨跌序列' },
           { name: '人生倒计时', file: 'pages/life_countdown.html', desc: '可视化人生剩余时间倒计时' },
           { name: '房产租售比计算器', file: 'pages/rent_sale_ratio_calculator.html', desc: '计算房产租售比、年化收益率与回本年限' }
+        ],
+        articleItems: [
+          { name: 'CLEC 投资哲学', file: 'pages/clec_investment_philosophy.html', desc: 'Beta + Alpha 个人财富增长战略模型' }
         ],
         externalLinks: [
           { name: 'QQQ/QLD 回测工具', url: 'https://clec-strategy-backtest.vercel.app' },
