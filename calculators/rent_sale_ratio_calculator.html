@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>专业房产租售比与投资收益率计算器 (含按揭与IRR/NPV)</title>
-  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <title>专业房产租售比与投资收益率计算器 (智能向导版)</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
   <style>
     .formula-section code {
@@ -15,139 +14,169 @@
       font-size: 0.9rem;
       color: #1d4ed8;
     }
+    /* 平滑展开过渡 */
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.3s, max-height 0.3s ease-in-out; }
+    .fade-enter, .fade-leave-to { opacity: 0; max-height: 0; overflow: hidden; }
+    .fade-enter-to, .fade-leave { opacity: 1; max-height: 2000px; overflow: hidden; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen">
+<body class="bg-gray-50 text-gray-800 min-h-screen pb-12">
   <div id="app" class="max-w-6xl mx-auto px-4 py-8">
-    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
     
-    <div class="flex flex-col md:flex-row md:items-center justify-between mt-4 border-b pb-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b pb-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">房产租售比与投资收益率计算器</h1>
-        <p class="text-gray-500 text-sm mt-1">支持按揭贷款杠杆评估、资金时间价值（IRR / NPV）及动态现金流分析</p>
-      </div>
-      <!-- 模式切换 -->
-      <div class="mt-4 md:mt-0 flex bg-gray-200 p-1 rounded-lg">
-        <button type="button" @click="isMortgage = false" 
-          :class="!isMortgage ? 'bg-white text-blue-600 shadow' : 'text-gray-600 hover:text-gray-900'"
-          class="px-4 py-1.5 text-sm font-semibold rounded-md transition">全款模式</button>
-        <button type="button" @click="isMortgage = true" 
-          :class="isMortgage ? 'bg-white text-blue-600 shadow' : 'text-gray-600 hover:text-gray-900'"
-          class="px-4 py-1.5 text-sm font-semibold rounded-md transition">按揭贷款模式</button>
+        <p class="text-gray-500 text-sm mt-1">支持按揭杠杆、IRR现金流折现与多场景预设模拟</p>
       </div>
     </div>
 
-    <!-- 输入参数表单 -->
+    <!-- 【方案2】快捷场景预设 (一键填表) -->
+    <div class="bg-blue-50 rounded-xl p-4 mt-6 border border-blue-100 flex flex-col md:flex-row md:items-center gap-4">
+      <div class="text-sm font-bold text-blue-800 flex-shrink-0">⚡ 快速预设场景：</div>
+      <div class="flex flex-wrap gap-2">
+        <button @click="applyTemplate('tier1')" class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-full text-xs font-medium transition shadow-sm">
+          🏢 一线城市主流住宅
+        </button>
+        <button @click="applyTemplate('tier2')" class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-full text-xs font-medium transition shadow-sm">
+          🏡 二三线稳健收租房
+        </button>
+        <button @click="applyTemplate('commercial')" class="bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-full text-xs font-medium transition shadow-sm">
+          🏪 高收益商铺 / 公寓
+        </button>
+      </div>
+      <div class="text-xs text-blue-500 ml-auto hidden md:block">点此一键填充常用行业数据</div>
+    </div>
+
+    <!-- 基础参数表单 -->
     <div class="bg-white rounded-xl shadow-sm p-6 mt-6 border border-gray-100">
-      <h2 class="text-md font-bold text-gray-800 mb-4 flex items-center border-l-4 border-blue-500 pl-2">1. 房产与初始成本</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-md font-bold text-gray-800 flex items-center border-l-4 border-blue-500 pl-2">核心资产与资金信息</h2>
+        <!-- 模式切换 -->
+        <div class="flex bg-gray-100 p-1 rounded-lg">
+          <button type="button" @click="isMortgage = false" 
+            :class="!isMortgage ? 'bg-white text-blue-600 shadow' : 'text-gray-500 hover:text-gray-900'"
+            class="px-3 py-1 text-xs font-semibold rounded-md transition">全款购买</button>
+          <button type="button" @click="isMortgage = true" 
+            :class="isMortgage ? 'bg-white text-blue-600 shadow' : 'text-gray-500 hover:text-gray-900'"
+            class="px-3 py-1 text-xs font-semibold rounded-md transition">按揭贷款</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div>
-          <label class="block text-xs font-semibold text-gray-600">房屋总价（元）</label>
-          <input type="number" v-model.number="housePrice" min="1" step="10000"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-700">房屋总价（元）</label>
+          <input type="number" v-model.number="housePrice" step="10000" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-600">初始附加成本（元）<span class="text-gray-400 font-normal ml-1">契税/中介费/装修等</span></label>
-          <input type="number" v-model.number="extraCost" min="0" step="1000"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-700">预期月租金（元/月）</label>
+          <input type="number" v-model.number="monthlyRent" step="100" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-600">房屋面积（㎡）</label>
-          <input type="number" v-model.number="houseArea" min="1" step="0.1"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-700">房屋面积（㎡）</label>
+          <input type="number" v-model.number="houseArea" step="1" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700">初始附加成本（元）</label>
+          <input type="number" v-model.number="extraCost" step="1000" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <p class="text-xs text-gray-400 mt-1">契税/中介费/首期装修等</p>
         </div>
       </div>
 
       <!-- 按揭模式专有参数 -->
-      <div v-if="isMortgage" class="mt-6 pt-4 border-t border-dashed border-gray-200">
-        <h2 class="text-md font-bold text-gray-800 mb-4 flex items-center border-l-4 border-indigo-500 pl-2">2. 按揭贷款参数（等额本息）</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-600">首付比例（%）</label>
-            <input type="number" v-model.number="downPaymentRatio" min="0" max="100" step="5"
-              class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-600">贷款年限（年）</label>
-            <input type="number" v-model.number="loanYears" min="1" max="30" step="1"
-              class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-600">贷款年利率（%）</label>
-            <input type="number" v-model.number="interestRate" min="0" max="20" step="0.05"
-              class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-          </div>
-        </div>
-      </div>
-
-      <h2 class="text-md font-bold text-gray-800 mt-6 mb-4 flex items-center border-l-4 border-green-500 pl-2">3. 运营租金与持有成本</h2>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div v-if="isMortgage" class="mt-6 pt-4 border-t border-dashed border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-6 bg-indigo-50/30 p-4 rounded-lg">
         <div>
-          <label class="block text-xs font-semibold text-gray-600">月租金（元）</label>
-          <input type="number" v-model.number="monthlyRent" min="0" step="100"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-700">首付比例（%）</label>
+          <input type="number" v-model.number="downPaymentRatio" min="0" max="100" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 outline-none" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-600">空置率（%）</label>
-          <input type="number" v-model.number="vacancyRate" min="0" max="100" step="0.5"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-700">贷款年限（年）</label>
+          <input type="number" v-model.number="loanYears" min="1" max="30" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 outline-none" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-600">物业费（元/㎡/月）</label>
-          <input type="number" v-model.number="propertyFeePerSqm" min="0" step="0.1"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">维修预留（元/月）</label>
-          <input type="number" v-model.number="monthlyMaintenance" min="0" step="50"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">其他月度杂费（元/月）</label>
-          <input type="number" v-model.number="monthlyOtherFee" min="0" step="50"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">房产税/附加税（元/年）</label>
-          <input type="number" v-model.number="annualPropertyTax" min="0" step="100"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-      </div>
-
-      <h2 class="text-md font-bold text-gray-800 mt-6 mb-4 flex items-center border-l-4 border-purple-500 pl-2">4. 长期假设与退出估计</h2>
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">预期租金年增长率（%）</label>
-          <input type="number" v-model.number="rentGrowthRate" step="0.5"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">预期房价年增值率（%）</label>
-          <input type="number" v-model.number="houseGrowthRate" step="0.5"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">期末卖房交易成本率（%）</label>
-          <input type="number" v-model.number="sellingFeeRatio" min="0" max="20" step="0.5"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">基准折现率 NPV Discount（%）</label>
-          <input type="number" v-model.number="discountRate" step="0.5" min="0"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600">投资持有模拟年数</label>
-          <input type="number" v-model.number="simulationYears" min="1" max="50" step="1"
-            class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <label class="block text-xs font-semibold text-gray-700">贷款年利率（%）</label>
+          <input type="number" v-model.number="interestRate" step="0.05" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 outline-none" />
         </div>
       </div>
     </div>
 
+    <!-- 【方案1】渐进式折叠：高级参数开关 -->
+    <div class="mt-4 text-center">
+      <button @click="showAdvanced = !showAdvanced" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full transition">
+        <span v-if="!showAdvanced">⚙️ 展开高级运营参数与长期假设 (杂费/空置率/涨幅等) ▼</span>
+        <span v-else>⚙️ 收起高级参数 ▲</span>
+      </button>
+    </div>
+
+    <!-- 高级参数区 (隐藏展开) + 【方案3】微提示 -->
+    <transition name="fade">
+      <div v-show="showAdvanced" class="bg-white rounded-xl shadow-sm p-6 mt-4 border border-gray-200">
+        
+        <h3 class="text-sm font-bold text-gray-800 mb-4 border-l-4 border-green-500 pl-2">日常运营与持有成本 (月度/年度)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">空置率（%）</label>
+            <input type="number" v-model.number="vacancyRate" step="0.5" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 住宅一般填 3%~5% (每年空置半个月)。商铺/公寓较高。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">物业费（元/㎡/月）</label>
+            <input type="number" v-model.number="propertyFeePerSqm" step="0.1" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 需房东承担的部分。若租客自理可填0。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">维修预留与杂费（元/月）</label>
+            <input type="number" v-model.number="monthlyMaintenance" step="50" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 家电维修、折旧预留，老小区建议 100-300元。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">房产税/附加税（元/年）</label>
+            <input type="number" v-model.number="annualPropertyTax" step="100" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 住宅目前填0，商铺/企业产权依规填写。</p>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 my-4"></div>
+        
+        <h3 class="text-sm font-bold text-gray-800 mb-4 border-l-4 border-purple-500 pl-2">长期宏观假设与退出机制</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">租金年增长率（%）</label>
+            <input type="number" v-model.number="rentGrowthRate" step="0.5" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 参考通胀，一般设 1% ~ 2%。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">成本年增长率（%）</label>
+            <input type="number" v-model.number="holdingCostGrowthRate" step="0.5" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 物业/维修费涨幅，一般 2%。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">房价年增值率（%）</label>
+            <input type="number" v-model.number="houseGrowthRate" step="0.5" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 保守估算，一线 1-3%，人口流出地可填 0%。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">期末卖房交易成本（%）</label>
+            <input type="number" v-model.number="sellingFeeRatio" step="0.5" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 中介费+税费，二手房一般预留 3%~5%。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">NPV基准折现率（%）</label>
+            <input type="number" v-model.number="discountRate" step="0.5" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 你的底线回报率，如定期存款或国债 3%。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-700">模拟年数（年）</label>
+            <input type="number" v-model.number="simulationYears" min="1" max="50" class="w-full px-3 py-2 mt-1 text-sm border border-gray-300 rounded focus:border-blue-400 outline-none" />
+            <p class="text-xs text-gray-400 mt-1">💡 打算持有多久后卖出换现，一般填10-30。</p>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- 核心指标摘要卡片 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
       <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
-        <div class="text-xs text-gray-500">传统租售比 (月租/总价)</div>
+        <div class="text-xs text-gray-500">静态租售比 (总价/月租)</div>
         <div class="text-xl font-bold mt-1 text-blue-600">1 : {{ Math.round(rentSaleRatio) }}</div>
         <div class="text-xs text-gray-400 mt-1">售租比：{{ (rentSaleRatio / 12).toFixed(1) }} 年</div>
       </div>
@@ -160,8 +189,8 @@
         <div class="text-xs text-gray-400 mt-1">首年净现金流 ÷ 初始总投入</div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
-        <div class="text-xs text-gray-500">内部收益率 (IRR)</div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500 relative group">
+        <div class="text-xs text-gray-500 flex items-center">内部收益率 (IRR) <span class="ml-1 text-gray-300 cursor-help">ⓘ</span></div>
         <div class="text-xl font-bold mt-1 text-green-600">{{ irr.toFixed(2) }}%</div>
         <div class="text-xs text-gray-400 mt-1">含期末卖房净变现(已扣税费)</div>
       </div>
@@ -171,110 +200,85 @@
         <div class="text-xl font-bold mt-1" :class="npv >= 0 ? 'text-purple-600' : 'text-red-500'">
           {{ fmtMoney(npv) }} 元
         </div>
-        <div class="text-xs text-gray-400 mt-1">{{ npv >= 0 ? '方案具备超额价值' : '未达到基准回报' }}</div>
+        <div class="text-xs text-gray-400 mt-1">{{ npv >= 0 ? '跑赢基准回报，具备超额价值' : '未达到基准回报，慎重考虑' }}</div>
       </div>
     </div>
 
     <!-- 关键财务数据细分 -->
-    <div class="bg-white rounded-xl shadow-sm p-6 mt-6 border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-xl shadow-sm p-6 mt-4 border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6">
       <div>
-        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">初始投入</h3>
+        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">初始资金流出</h3>
         <p class="text-lg font-bold text-gray-800 mt-1">{{ fmtMoney(initialOutflow) }} 元</p>
         <div class="text-xs text-gray-500 mt-2 space-y-1">
           <p v-if="isMortgage">首付款：{{ fmtMoney(housePrice * safeDownPaymentRatio / 100) }} 元</p>
           <p v-else>房屋总价：{{ fmtMoney(housePrice) }} 元</p>
-          <p>附加费用：{{ fmtMoney(extraCost) }} 元</p>
+          <p>附加费用(契税/中介等)：{{ fmtMoney(extraCost) }} 元</p>
         </div>
       </div>
 
       <div>
-        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">首年月度现金流</h3>
+        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">首年月度净现金流</h3>
         <p class="text-lg font-bold mt-1" :class="monthlyNetCashFlow >= 0 ? 'text-green-600' : 'text-red-600'">
           {{ fmtMoney(monthlyNetCashFlow) }} 元/月
         </p>
         <div class="text-xs text-gray-500 mt-2 space-y-1">
-          <p>月有效租金：+{{ fmtMoney(monthlyRent * (1 - safeVacancyRate/100)) }} 元</p>
-          <p>月持有成本：-{{ fmtMoney(monthlyHoldingCost) }} 元</p>
-          <p v-if="isMortgage" class="text-indigo-600 font-medium">月供（等额本息）：-{{ fmtMoney(monthlyMortgage) }} 元</p>
+          <p>月均有效租金：+{{ fmtMoney(monthlyRent * (1 - safeVacancyRate/100)) }} 元</p>
+          <p>月均持有成本：-{{ fmtMoney(monthlyHoldingCost) }} 元</p>
+          <p v-if="isMortgage" class="text-indigo-600 font-medium">月供(等额本息)：-{{ fmtMoney(monthlyMortgage) }} 元</p>
         </div>
       </div>
 
       <div>
-        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">静态回本周期</h3>
+        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">静态回本周期 (不含卖房)</h3>
         <p class="text-lg font-bold text-gray-800 mt-1">
-          {{ staticPaybackYears === Infinity ? '∞（现金流为负）' : staticPaybackYears.toFixed(1) + ' 年' }}
+          {{ staticPaybackYears === Infinity || staticPaybackYears < 0 ? '∞（现金流为负）' : staticPaybackYears.toFixed(1) + ' 年' }}
         </p>
         <div class="text-xs text-gray-500 mt-2 space-y-1">
-          <p>基于首付款与初始附加成本</p>
-          <p>未包含房屋期末出售溢价</p>
+          <p>纯靠租金收回初始资金所需时间</p>
+          <p>（未包含资产本身升值部分）</p>
         </div>
       </div>
     </div>
 
     <!-- 逐年现金流明细表 -->
-    <div class="mt-6">
+    <div class="mt-8">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-bold text-gray-800">逐年现金流与投资演变明细</h3>
-        <span class="text-xs text-gray-500">假定租金年增 {{ rentGrowthRate }}%，房价年增 {{ houseGrowthRate }}%，卖房手续费 {{ sellingFeeRatio }}%</span>
+        <h3 class="text-lg font-bold text-gray-800">未来财务演变推演表</h3>
+        <span class="text-xs text-gray-500 hidden md:inline">基于您的折叠高级参数假设动态生成</span>
       </div>
       <div class="overflow-x-auto rounded-xl shadow-sm border border-gray-200">
         <table class="w-full bg-white text-xs text-left">
           <thead class="bg-gray-100 text-gray-700 font-semibold border-b border-gray-200">
             <tr>
-              <th class="px-3 py-3 text-center">年份</th>
-              <th class="px-3 py-3 text-right">年有效租金</th>
-              <th class="px-3 py-3 text-right">年持有成本</th>
-              <th v-if="isMortgage" class="px-3 py-3 text-right text-indigo-600">年还贷总额</th>
-              <th class="px-3 py-3 text-right">年净现金流</th>
-              <th class="px-3 py-3 text-right">累计净现金流</th>
-              <th class="px-3 py-3 text-right">预估房屋价值</th>
-              <th v-if="isMortgage" class="px-3 py-3 text-right">剩余贷款本金</th>
-              <th class="px-3 py-3 text-right font-bold text-blue-600">期末净资产(扣除税费)</th>
+              <th class="px-3 py-3 text-center whitespace-nowrap">年份</th>
+              <th class="px-3 py-3 text-right whitespace-nowrap">年有效租金</th>
+              <th class="px-3 py-3 text-right whitespace-nowrap">年持有成本</th>
+              <th v-if="isMortgage" class="px-3 py-3 text-right text-indigo-600 whitespace-nowrap">年还贷总额</th>
+              <th class="px-3 py-3 text-right whitespace-nowrap">年净现金流</th>
+              <th class="px-3 py-3 text-right whitespace-nowrap">累计现金流</th>
+              <th class="px-3 py-3 text-right whitespace-nowrap">预估房屋市价</th>
+              <th v-if="isMortgage" class="px-3 py-3 text-right whitespace-nowrap">剩余贷款本金</th>
+              <th class="px-3 py-3 text-right font-bold text-blue-600 whitespace-nowrap">期末净资产(若卖房)</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="row in cashflowTable" :key="row.year" :class="row.year % 2 === 0 ? 'bg-gray-50/50' : ''">
+            <tr v-for="row in cashflowTable" :key="row.year" :class="row.year % 2 === 0 ? 'bg-gray-50/50' : 'bg-white hover:bg-blue-50/30'">
               <td class="px-3 py-2.5 text-center font-semibold text-gray-600">第 {{ row.year }} 年</td>
-              <td class="px-3 py-2.5 text-right font-mono">{{ fmtTableMoney(row.rentIncome) }}</td>
+              <td class="px-3 py-2.5 text-right font-mono text-gray-700">{{ fmtTableMoney(row.rentIncome) }}</td>
               <td class="px-3 py-2.5 text-right font-mono text-red-500">{{ fmtTableMoney(row.holdingCost) }}</td>
               <td v-if="isMortgage" class="px-3 py-2.5 text-right font-mono text-indigo-600">{{ fmtTableMoney(row.mortgagePayment) }}</td>
               <td class="px-3 py-2.5 text-right font-mono font-medium" :class="row.netCashFlow >= 0 ? 'text-green-600' : 'text-red-500'">
-                {{ fmtTableMoney(row.netCashFlow) }}
+                {{ row.netCashFlow > 0 ? '+' : ''}}{{ fmtTableMoney(row.netCashFlow) }}
               </td>
               <td class="px-3 py-2.5 text-right font-mono font-medium" :class="row.cumulativeCashFlow >= 0 ? 'text-blue-600' : 'text-red-500'">
                 {{ fmtTableMoney(row.cumulativeCashFlow) }}
               </td>
-              <td class="px-3 py-2.5 text-right font-mono text-gray-600">{{ fmtTableMoney(row.houseValue) }}</td>
-              <td v-if="isMortgage" class="px-3 py-2.5 text-right font-mono text-gray-500">{{ fmtTableMoney(row.remainingLoan) }}</td>
+              <td class="px-3 py-2.5 text-right font-mono text-gray-500">{{ fmtTableMoney(row.houseValue) }}</td>
+              <td v-if="isMortgage" class="px-3 py-2.5 text-right font-mono text-gray-400">{{ fmtTableMoney(row.remainingLoan) }}</td>
               <td class="px-3 py-2.5 text-right font-mono font-bold text-blue-600">{{ fmtTableMoney(row.netEquity) }}</td>
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- 专业原理与公式说明 -->
-    <div class="bg-white rounded-xl shadow-sm p-6 mt-6 border border-gray-100 text-sm text-gray-600 leading-relaxed formula-section">
-      <h3 class="text-md font-bold text-gray-800 mb-3">金融与投资评估指标说明</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-        <div>
-          <h4 class="font-bold text-gray-800 border-b pb-1 mb-2">1. 首付现金回报率 (Cash-on-Cash Return)</h4>
-          <p>衡量投资者初始自备资金的现金收益能力，对按揭贷款投资至关重要。</p>
-          <p class="mt-1"><code>CoC = (首年租金收入 - 首年持有成本 - 首年还贷总额) ÷ 初始总投入 × 100%</code></p>
-        </div>
-        <div>
-          <h4 class="font-bold text-gray-800 border-b pb-1 mb-2">2. 内部收益率 (IRR)</h4>
-          <p>考虑了整个持有期间各年现金流及期末卖房（扣除交易中介税费与未清贷款）后的综合年化投资回报率（使 NPV = 0 的折现率）。</p>
-          <p class="mt-1"><code>- InitialOutflow + Σ [ CashFlow_t / (1+IRR)^t ] + NetEquity_N / (1+IRR)^N = 0</code></p>
-        </div>
-        <div>
-          <h4 class="font-bold text-gray-800 border-b pb-1 mb-2">3. 净现值 (NPV)</h4>
-          <p>按预设基准折现率将未来所有现金流折算至今天的价值。NPV > 0 表示该投资收益跑赢了预设基准收益率（如国债或无风险理财）。</p>
-        </div>
-        <div>
-          <h4 class="font-bold text-gray-800 border-b pb-1 mb-2">4. 等额本息月供公式</h4>
-          <p><code>月供 = [贷款本金 × 月利率 × (1+月利率)^月数] ÷ [(1+月利率)^月数 - 1]</code></p>
-        </div>
       </div>
     </div>
   </div>
@@ -285,56 +289,51 @@
       el: '#app',
       data: function() {
         return {
-          isMortgage: false,          // 是否贷款模式
-          housePrice: 1000000,       // 房屋总价
-          extraCost: 10000,          // 初始附加成本（契税、装修等）
-          houseArea: 85,             // 房屋面积
+          showAdvanced: false,        // 控制高级参数展开/收起
+          isMortgage: true,           // 默认开启贷款模式，更符合常理
+
+          // 基础参数
+          housePrice: 5000000,       // 房屋总价
+          monthlyRent: 6500,          // 月租金
+          houseArea: 90,              // 房屋面积
+          extraCost: 150000,          // 初始附加成本（契税、中介费、软装等）
           
           // 按揭贷款参数
           downPaymentRatio: 30,      // 首付比例 %
-          loanYears: 30,             // 贷款年限
-          interestRate: 3.5,         // 贷款年利率 %
+          loanYears: 30,              // 贷款年限
+          interestRate: 3.5,          // 贷款年利率 %
 
-          // 运营与费用
-          monthlyRent: 2000,         // 月租金
-          vacancyRate: 5,            // 空置率 %
-          propertyFeePerSqm: 2.5,    // 物业费（元/㎡/月）
-          monthlyMaintenance: 200,   // 维修费预留（元/月）
-          monthlyOtherFee: 100,      // 其他月费
+          // 高级参数：运营与费用
+          vacancyRate: 3,             // 空置率 %
+          propertyFeePerSqm: 2.8,    // 物业费（元/㎡/月）
+          monthlyMaintenance: 200,   // 维修费预留与杂费（元/月）
           annualPropertyTax: 0,      // 房产税（元/年）
 
-          // 长期假设
-          rentGrowthRate: 2,         // 租金年增长率 %
-          houseGrowthRate: 1,        // 房价年增长率 %
-          sellingFeeRatio: 3.0,      // 卖房手续费/税费 %
-          discountRate: 3.0,         // NPV 折现率 %
-          simulationYears: 35        // 模拟年数
+          // 高级参数：长期假设
+          rentGrowthRate: 1.5,        // 租金年增长率 %
+          holdingCostGrowthRate: 2.0, // 持有成本年增长率 %
+          houseGrowthRate: 2.0,       // 房价年增长率 %
+          sellingFeeRatio: 4.0,       // 卖房手续费/税费 %
+          discountRate: 3.5,          // NPV 折现率 %
+          simulationYears: 30         // 模拟年数
         };
       },
       computed: {
-        // 安全值约束（防呆保护）
-        safeDownPaymentRatio: function() {
-          return Math.min(100, Math.max(0, Number(this.downPaymentRatio) || 0));
-        },
-        safeVacancyRate: function() {
-          return Math.min(100, Math.max(0, Number(this.vacancyRate) || 0));
-        },
+        safeDownPaymentRatio: function() { return Math.min(100, Math.max(0, Number(this.downPaymentRatio) || 0)); },
+        safeVacancyRate: function() { return Math.min(100, Math.max(0, Number(this.vacancyRate) || 0)); },
 
-        // 1. 初始现金总支出
         initialOutflow: function() {
           var hp = Math.max(0, Number(this.housePrice) || 0);
           var dp = this.isMortgage ? (hp * this.safeDownPaymentRatio / 100) : hp;
           return dp + Math.max(0, Number(this.extraCost) || 0);
         },
 
-        // 2. 贷款总额
         loanAmount: function() {
           if (!this.isMortgage) return 0;
           var hp = Math.max(0, Number(this.housePrice) || 0);
           return Math.max(0, hp * (1 - this.safeDownPaymentRatio / 100));
         },
 
-        // 3. 等额本息月供
         monthlyMortgage: function() {
           if (!this.isMortgage || this.loanAmount <= 0) return 0;
           var rate = (Number(this.interestRate) || 0) / 100 / 12;
@@ -343,70 +342,62 @@
           return (this.loanAmount * rate * Math.pow(1 + rate, months)) / (Math.pow(1 + rate, months) - 1);
         },
 
-        // 4. 每月持有成本（物业 + 维修 + 其他 + 房产税/12）
         monthlyHoldingCost: function() {
           var area = Math.max(0, Number(this.houseArea) || 0);
           var pFee = Math.max(0, Number(this.propertyFeePerSqm) || 0);
           var maint = Math.max(0, Number(this.monthlyMaintenance) || 0);
-          var other = Math.max(0, Number(this.monthlyOtherFee) || 0);
           var tax = Math.max(0, Number(this.annualPropertyTax) || 0) / 12;
-          return (area * pFee) + maint + other + tax;
+          return (area * pFee) + maint + tax;
         },
 
-        // 5. 首年每月净现金流
         monthlyNetCashFlow: function() {
           var effRent = (Math.max(0, Number(this.monthlyRent) || 0)) * (1 - this.safeVacancyRate / 100);
           return effRent - this.monthlyHoldingCost - this.monthlyMortgage;
         },
 
-        // 6. 租售比 (房屋总价 / 月租金)
         rentSaleRatio: function() {
           var rent = Math.max(0, Number(this.monthlyRent) || 0);
           return rent > 0 ? (Number(this.housePrice) || 0) / rent : 0;
         },
 
-        // 7. 首年 Cash-on-Cash Return
         firstYearCoC: function() {
           var annualNet = this.monthlyNetCashFlow * 12;
           return this.initialOutflow > 0 ? (annualNet / this.initialOutflow) * 100 : 0;
         },
 
-        // 8. 静态回本年限
         staticPaybackYears: function() {
           var annualNet = this.monthlyNetCashFlow * 12;
           return annualNet > 0 ? this.initialOutflow / annualNet : Infinity;
         },
 
-        // 9. 动态逐年现金流表
         cashflowTable: function() {
           var list = [];
           var cumulative = 0;
           var currentRent = (Math.max(0, Number(this.monthlyRent) || 0)) * 12 * (1 - this.safeVacancyRate / 100);
-          var annualHolding = this.monthlyHoldingCost * 12;
+          var currentHolding = this.monthlyHoldingCost * 12;
           var annualMortgage = this.monthlyMortgage * 12;
           
           var rentG = 1 + (Number(this.rentGrowthRate) || 0) / 100;
+          var holdingG = 1 + (Number(this.holdingCostGrowthRate) || 0) / 100;
           var houseG = 1 + (Number(this.houseGrowthRate) || 0) / 100;
           var feeRatio = Math.max(0, Number(this.sellingFeeRatio) || 0) / 100;
           var hp = Math.max(0, Number(this.housePrice) || 0);
           var simYears = Math.max(1, Number(this.simulationYears) || 1);
+          var lYears = Math.max(1, Number(this.loanYears) || 1);
 
           for (var y = 1; y <= simYears; y++) {
-            var mPayment = (this.isMortgage && y <= this.loanYears) ? annualMortgage : 0;
-            var netCash = currentRent - annualHolding - mPayment;
+            var mPayment = (this.isMortgage && y <= lYears) ? annualMortgage : 0;
+            var netCash = currentRent - currentHolding - mPayment;
             cumulative += netCash;
 
-            // 期末预估房价
             var curHouseVal = hp * Math.pow(houseG, y);
-            // 剩余贷款本金
             var remLoan = this.isMortgage ? this.getRemainingLoan(y * 12) : 0;
-            // 净股权资产（扣除期末卖房中介费与税费）
             var netEquity = (curHouseVal * (1 - feeRatio)) - remLoan;
 
             list.push({
               year: y,
               rentIncome: currentRent,
-              holdingCost: annualHolding,
+              holdingCost: currentHolding,
               mortgagePayment: mPayment,
               netCashFlow: netCash,
               cumulativeCashFlow: cumulative,
@@ -415,44 +406,98 @@
               netEquity: netEquity
             });
 
-            currentRent *= rentG; // 租金逐年增长
+            currentRent *= rentG;
+            currentHolding *= holdingG;
           }
           return list;
         },
 
-        // 10. IRR (内部收益率)
         irr: function() {
           var flows = [-this.initialOutflow];
           var table = this.cashflowTable;
-          
           for (var i = 0; i < table.length; i++) {
             var cf = table[i].netCashFlow;
-            if (i === table.length - 1) {
-              cf += table[i].netEquity;
-            }
+            if (i === table.length - 1) cf += table[i].netEquity;
             flows.push(cf);
           }
           return this.calculateIRR(flows);
         },
 
-        // 11. NPV (净现值)
         npv: function() {
           var rate = (Number(this.discountRate) || 0) / 100;
           var total = -this.initialOutflow;
           var table = this.cashflowTable;
-
           for (var i = 0; i < table.length; i++) {
             var cf = table[i].netCashFlow;
-            if (i === table.length - 1) {
-              cf += table[i].netEquity;
-            }
+            if (i === table.length - 1) cf += table[i].netEquity;
             total += cf / Math.pow(1 + rate, i + 1);
           }
           return total;
         }
       },
       methods: {
-        // 顶部大卡片金额显示（带万/亿缩写）
+        // 应用场景模板（一键填表）
+        applyTemplate(type) {
+          this.isMortgage = true;
+          this.loanYears = 30;
+          this.interestRate = 3.5;
+          this.simulationYears = 30;
+          
+          if (type === 'tier1') {
+            // 一线住宅：高总价、低租金回报率、增值预期尚可、空置率低
+            this.housePrice = 6000000;
+            this.monthlyRent = 7500;
+            this.houseArea = 90;
+            this.extraCost = 200000;
+            this.downPaymentRatio = 30;
+            this.vacancyRate = 3;
+            this.propertyFeePerSqm = 3.0;
+            this.monthlyMaintenance = 200;
+            this.annualPropertyTax = 0;
+            this.rentGrowthRate = 1.5;
+            this.houseGrowthRate = 2.0;
+            this.sellingFeeRatio = 3.5;
+            
+          } else if (type === 'tier2') {
+            // 二三线住宅：总价中等、租金回报率尚可、增值预期低、空置率中等
+            this.housePrice = 1800000;
+            this.monthlyRent = 3500;
+            this.houseArea = 100;
+            this.extraCost = 60000;
+            this.downPaymentRatio = 30;
+            this.vacancyRate = 5;
+            this.propertyFeePerSqm = 1.8;
+            this.monthlyMaintenance = 150;
+            this.annualPropertyTax = 0;
+            this.rentGrowthRate = 1.0;
+            this.houseGrowthRate = 0.5;
+            this.sellingFeeRatio = 3.0;
+            
+          } else if (type === 'commercial') {
+            // 商铺/公寓：低总价高首付、高租金回报、基本无增值、高空置率、有房产税、交易税费高
+            this.housePrice = 1000000;
+            this.monthlyRent = 4500;
+            this.houseArea = 50;
+            this.extraCost = 50000;
+            this.downPaymentRatio = 50; // 商业首付通常较高
+            this.loanYears = 10;        // 商业按揭年限通常短
+            this.interestRate = 4.0;
+            this.vacancyRate = 10;
+            this.propertyFeePerSqm = 6.0;
+            this.monthlyMaintenance = 300;
+            this.annualPropertyTax = 8400; // 按租金或原值估算的一个税额预留
+            this.rentGrowthRate = 0;
+            this.houseGrowthRate = 0;
+            this.sellingFeeRatio = 10.0; // 商业地产土增税等交易成本极高
+            this.simulationYears = 20;
+          }
+          
+          // 如果高级面板没打开，闪烁提示用户参数被修改了
+          if(!this.showAdvanced) {
+            // 可选：在此处增加 toast 提示，此处保持简单交互
+          }
+        },
+
         fmtMoney: function(num) {
           if (typeof num !== 'number' || isNaN(num) || !isFinite(num)) return '0.00';
           var abs = Math.abs(num);
@@ -461,37 +506,28 @@
           return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
 
-        // 表格专用的标准千分位格式（避免表格格式错乱）
         fmtTableMoney: function(num) {
-          if (typeof num !== 'number' || isNaN(num) || !isFinite(num)) return '0.00';
-          return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          if (typeof num !== 'number' || isNaN(num) || !isFinite(num)) return '0';
+          return Math.round(num).toLocaleString('zh-CN');
         },
 
-        // 计算第 k 个月后的剩余贷款本金 (等额本息)
         getRemainingLoan: function(kMonths) {
-          var totalMonths = (this.loanYears || 1) * 12;
+          var totalMonths = Math.max(1, (Number(this.loanYears) || 1) * 12);
           if (kMonths >= totalMonths) return 0;
-          
           var L = this.loanAmount;
+          if (L <= 0) return 0;
           var r = (Number(this.interestRate) || 0) / 100 / 12;
-          if (r === 0) return Math.max(0, L - (L / totalMonths) * kMonths);
-
+          if (r <= 1e-7) return Math.max(0, L - (L / totalMonths) * kMonths);
           var M = this.monthlyMortgage;
           var compound = Math.pow(1 + r, kMonths);
           var rem = L * compound - (M * (compound - 1) / r);
           return Math.max(0, rem);
         },
 
-        // IRR 计算：牛顿迭代法 + 宽边界二分法降级
         calculateIRR: function(cashflows) {
-          var guess = 0.05;
-          var maxIter = 100;
-          var tol = 1e-6;
-
-          // 1. 先尝试牛顿法
+          var guess = 0.05, maxIter = 100, tol = 1e-6;
           for (var iter = 0; iter < maxIter; iter++) {
-            var npvVal = 0;
-            var dNpv = 0;
+            var npvVal = 0, dNpv = 0;
             for (var t = 0; t < cashflows.length; t++) {
               var denom = Math.pow(1 + guess, t);
               npvVal += cashflows[t] / denom;
@@ -503,27 +539,14 @@
             if (isNaN(newGuess) || !isFinite(newGuess) || newGuess <= -0.99) break;
             guess = newGuess;
           }
-
-          // 2. 降级为宽界限二分法 (支持高达 1000% 的高杠杆 IRR)
           var low = -0.99, high = 10.0;
           for (var i = 0; i < 100; i++) {
             var mid = (low + high) / 2;
-            var midNpv = 0;
-            for (var j = 0; j < cashflows.length; j++) {
-              midNpv += cashflows[j] / Math.pow(1 + mid, j);
-            }
+            var midNpv = 0, lowNpv = 0;
+            for (var j = 0; j < cashflows.length; j++) midNpv += cashflows[j] / Math.pow(1 + mid, j);
             if (Math.abs(midNpv) < tol) return mid * 100;
-            
-            var lowNpv = 0;
-            for (var k = 0; k < cashflows.length; k++) {
-              lowNpv += cashflows[k] / Math.pow(1 + low, k);
-            }
-            
-            if (lowNpv * midNpv < 0) {
-              high = mid;
-            } else {
-              low = mid;
-            }
+            for (var k = 0; k < cashflows.length; k++) lowNpv += cashflows[k] / Math.pow(1 + low, k);
+            lowNpv * midNpv < 0 ? (high = mid) : (low = mid);
           }
           return ((low + high) / 2) * 100;
         }
