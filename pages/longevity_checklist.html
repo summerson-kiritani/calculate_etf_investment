@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>长寿金字塔与行动清单</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css" />
+  <style>
+    .article-content h1 { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; }
+    .article-content h2 { font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; }
+    .article-content h3 { font-size: 1.25rem; font-weight: 600; color: #1e40af; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .article-content h4 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .article-content p { color: #4b5563; line-height: 1.8; margin-bottom: 0.75rem; }
+    .article-content ul { margin-left: 1.5rem; margin-bottom: 1rem; }
+    .article-content li { color: #4b5563; line-height: 1.8; margin-bottom: 0.4rem; list-style-type: disc; }
+    .article-content strong { color: #1e293b; font-weight: 600; }
+    .article-content code { background: #eff6ff; padding: 2px 6px; border-radius: 3px; font-family: Consolas, "Courier New", monospace; font-size: 0.9rem; color: #1d4ed8; }
+    .article-content hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+    .article-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+    .article-content th { background: #eff6ff; color: #1e40af; font-weight: 600; text-align: left; padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; }
+    .article-content td { color: #4b5563; padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; vertical-align: top; }
+    .article-content tr:nth-child(even) td { background: #f9fafb; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-3xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:underline text-sm">← 返回首页</a>
+    <header class="mt-4 mb-8">
+      <h1 class="text-2xl font-bold text-gray-800">长寿金字塔与行动清单</h1>
+      <p class="text-gray-500 mt-1">Longevity Pyramid & Checklist</p>
+    </header>
+    <div class="article-content" v-html="renderedContent"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    var mdContent = '\
+## 🏛️ 长寿管理金字塔 (Longevity Pyramid)\n\
+\n\
+| **层级**           | **核心策略**             | **包含内容**                                                 |\n\
+| ------------------ | ------------------------ | ------------------------------------------------------------ |\n\
+| **顶层：安全应急** | **急性救治与防线**       | 熟知周边急诊分布（快速响应） <br> 成人针对性疫苗接种（防重大感染与脑退化） |\n\
+| **中层：精准预防** | **早筛与微观防御**       | 低剂量CT（肺）+ 大肠镜 + 常规体检 <br> 心血管精细指标（ApoB / CAC） <br> 口腔牙周管理（阻断慢性炎症） |\n\
+| **底层：生活基石** | **运动、营养与生物节律** | 3天重训 + 1天有氧 + 每日活动（防肌少症） <br> 懂营养学 + 补剂补充（补食物缺口） <br> 咖啡/茶时序管理（睡前10h禁咖啡因，保护深睡） <br> 7-8小时优质睡眠（排查睡眠呼吸暂停） |\n\
+| **灵魂：精神支撑** | **心识掌控与觉知冥想**   | 心识控制、感恩练习与专注当下（临在） <br> 每天定额“无所事事/看云放空”（关停DMN，保护端粒） <br> 深度社交连接（防孤独） <br> 人生使命感/Ikigai（防认知退化） |\n\
+\n\
+## 📋 长寿完整行动清单 (Longevity Checklist)\n\
+\n\
+### 一、 医疗早筛与急救防线\n\
+\n\
+- **急性救治备忘**：熟悉居住地周围的急诊医院与救护通道（急性看急诊，慢性靠体检）。\n\
+- **癌症精准早筛**：\n\
+  - **肺部**：定期低剂量电脑断层扫描（LDCT）。\n\
+  - **肠道**：达到适龄（通常45-50岁起）定期进行大肠镜检查。\n\
+- **常规体检**：建立长期动态健康档案，监测基础生化指标变化。\n\
+\n\
+### 二、 运动、饮食与生物节律\n\
+\n\
+- **核心运动框架**：\n\
+  - **力量训练（3天/周）**：构建肌肉储备，预防肌少症（Sarcopenia），提升代谢灵活性。\n\
+  - **有氧运动（1天/周）**：提升心肺功能（VO2 Max）。\n\
+  - **日常活动/防跌倒**：保持基础步数，加入单腿平衡与核心训练，维持握力与稳定性。\n\
+- **饮食与代谢**：\n\
+  - **蛋白质补充**：每日摄入约 1.2–1.6g/kg 优质蛋白，配合重训维持肌肉。\n\
+  - **代谢监控**：关注空腹血糖、糖化血红蛋白（HbA1c）与胰岛素抵抗。\n\
+- **营养学常识与精准补剂**：\n\
+  - 掌握基础营养学，优先全食物；精准补充食物缺口（如 **维D3+K2**、高纯度 **Omega-3**、**镁**、**B族**、**CoQ10** 等）。\n\
+- **咖啡因与饮茶节律**：\n\
+  - **早咖啡、午茶**：充分利用咖啡（高多酚）与茶叶（L-茶氨酸+适度咖啡因）的抗氧化及代谢获益。\n\
+  - **睡前10小时禁咖啡因**：严守睡眠保护线，防止咖啡因残留破坏**深度睡眠**，确保夜间脑部清理与组织修复。\n\
+\n\
+### 三、 心血管与预防医学补充\n\
+\n\
+- **心血管精细指标**：关注 **ApoB**（评估致硬化颗粒数）与 **Lp(a)**（排查遗传风险）；中老年评估 **CAC（冠脉钙化积分）** 或颈动脉超声。\n\
+- **成人防痴呆/防感染疫苗**：\n\
+  - **重组带状疱疹疫苗（Shingrix）**：50岁以上打满2针（*可降低 20%-25% 阿尔茨海默病风险*）。\n\
+  - **肺炎球菌 & RSV疫苗**：60/65岁以上接种（*可降低 27%-29% 痴呆风险*）。\n\
+  - **每年流感疫苗**：减少全身性炎性冲击。\n\
+\n\
+### 四、 修复机制与微观健康\n\
+\n\
+- **睡眠与呼吸**：保证 7–8 小时高质量睡眠；排查**阻塞性睡眠呼吸暂停（OSA）**，防止夜间长期缺氧。\n\
+- **口腔牙周护理**：每年 1–2 次洗牙，每日使用牙线/冲牙器，阻断口腔细菌与慢性炎症进入血液。\n\
+\n\
+### 五、 心理修养、心识掌控与觉知放空\n\
+\n\
+- **“心识控制”与心理韧性**：认知到“外界一切皆为心识变现”，修练控制内心解读的技巧。减少皮质醇波动，保护染色体端粒与心率变异性（HRV）。\n\
+- **感恩练习**：养成定期记录或冥想感恩的习惯，主动激活副交感神经系统，降低系统性炎性因子。\n\
+- **临在觉知与冥想**：\n\
+  - **专注当下（临在）**：不纠结过去、不担忧未来，把意识锚定在呼吸或感官体验上。\n\
+  - **每日“无所事事”留白**：每天留出 10–20 分钟看看天空、云朵或植物，不刷手机、不做思考，让大脑关闭 DMN 预设网络，给前额叶皮质“物理降温”。\n\
+  - **物理重塑大脑**：通过长期觉知练习缩小杏仁核（减压）、加厚海马体（防痴呆），提升端粒酶活性以延缓细胞衰老。\n\
+- **高质量社交与使命感**：维持深度的家庭/朋友纽带；保持终身学习与人生使命感（Ikigai），维持神经可塑性。\n\
+';
+
+    new Vue({
+      el: '#app',
+      data: function() {
+        return { renderedContent: '' };
+      },
+      mounted: function() {
+        this.renderedContent = marked.parse(mdContent);
+        this.$nextTick(function() {
+          renderMathInElement(this.$el, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
