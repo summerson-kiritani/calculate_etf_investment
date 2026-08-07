@@ -389,20 +389,55 @@
       </div>
     </div>
 
-    <!-- FIRE 里程碑达成提示 -->
-    <div v-if="fireAchievedNode" class="mt-6 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-md p-5 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-3xl">🎉</span>
-        <div>
-          <h4 class="font-bold text-base text-white">恭喜！预估将在此节点达成 FIRE 财务自由目标！</h4>
-          <p class="text-xs text-emerald-100 mt-1">
-            在第 {{ fireAchievedNode.investYear }} 年（{{ fireAchievedNode.year }}年，{{ fireAchievedNode.age }}岁）时，年末净资产 (Net Worth) 达 <strong class="text-white">￥{{ fmtMoney(fireAchievedNode.netWorth) }}</strong>，正式覆盖 ￥{{ fmtMoney(fireTargetAssets) }} 的 FIRE 目标。
-          </p>
+    <!-- 里程碑提示区域 (替换原有的右下角卡片) -->
+    <div class="mt-6 space-y-4">
+      <!-- FIRE 里程碑达成提示 -->
+      <div v-if="fireAchievedNode" class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-md p-5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🎉</span>
+          <div>
+            <h4 class="font-bold text-base text-white">恭喜！预估将在此节点达成 FIRE 财务自由目标！</h4>
+            <p class="text-xs text-emerald-100 mt-1">
+              在第 {{ fireAchievedNode.investYear }} 年（{{ fireAchievedNode.year }}年，{{ fireAchievedNode.age }}岁）时，年末净资产 (Net Worth) 达 <strong class="text-white">￥{{ fmtMoney(fireAchievedNode.netWorth) }}</strong>，正式覆盖 ￥{{ fmtMoney(fireTargetAssets) }} 的 FIRE 目标。
+            </p>
+          </div>
         </div>
+        <span class="bg-white text-teal-800 font-extrabold text-xs px-3.5 py-2 rounded-full shadow-md whitespace-nowrap ml-4">
+          {{ fireAchievedNode.age }} 岁自由退休
+        </span>
       </div>
-      <span class="bg-white text-teal-800 font-extrabold text-xs px-3.5 py-2 rounded-full shadow-md whitespace-nowrap ml-4">
-        {{ fireAchievedNode.age }} 岁自由退休
-      </span>
+
+      <!-- 钝化拐点达成提示 -->
+      <div v-if="inflectionDullnessNode" class="bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl shadow-md p-5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🏷️</span>
+          <div>
+            <h4 class="font-bold text-base text-white">里程碑达成：定投钝化拐点</h4>
+            <p class="text-xs text-amber-100 mt-1">
+              在第 {{ inflectionDullnessNode.investYear }} 年（{{ inflectionDullnessNode.year }}年，{{ inflectionDullnessNode.age }}岁）时，单期定投占总股票资产比重已低于 1%，平摊成本能力开始钝化。
+            </p>
+          </div>
+        </div>
+        <span class="bg-white text-orange-800 font-extrabold text-xs px-3.5 py-2 rounded-full shadow-md whitespace-nowrap ml-4">
+          {{ inflectionDullnessNode.age }} 岁到达
+        </span>
+      </div>
+
+      <!-- 睡后收入超越提示 -->
+      <div v-if="inflectionPassiveIncomeNode" class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl shadow-md p-5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🚀</span>
+          <div>
+            <h4 class="font-bold text-base text-white">里程碑达成：睡后收入超越拐点</h4>
+            <p class="text-xs text-blue-100 mt-1">
+              在第 {{ inflectionPassiveIncomeNode.investYear }} 年（{{ inflectionPassiveIncomeNode.year }}年，{{ inflectionPassiveIncomeNode.age }}岁）时，资产预估年化复利收益正式超越日常工资/开销基准！
+            </p>
+          </div>
+        </div>
+        <span class="bg-white text-indigo-800 font-extrabold text-xs px-3.5 py-2 rounded-full shadow-md whitespace-nowrap ml-4">
+          {{ inflectionPassiveIncomeNode.age }} 岁到达
+        </span>
+      </div>
     </div>
 
     <!-- 摘要卡片 -->
@@ -462,7 +497,7 @@
         <div v-for="r in reports" :key="r.reportId"
           @click="scrollToRow(r.id)"
           :class="['px-3 py-2 rounded cursor-pointer text-sm border-l-4 transition-colors',
-            r.isAlert ? 'bg-red-100 text-red-900 font-bold border-red-500' : (selectedReportId === r.id ? 'bg-yellow-400 text-white font-semibold border-yellow-500' : 'bg-yellow-50 text-gray-600 hover:bg-yellow-100 border-yellow-400')]">
+            r.isAlert ? 'bg-red-100 text-red-900 font-bold border-red-500' : (r.isInflection ? 'bg-amber-100 text-amber-900 font-semibold border-amber-500' : (selectedReportId === r.id ? 'bg-yellow-400 text-white font-semibold border-yellow-500' : 'bg-yellow-50 text-gray-600 hover:bg-yellow-100 border-yellow-400'))]">
           {{ r.text }}
         </div>
       </div>
@@ -498,7 +533,16 @@
               :class="['cursor-pointer hover:bg-gray-50 border-b border-gray-100 font-medium', 
                 yearData.isLiquidated ? 'bg-red-50 text-red-900 font-bold' : (selectedReportId === ('year-' + yearData.year) ? 'bg-yellow-200' : 'bg-white')]">
               <td class="px-2 py-2 text-center text-gray-400">{{ expandedYears.has(yearData.year) ? '▼' : '▶' }}</td>
-              <td class="px-2 py-2 text-center font-semibold">{{ yearData.year }}</td>
+              <td class="px-2 py-2 text-center font-semibold">
+                {{ yearData.year }}
+                <!-- 年度拐点标签提示 -->
+                <span v-if="inflectionDullnessNode && inflectionDullnessNode.year === yearData.year" class="ml-1 bg-amber-100 text-amber-800 text-min px-1.5 py-0.5 rounded font-bold" title="定投钝化拐点：单期定投对比总资金已低于1%">🏷️钝化</span>
+                <span v-if="inflectionPassiveIncomeNode && inflectionPassiveIncomeNode.year === yearData.year" class="ml-1 bg-emerald-100 text-emerald-800 text-min px-1.5 py-0.5 rounded font-bold" title="睡后收入/复利超越工资拐点">🚀超越</span>
+                
+                <!-- 🔥 新增图标：FIRE 目标达成与首次提领 -->
+                <span v-if="fireAchievedNode && fireAchievedNode.year === yearData.year" title="达成 FIRE 目标" class="ml-1 bg-red-100 text-red-800 text-min px-1.5 py-0.5 rounded font-bold">🎯FIRE</span>
+                <span v-if="firstWithdrawNode && firstWithdrawNode.year === yearData.year" title="正式开始提领" class="ml-1 bg-orange-100 text-orange-800 text-min px-1.5 py-0.5 rounded font-bold">💰提领</span>
+              </td>
               <td class="px-2 py-2 text-center">{{ yearData.age }}</td>
               <td class="px-2 py-2 text-right">{{ fmtMoney(yearData.principal) }}</td>
               <td class="px-2 py-2 text-right font-semibold text-indigo-600">{{ fmtMoney(yearData.stockAssets) }}</td>
@@ -521,7 +565,15 @@
                 :id="'row-' + q.year + '-' + q.quarter + '-' + q.index"
                 :class="['bg-gray-50 text-xs border-b border-gray-100', q.isLiquidated ? 'bg-red-100 text-red-800' : (selectedReportId === ('row-' + q.year + '-' + q.quarter + '-' + q.index) ? 'bg-yellow-200' : '')]">
                 <td class="px-2 py-1.5"></td>
-                <td class="px-2 py-1.5 text-center text-gray-500">Q{{ q.quarter }}</td>
+                <td class="px-2 py-1.5 text-center text-gray-500">
+                  Q{{ q.quarter }}
+                  <span v-if="q.isDullnessInflection" class="ml-1 bg-amber-100 text-amber-800 text-min px-1 rounded font-semibold">🏷️</span>
+                  <span v-if="q.isPassiveIncomeInflection" class="ml-1 bg-emerald-100 text-emerald-800 text-min px-1 rounded font-semibold">🚀</span>
+                  
+                  <!-- 🔥 新增图标：FIRE 目标达成与首次提领 (定位到具体季度) -->
+                  <span v-if="fireAchievedNode && fireAchievedNode.year === q.year && fireAchievedNode.quarter === q.quarter" title="达成 FIRE 目标" class="ml-1 bg-red-100 text-red-800 text-min px-1 rounded font-semibold">🎯</span>
+                  <span v-if="firstWithdrawNode && firstWithdrawNode.year === q.year && firstWithdrawNode.quarter === q.quarter" title="正式开始提领" class="ml-1 bg-orange-100 text-orange-800 text-min px-1 rounded font-semibold">💰</span>
+                </td>
                 <td class="px-2 py-1.5 text-center text-gray-500">{{ q.age }}</td>
                 <td class="px-2 py-1.5 text-right text-gray-600">{{ fmtMoney(q.principal) }}</td>
                 <td class="px-2 py-1.5 text-right font-medium text-indigo-600">{{ fmtMoney(q.stockAssets) }}</td>
@@ -901,6 +953,21 @@
           if (!target || target <= 0 || !this.results.length) return null;
           return this.results.find(function(r) { return r.netWorth >= target; }) || null;
         },
+        // 🔥 新增：精确计算出【首次开始提领】的那个节点
+        firstWithdrawNode: function() {
+          if (!this.results.length) return null;
+          return this.results.find(function(r) { return r.withdrawAmount > 0; }) || null;
+        },
+        // 计算定投钝化拐点节点 (单期定投占总股票资产 < 1%)
+        inflectionDullnessNode: function() {
+          if (!this.results.length) return null;
+          return this.results.find(function(r) { return r.isDullnessInflection; }) || null;
+        },
+        // 计算睡后收入/复利超越工资拐点节点 (单年投资预期收益率体量超越工资/开销)
+        inflectionPassiveIncomeNode: function() {
+          if (!this.results.length) return null;
+          return this.results.find(function(r) { return r.isPassiveIncomeInflection; }) || null;
+        },
         summary: function() {
           if (!this.results.length) return {};
           var last = this.results[this.results.length - 1];
@@ -977,6 +1044,29 @@
           }
           this.expandedYears = new Set(this.expandedYears);
         },
+        scrollToRow: function(id) {
+          this.selectedReportId = id;
+          var el = document.getElementById(id);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            var parts = id.split('-');
+            if (parts.length >= 2) {
+              var year = Number(parts[1]);
+              this.expandedYears.add(year);
+              this.expandedYears = new Set(this.expandedYears);
+              this.$nextTick(() => {
+                var targetEl = document.getElementById(id);
+                if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              });
+            }
+          }
+        },
+        isWinner: function(plan, key) {
+          if (!this.selectedPlans.length) return false;
+          var maxVal = Math.max.apply(Math, this.selectedPlans.map(function(p) { return p.summary[key] || 0; }));
+          return (plan.summary[key] || 0) === maxVal && maxVal > 0;
+        },
         calculate: function() {
           if (this.initialInvestment < 0 || this.monthlyInvestment < 0 || this.annualRate <= 0 ||
               this.inflationRate < 0 || this.beta < 0 || this.years <= 0 || this.currentAge < 0 ||
@@ -1005,7 +1095,6 @@
           }
         },
 
-        // 卖股模式下计算所需售出股票额与扣税逻辑
         calcSellAmountAndTax: function(targetCash, stockVal, cumP) {
           if (stockVal <= 0 || targetCash <= 0) return { grossSell: 0, netCash: 0, taxPaid: 0 };
           var taxRate = (this.capitalGainsTaxRate || 0) / 100;
@@ -1052,6 +1141,10 @@
 
           var runningCFs = [-init];
 
+          var dullnessInflectionReached = false;
+          var passiveIncomeInflectionReached = false;
+          var incomeBenchmark = this.annualExpense > 0 ? this.annualExpense : (this.monthlyInvestment * 12 || 120000);
+
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
@@ -1068,7 +1161,8 @@
                 withdrawAmount: 0, totalWithdrawn: cumWithdrawn,
                 profit: -cumP, totalReturnRatio: 0, cagr: -1, irr: -1,
                 investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
-                isInvestStopped: true, isRetired: true, isLiquidated: true
+                isInvestStopped: true, isRetired: true, isLiquidated: true,
+                isDullnessInflection: false, isPassiveIncomeInflection: false
               });
               continue;
             }
@@ -1094,7 +1188,6 @@
 
             cumP += qInvest;
 
-            // 🛑 修复 2.1: 定投资金期初注入，当季享受复利增长
             stockVal = (stockVal + qInvest) * (1 + stockQR);
             debtVal = debtVal * (1 + loanQR);
 
@@ -1113,13 +1206,10 @@
               var targetCash = this.calcWithdrawTarget(stockVal, yearsPassed);
               if (this.withdrawalMechanism === 'sell') {
                 var sellRes = this.calcSellAmountAndTax(targetCash, stockVal, cumP);
-                
-                // 🚨 修复 1.1: 卖股票时同步按比例扣减已累计持仓成本 (cumP)
                 if (stockVal > 0 && sellRes.grossSell > 0) {
                   var sellRatio = sellRes.grossSell / stockVal;
                   cumP = cumP * (1 - sellRatio);
                 }
-
                 stockVal -= sellRes.grossSell;
                 wAmount = sellRes.netCash;
               } else {
@@ -1157,6 +1247,23 @@
             var currentIrr = calculateIRR(currentCFs);
             runningCFs.push(qNetCF);
 
+            var singlePayment = this.investmentMode === 'quarterly' ? monthly * 3 : monthly * 12;
+            var isDullnessNow = false;
+            if (!dullnessInflectionReached && stockVal > 0 && singlePayment > 0 && cumP > singlePayment * 5) {
+              var paymentRatio = singlePayment / stockVal;
+              if (paymentRatio <= 0.01) {
+                dullnessInflectionReached = true;
+                isDullnessNow = true;
+              }
+            }
+
+            var isPassiveIncomeNow = false;
+            var annualAssetYield = stockVal * effectiveRate;
+            if (!passiveIncomeInflectionReached && annualAssetYield >= incomeBenchmark && netWorth > 0) {
+              passiveIncomeInflectionReached = true;
+              isPassiveIncomeNow = true;
+            }
+
             this.results.push({
               year: year, quarter: quarter, age: age,
               principal: cumP, stockAssets: stockVal, loanDebt: debtVal,
@@ -1164,7 +1271,9 @@
               withdrawAmount: wAmount, totalWithdrawn: cumWithdrawn,
               profit: profit, totalReturnRatio: totalReturnRatio, cagr: cagr, irr: currentIrr,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
-              isInvestStopped: isInvestStopped, isRetired: isRetired, isLiquidated: isLiquidated
+              isInvestStopped: isInvestStopped, isRetired: isRetired, isLiquidated: isLiquidated,
+              isDullnessInflection: isDullnessNow,
+              isPassiveIncomeInflection: isPassiveIncomeNow
             });
           }
 
@@ -1184,7 +1293,6 @@
           var effectiveRate = (this.annualRate / 100) * this.beta;
           var effectiveVol = (this.volatility / 100) * this.beta;
           
-          // 🛑 修复 3.2: 采用几何布朗运动 (Log-Normal Return) 采样，无偏差消除 Volatility Drag 损耗
           var qMuLog = Math.log(1 + effectiveRate) / 4;
           var qStdLog = effectiveVol / Math.sqrt(4);
           var loanQR = Math.pow(1 + (this.loanRate / 100), 0.25) - 1;
@@ -1257,11 +1365,9 @@
 
               cumP += qInvest;
 
-              // 对数正态准确采样公式：
               var z = randNormalStd();
               var randomQReturn = Math.exp(qMuLog - 0.5 * qStdLog * qStdLog + qStdLog * z) - 1;
 
-              // 期初注入定投资金计息
               curStock = (curStock + qInvest) * (1 + randomQReturn);
               curDebt = curDebt * (1 + loanQR);
 
@@ -1278,8 +1384,6 @@
                 var targetCash = this.calcWithdrawTarget(curStock, yearsPassed);
                 if (this.withdrawalMechanism === 'sell') {
                   var sellRes = this.calcSellAmountAndTax(targetCash, curStock, cumP);
-                  
-                  // 🚨 修复 1.2: 蒙特卡洛卖股模式下同步按比例扣减已累计持仓成本 (cumP)
                   if (curStock > 0 && sellRes.grossSell > 0) {
                     var sellRatio = sellRes.grossSell / curStock;
                     cumP = cumP * (1 - sellRatio);
@@ -1330,6 +1434,10 @@
           var runningCFsP50 = [-init];
           var p50IsRetired = false;
 
+          var dullnessInflectionReached = false;
+          var passiveIncomeInflectionReached = false;
+          var incomeBenchmark = this.annualExpense > 0 ? this.annualExpense : (this.monthlyInvestment * 12 || 120000);
+
           for (var q = 1; q <= totalQ; q++) {
             var year = sYear + Math.floor((q - 1) / 4);
             var quarter = ((q - 1) % 4) + 1;
@@ -1370,6 +1478,22 @@
             var irrP50 = calculateIRR(currentCFsP50);
             runningCFsP50.push(qNetCFP50);
 
+            var singlePayment = this.investmentMode === 'quarterly' ? monthly * 3 : monthly * 12;
+            var isDullnessNow = false;
+            if (!dullnessInflectionReached && p50Stock > 0 && singlePayment > 0 && p50Principal > singlePayment * 5) {
+              if ((singlePayment / p50Stock) <= 0.01) {
+                dullnessInflectionReached = true;
+                isDullnessNow = true;
+              }
+            }
+
+            var isPassiveIncomeNow = false;
+            var annualAssetYield = p50Stock * effectiveRate;
+            if (!passiveIncomeInflectionReached && annualAssetYield >= incomeBenchmark && p50NW > 0) {
+              passiveIncomeInflectionReached = true;
+              isPassiveIncomeNow = true;
+            }
+
             this.results.push({
               year: year, quarter: quarter, age: age,
               principal: p50Principal, stockAssets: p50Stock, loanDebt: p50Debt,
@@ -1379,7 +1503,9 @@
               profit: (p50NW + p50CumWithdrawn) - p50Principal,
               totalReturnRatio: totalReturnRatio, cagr: cagr, irr: irrP50,
               investYear: Math.floor((q - 1) / 4) + 1, index: q - 1,
-              isInvestStopped: false, isRetired: p50IsRetired, isLiquidated: isLiquidated
+              isInvestStopped: false, isRetired: p50IsRetired, isLiquidated: isLiquidated,
+              isDullnessInflection: isDullnessNow,
+              isPassiveIncomeInflection: isPassiveIncomeNow
             });
           }
 
@@ -1524,6 +1650,24 @@
 
           this.results.forEach(function(item) {
             var id = 'row-' + item.year + '-' + item.quarter + '-' + item.index;
+
+            if (item.isDullnessInflection) {
+              self.reports.push({
+                id: id,
+                isInflection: true,
+                text: '🏷️ 定投钝化拐点提示：第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，股票总资产达 ' + self.fmtMoney(item.stockAssets) + '。单期定投占总资产已低于 1%，平摊成本能力钝化，建议从机械追加转向止盈与资产重平衡。',
+                reportId: 'report-' + id + '-' + rc++
+              });
+            }
+
+            if (item.isPassiveIncomeInflection) {
+              self.reports.push({
+                id: id,
+                isInflection: true,
+                text: '🚀 财务复利拐点提示：第 ' + item.investYear + ' 年（' + item.year + '年，' + item.age + '岁）Q' + item.quarter + '，净资产达 ' + self.fmtMoney(item.netWorth) + '！年化复利预估收益体量已正式超越工作开销/收入基准（￥' + self.fmtMoney(self.annualExpense || self.monthlyInvestment * 12) + '），“资本生钱”能力赶超“劳动赚钱”。',
+                reportId: 'report-' + id + '-' + rc++
+              });
+            }
 
             if (item.isLiquidated && !liqReportAdded) {
               liqReportAdded = true;
@@ -1677,92 +1821,60 @@
           this.years = inp.years || 30;
           this.startYear = inp.startYear || new Date().getFullYear();
           this.currentAge = inp.currentAge || 30;
-
           this.stopInvestAge = inp.stopInvestAge || 0;
           this.stopInvestAssets = inp.stopInvestAssets || 0;
           this.stopInvestPrincipal = inp.stopInvestPrincipal || 0;
-
           this.retirementAge = inp.retirementAge || 0;
           this.annualExpense = inp.annualExpense || 0;
           this.expenseMultiple = inp.expenseMultiple || 33;
           this.retireWithdraw = inp.retireWithdraw || 0;
-
           this.withdrawMode = inp.withdrawMode || 'percent';
-          this.withdrawRate = inp.withdrawRate !== undefined ? inp.withdrawRate : 4;
-          this.fixedWithdrawAmount = inp.fixedWithdrawAmount !== undefined ? inp.fixedWithdrawAmount : 80000;
-
+          this.withdrawRate = inp.withdrawRate || 4.0;
+          this.fixedWithdrawAmount = inp.fixedWithdrawAmount || 80000;
           this.investmentMode = inp.investmentMode || 'quarterly';
           this.continueInvestAfterRetirement = !!inp.continueInvestAfterRetirement;
 
           this.calculate();
         },
-
-        isWinner: function(plan, metric) {
-          if (this.selectedPlans.length < 2) return false;
-          var maxVal = Math.max.apply(Math, this.selectedPlans.map(function(p) { return p.summary[metric] || 0; }));
-          if (maxVal === 0) return false;
-          return plan.summary[metric] === maxVal;
-        },
-
-        scrollToRow: function(id) {
-          this.selectedReportId = id;
-          var parts = id.replace('row-', '').split('-').map(Number);
-          if (parts.length >= 2) {
-            var year = parts[0];
-            if (!this.expandedYears.has(year)) {
-              this.expandedYears.add(year);
-              this.expandedYears = new Set(this.expandedYears);
-            }
-          }
-          this.$nextTick(function() {
-            var el = document.getElementById(id);
-            if (el) {
-              var offset = el.getBoundingClientRect().top + window.pageYOffset - 80;
-              window.scrollTo({ top: offset, behavior: 'smooth' });
-            }
-          });
-        },
-
-        // 🚨 修复 1.3: 正确拼接 UTF-8 BOM 头，防止 Windows Excel 打开乱码
         exportCSV: function() {
           if (!this.results.length) return;
           var isPledge = this.withdrawalMechanism === 'pledge';
           var isMC = this.calcMode === 'monteCarlo';
-          var headers = ['年份', '季度', '年龄', '累计投入本金（元）', '股票总资产A（元）'];
-          if (isPledge) headers.push('质押负债D（元）');
-          if (isMC) headers.push('悲观P10净资产（元）');
-          headers.push('年末净资产NW（元）');
-          if (isMC) headers.push('乐观P90净资产（元）');
-          if (isPledge) headers.push('质押率LTV（%）');
-          headers.push('当年提领到手（元）', '净资产今日购买力（元）', '收益倍数', 'CAGR（%）', 'IRR（%）');
 
-          var rows = this.results.map(function(item) {
-            var row = [
-              item.year, 
-              'Q' + item.quarter, 
-              item.age, 
-              item.principal.toFixed(2),
-              item.stockAssets.toFixed(2)
+          var headers = [
+            '年份', '季度', '年龄', '累计本金', '股票总资产(A)'
+          ];
+          if (isPledge) headers.push('质押负债(D)');
+          if (isMC) headers.push('悲观P10净资产');
+          headers.push('年末净资产(NW)');
+          if (isMC) headers.push('乐观P90净资产');
+          if (isPledge) headers.push('质押率(LTV%)');
+          headers.push(isPledge ? '当年借贷额' : '当年提领到手额');
+          headers.push('净资产折算购买力', '收益倍数', 'CAGR%', 'IRR%', '定投钝化拐点', '睡后超越工资拐点');
+
+          var csvRows = [headers.join(',')];
+
+          this.results.forEach(function(row) {
+            var r = [
+              row.year, row.quarter, row.age, row.principal, row.stockAssets
             ];
-            if (isPledge) row.push(item.loanDebt.toFixed(2));
-            if (isMC) row.push((item.p10Balance || 0).toFixed(2));
-            row.push(item.netWorth.toFixed(2));
-            if (isMC) row.push((item.p90Balance || 0).toFixed(2));
-            if (isPledge) row.push(item.ltv.toFixed(1));
-            row.push(item.withdrawAmount.toFixed(2));
-            row.push(item.realNetWorth.toFixed(2));
-            row.push(item.totalReturnRatio.toFixed(2));
-            row.push((item.cagr * 100).toFixed(2));
-            row.push((item.irr * 100).toFixed(2));
-            return row.join(',');
+            if (isPledge) r.push(row.loanDebt);
+            if (isMC) r.push(row.p10Balance || 0);
+            r.push(row.netWorth);
+            if (isMC) r.push(row.p90Balance || 0);
+            if (isPledge) r.push(row.ltv.toFixed(2));
+            r.push(row.withdrawAmount);
+            r.push(row.realNetWorth, row.totalReturnRatio.toFixed(2), (row.cagr * 100).toFixed(2), (row.irr * 100).toFixed(2));
+            r.push(row.isDullnessInflection ? '是' : '否');
+            r.push(row.isPassiveIncomeInflection ? '是' : '否');
+
+            csvRows.push(r.join(','));
           });
 
-          var csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
-          var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          var blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
           var link = document.createElement('a');
-          var url = URL.createObjectURL(blob);
-          link.setAttribute('href', url);
-          link.setAttribute('download', (this.planName || '复利定投推演方案') + '.csv');
+          link.href = URL.createObjectURL(blob);
+          link.setAttribute('download', (this.planName || '复利定投推演') + '.csv');
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
