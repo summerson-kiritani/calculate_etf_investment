@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CLEC 资产配置和资产再平衡</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css" />
+  <style>
+    .article-content h1 { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; }
+    .article-content h3 { font-size: 1.25rem; font-weight: 600; color: #1e40af; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .article-content h4 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .article-content p { color: #4b5563; line-height: 1.8; margin-bottom: 0.75rem; }
+    .article-content ul { margin-left: 1.5rem; margin-bottom: 1rem; }
+    .article-content li { color: #4b5563; line-height: 1.8; margin-bottom: 0.4rem; list-style-type: disc; }
+    .article-content strong { color: #1e293b; font-weight: 600; }
+    .article-content code { background: #eff6ff; padding: 2px 6px; border-radius: 3px; font-family: Consolas, "Courier New", monospace; font-size: 0.9rem; color: #1d4ed8; }
+    .article-content table { width: 100%; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1.5rem; }
+    .article-content th, .article-content td { border: 1px solid #e2e8f0; padding: 0.75rem; text-align: left; }
+    .article-content th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+    .article-content hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+    .article-content blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; color: #475569; background: #eff6ff; padding-top: 0.5rem; padding-bottom: 0.5rem; margin-bottom: 1rem; border-radius: 0 4px 4px 0; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-3xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:underline text-sm">← 返回首页</a>
+    <header class="mt-4 mb-8">
+      <h1 class="text-2xl font-bold text-gray-800">CLEC 资产配置和资产再平衡</h1>
+      <p class="text-gray-500 mt-1">资金划拨、防守矩阵、机械再平衡与聪明锁利法则</p>
+    </header>
+    <div class="article-content" v-html="renderedContent"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    var mdContent = `# CLEC 资产配置与资产再平衡：实战操作指南
+
+### 核心哲学
+
+* **配置重于选择**：资产配置的本质不是为了获取短期的超额收益，而是为了确保在任何黑天鹅与暴跌中系统永远“不死”，并维持绝对安稳的投资心态。
+* **极简机械执行**：远离频繁择时与预测，通过年化 5~10 分钟的“机械再平衡”与“聪明再平衡”，锁利防守，让长期复利自然绽放。
+* **场外 Alpha 决定上限**：二级市场只做最省心的 Beta 承接，真正的投资 Alpha 来自于场外的本金积累、职业技能与人生价值创造。
+
+---
+
+### Ⅰ. 核心标的构建
+
+* **进攻端资产（Beta / 强复利引擎）**：
+  * **QQQ**（纳斯达克 100 ETF）：享有一级科技巨头的长期垄断与创新红利。
+  * **QLD**（2 倍杠杆纳斯达克 100 ETF）：放大长期 Alpha，但需配合防守端与再平衡机制。
+* **防守端资产（流动性垫片 / 绝对安全）**：
+  * **货币市场基金（MMF）**：提供无爆仓风险的现金收益与极端暴跌时的子弹储备。
+
+---
+
+### Ⅱ. 资金划拨纪律：安全底线与勇敢入场
+
+#### 1. 锁死安全底线（防守优先）
+* 无论市场看起来机会多么诱人，必须根据自身与家庭实际情况，优先保留至少 **6 个月** 的日常基础开支作为“绝对备用金”。
+* 备用金独立于投资账户之外，严禁参与任何风险资产投资。
+
+#### 2. 勇敢全额入场（极简执行）
+* 在扣除 6 个月备用金之后，剩余的所有闲置流动资金均属于“长钱”。
+* 克服恐慌、犹豫与择时幻觉，勇敢地一次性或分批全额投入到预设的投资组合中。
+
+---
+
+### Ⅲ. 风险承受力与资产配置矩阵
+
+根据资金使用周期、心理抗压能力及是否有“买借死（Buy-Borrow-Die）”股票质押需求，划分为以下风险模型：
+
+#### 1. 极端进取型：100% QQQ
+* **适用人群**：短期内完全无提领需求、无现金流压力，能够从容面对 30%~50% 回撤的极强风险承受者。
+
+#### 2. 稳健防守型：7/3 或 8/2 配置
+* **配置方案**：**70% QQQ + 30% MMF**（7/3）或 **80% QQQ + 20% MMF**（8/2）。
+* **适用人群**：追求资产平滑增长，希望在下跌时有现金买盘以保持良好心态的稳健投资者。
+
+#### 3. 杠杆 / 买借死对冲型：4/3/3 或 4/4/2 配置
+* **配置方案**：
+  * **40% QQQ + 30% QLD + 30% MMF**（经典均衡型）
+  * **40% QQQ + 40% QLD + 20% MMF**（进取杠杆型）
+* **适用人群**：希望通过 QLD 提高长期弹性，或计划后续配合股票质押（Lombard Credit/Margin）执行“买借死”策略的投资者。
+
+> **睡眠测试（Sleep Test）**：
+> 资产配置的核心指标是**心态的稳健度**。如果市场下跌导致晚上失眠恐慌，说明当前的 Beta 风险敞口已经严重超出你的实际心理承受力，必须立即调高 MMF 比例。
+
+---
+
+### Ⅳ. 无杠杆组合：机械再平衡（Mechanical Rebalancing）
+
+对于仅包含 QQQ + MMF（如 7/3、8/2）的组合，由于资产波动相对可控，采用极简的机械再平衡法则：
+
+* **固定执行时间**：每年仅需设定固定一天处理（推荐 **12 月的第一周** 中的某一天），全年耗时仅 **5~10 分钟**。
+* **按比例重置**：
+  * **买卖规则**：若 QQQ 涨幅较大导致持仓比例偏离预设（例如 7/3 变成了 8/2），卖出部分 QQQ 补入 MMF，重新恢复到 7/3；同理，若暴跌导致比例变为 6/4，则动用 MMF 买入 QQQ 补齐至 7/3。
+  * **无变动跳过**：若资产比例无明显变动或偏离极小，直接跳过本年度操作，待下一年度再处理。
+* **专注场外**：将 99.9% 的精力和时间留给生活与本职工作，让 Alpha 在场外自然发生。
+
+---
+
+### Ⅴ. 含杠杆组合：聪明再平衡（Smart Rebalancing）
+
+杠杆基金（QLD）具备高波动特性。若只买不卖，极易在牛熊交替中“坐过山车”，甚至在深度回撤中损失本金。因此必须执行**聪明再平衡**：
+
+* **逐年记录基数**：每年再平衡时，必须记录当年度资产各个部位的具体金额与比例（因此聪明再平衡需逐年留存上一年数据）。
+* **锁利计算与执行法则**（以 4/3/3 初始配置为例）：
+  * **案例场景**：年度结束时，持仓金额与比例随行情漂移为 4.2 (QQQ) / 4.5 (QLD) / 1.3 (MMF)。
+  * **精准对比**：将当期 QLD 的资产额（4.5）与上一年度记录的 QLD 基数进行对比，计算出 QLD 当年的**净盈利部分**。
+  * **选择性锁利**：卖出 QLD **净盈利部分的 30%~50%**（积极型选择 30%，防御型选择 50%），并将此资金**划转至 MMF 补充防守垫片**。
+  * **QQQ 保持不动**：QQQ 部位无须参与此项锁利操作，亦无须其他复杂买卖。
+
+---
+
+### Ⅵ. 资产重新导航与负债隔离（Portfolio Re-navigation）
+
+当投资者从旧的投资体系切换至 CLEC 体系，或账户中已经存在质押/借贷负债时，采用以下重组逻辑：
+
+#### 1. 无贷款 / 无负债状态
+* 未动用任何杠杆贷款时，直接将所有闲置可投资金按预设的目标配置（如 7/3 或 4/3/3）一次性划拨到位。
+
+#### 2. 已有贷款 / 负债状态（不急于还贷，做现金隔离对冲）
+* 无须强制提前偿还低息贷款，但必须在资产重组时划出同等金额的现金作为“负债对冲隔离区”。
+* **算例演示**：
+  * **总资产**：100 万，其中包含 10 万贷款。
+  * **步骤一（划出对冲资金）**：从总资产中拨出 **10 万现金**，作为专门的“贷款对冲部位”。
+  * **步骤二（净资产导航）**：对剩余的 **90 万净资产**，按预设的 4/3/3 比例重新导航配置：
+    * **QQQ**：36 万（40%）
+    * **QLD**：27 万（30%）
+    * **MMF**：27 万（30%）
+    * **额外隔离对冲现金**：10 万（对冲贷款）
+
+---
+
+### Ⅶ. 操作对比总结
+
+| 维度 | 无杠杆组合（QQQ + MMF） | 含杠杆组合（QQQ + QLD + MMF） |
+| :--- | :--- | :--- |
+| **再平衡机制** | **机械再平衡** | **聪明再平衡** |
+| **操作频率** | 每年一次（12月第一周），5~10 分钟 | 每年一次（12月第一周），记录并比对上年数据 |
+| **核心目的** | 维持风险敞口稳定，低买高卖 | 锁住 QLD 高波动带来的强盈利，避免坐过山车 |
+| **调仓动作** | 强平或补充偏离部位，回归目标比例 | **仅卖出 QLD 盈利部分的 30%~50% 存入 MMF**，QQQ 不动 |
+`;
+
+    new Vue({
+      el: '#app',
+      data: function() {
+        return { renderedContent: '' };
+      },
+      mounted: function() {
+        this.renderedContent = marked.parse(mdContent);
+        this.$nextTick(function() {
+          renderMathInElement(this.$el, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ]
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
