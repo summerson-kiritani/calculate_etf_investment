@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ETF 投资计算工具箱</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <style>
+    .tree-node-enter-active, .tree-node-leave-active {
+      transition: all 0.2s ease-in-out;
+      max-height: 1000px;
+      opacity: 1;
+      overflow: hidden;
+    }
+    .tree-node-enter, .tree-node-leave-to {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+  <div id="app" class="flex-1">
+    <!-- 标题栏 -->
+    <header class="max-w-5xl mx-auto px-4 pt-8 pb-6">
+      <h1 class="text-2xl font-bold">ETF 投资计算工具箱</h1>
+      <p class="text-gray-500 mt-1">一站式 ETF 投资计算与回测工具</p>
+    </header>
+
+    <!-- 分组计算器卡片网格 -->
+    <main class="max-w-5xl mx-auto px-4 pb-8 space-y-8">
+      <section v-for="category in calculatorCategories" :key="category.title">
+        <!-- 分组标题 -->
+        <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+          <span class="mr-2">{{ category.icon }}</span>
+          <span>{{ category.title }}</span>
+          <span class="ml-2 text-xs font-normal text-gray-400">({{ category.items.length }})</span>
+        </h2>
+        <!-- 计算器卡片列表 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <a v-for="item in category.items" :key="item.file"
+             :href="item.file"
+             target="_blank" rel="noopener noreferrer"
+             class="block bg-white rounded-lg shadow hover:shadow-md border-l-4 p-5 transition-shadow duration-200 no-underline"
+             :class="category.borderColor">
+            <h3 class="text-base font-semibold text-gray-800">{{ item.name }}</h3>
+            <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ item.desc }}</p>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- 知识库与文章（无限层级手风琴折叠树 + 路径自动建树） -->
+    <section class="max-w-5xl mx-auto px-4 pb-8">
+      <div class="border-t border-gray-200 pt-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center">
+            <span class="mr-2">📚</span>
+            <span>知识库与投资文章</span>
+          </h2>
+          <!-- 一键展开/收起按钮 -->
+          <div class="space-x-2 text-xs">
+            <button @click="toggleAll(true)" class="px-2.5 py-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 cursor-pointer">全部展开</button>
+            <button @click="toggleAll(false)" class="px-2.5 py-1 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 cursor-pointer">全部收起</button>
+          </div>
+        </div>
+
+        <!-- 递归渲染树状分类列表 -->
+        <div class="space-y-4">
+          <tree-folder 
+            v-for="folderNode in articleTree" 
+            :key="folderNode.name" 
+            :node="folderNode"
+            :icon-map="categoryIcons"
+          ></tree-folder>
+        </div>
+      </div>
+    </section>
+
+    <!-- 外部资源 -->
+    <section class="max-w-5xl mx-auto px-4 pb-8">
+      <div class="border-t border-gray-200 pt-6">
+        <h2 class="text-lg font-bold mb-3 text-gray-800 flex items-center">
+          <span class="mr-2">🔗</span>
+          <span>外部资源</span>
+        </h2>
+        <ul class="space-y-2">
+          <li v-for="link in externalLinks" :key="link.url">
+            <a :href="link.url" target="_blank" rel="noopener noreferrer"
+               class="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center">
+              <span>{{ link.name }}</span>
+              <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 页脚 (隐藏彩蛋触发区：连续点击5次解禁私人笔记) -->
+    <footer @click="handleSecretClick" class="text-center text-gray-400 text-sm py-6 border-t border-gray-200 max-w-5xl mx-auto px-4 select-none cursor-default">
+      <span>&copy; 2025 Summerson Kiritani</span>
+      <span v-if="showPrivate" class="ml-2 text-xs text-emerald-500 font-mono font-medium">🔓 [Unlocked]</span>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    // 递归树节点组件 (支持无限深度手风琴折叠)
+    Vue.component('tree-folder', {
+      name: 'tree-folder',
+      props: ['node', 'iconMap'],
+      template: `
+        <div class="select-none">
+          <!-- 分类头部 (手风琴触发器) -->
+          <div 
+            @click="node.isOpen = !node.isOpen" 
+            class="flex items-center justify-between cursor-pointer py-3 px-4 bg-white hover:bg-gray-50 rounded-lg shadow-sm border border-gray-200 transition-all duration-150 mb-2 group"
+            :class="[
+              node.depth === 1 ? 'border-l-4 border-l-emerald-500 font-bold' : '',
+              node.depth === 2 ? 'border-l-4 border-l-teal-400 ml-2 md:ml-4' : '',
+              node.depth >= 3 ? 'border-l-4 border-l-indigo-300 ml-4 md:ml-8' : ''
+            ]"
+          >
+            <div class="flex items-center space-x-2">
+              <span class="text-gray-400 transform transition-transform duration-200 text-xs inline-block" :class="{'rotate-90': node.isOpen}">
+                ▶
+              </span>
+              <span class="text-base text-gray-800 flex items-center gap-2">
+                <span class="text-lg">{{ getIcon(node) }}</span>
+                <span>{{ node.name }}</span>
+              </span>
+              <span class="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                {{ node.totalCount }}
+              </span>
+            </div>
+            <span class="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">
+              {{ node.isOpen ? '收起' : '展开' }}
+            </span>
+          </div>
+
+          <!-- 折叠内容区 -->
+          <div v-show="node.isOpen" class="space-y-3 mt-2" :class="node.depth >= 1 ? 'pl-2 md:pl-4 border-l-2 border-gray-100' : ''">
+            <!-- 当前分类直属文章列表 -->
+            <div v-if="node.items && node.items.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+              <a v-for="item in node.items" :key="item.file + item.name"
+                 :href="item.file" target="_blank" rel="noopener noreferrer"
+                 class="block bg-white rounded-lg shadow-sm hover:shadow border border-gray-200 hover:border-emerald-400 p-4 transition-all duration-200 no-underline group">
+                <h4 class="text-sm font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors flex items-start">
+                  <span class="mr-1.5 text-xs text-gray-400 mt-0.5">📄</span>
+                  <span>{{ item.name }}</span>
+                </h4>
+                <p v-if="item.desc" class="text-xs text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">{{ item.desc }}</p>
+              </a>
+            </div>
+
+            <!-- 子分类递归渲染 -->
+            <div v-if="node.children && node.children.length > 0" class="space-y-2">
+              <tree-folder 
+                v-for="subNode in node.children" 
+                :key="subNode.name" 
+                :node="subNode"
+                :icon-map="iconMap"
+              ></tree-folder>
+            </div>
+          </div>
+        </div>
+      `,
+      methods: {
+        getIcon(node) {
+          if (this.iconMap && this.iconMap[node.name]) {
+            return this.iconMap[node.name];
+          }
+          return node.isOpen ? '📂' : '📁';
+        }
+      }
+    });
+
+    new Vue({
+      el: '#app',
+      data: {
+        articleTree: [],
+        showPrivate: false, // 是否展示私有笔记（默认隐藏）
+        clickCount: 0,      // 页脚点击计数器
+        clickTimer: null,
+
+        // 💡 开放分类配置项：添加在数组里的顶级分类/文件夹名称将直接公开显示
+        publicCategories: [
+          'CLEC投资法',
+          '健康',
+          '理财'
+        ],
+
+        calculatorCategories: [
+          {
+            title: '定投与复利规划',
+            icon: '📈',
+            borderColor: 'border-blue-400',
+            items: [
+              { name: '复利定投计算器 Pro', file: 'calculators/compound_investment_calculator.html', desc: '含买借死策略与蒙特卡洛压力测试的定投复利计算' },
+              { name: '复利定投回测计算器', file: 'calculators/compound_investment_backtest.html', desc: '基于历史数据的专业定投策略回测与分析' },
+              // { name: '多方案资产配置与回测计算器', file: 'calculators/multi_plan_allocation_backtest.html', desc: '多方案对比的资产配置与专业回测评估' }
+            ]
+          },
+          {
+            title: '资产配置与组合',
+            icon: '⚖️',
+            borderColor: 'border-indigo-400',
+            items: [
+              { name: '初始资产配置计算器', file: 'calculators/asset_allocation_calculator.html', desc: '按比例分配不同资产类别的初始投资金额' },
+              { name: '资产再平衡计算器', file: 'calculators/asset_rebalancing_calculator.html', desc: '计算资产偏离目标比例后的再平衡方案' },
+              { name: '投资组合 Beta 计算器', file: 'calculators/investment_portfolio_beta_calculator.html', desc: '计算投资组合相对于基准的 Beta 系数' }
+            ]
+          },
+          {
+            title: '杠杆与融资风控',
+            icon: '⚡',
+            borderColor: 'border-red-400',
+            items: [
+              { name: '杠杆倍数计算器', file: 'calculators/leverage_calculator.html', desc: '计算杠杆交易后的盈亏金额与倍数关系' },
+              { name: 'Schwab PAL 质押贷款计算器', file: 'calculators/schwab_pal_calculator.html', desc: '多资产质押贷款的维持率、LTV 与长期动态演化' },
+              { name: '汇丰组合贷款 WPL 计算器', file: 'calculators/hsbc_wpl_calculator.html', desc: 'HSBC 组合贷款多资产风控与提领模拟' },
+              { name: '混合信贷率计算器', file: 'calculators/mixed_ltv_calculator.html', desc: '计算多品种混合持仓的信贷率' },
+              { name: '信贷与定投收益计算器', file: 'calculators/credit_vs_investment_calculator.html', desc: '对比信贷借贷与定投投资的收益差异' }
+            ]
+          },
+          {
+            title: '收益与策略分析',
+            icon: '📊',
+            borderColor: 'border-purple-400',
+            items: [
+              { name: '收益率计算器', file: 'calculators/investment_profit_rate_calculator.html', desc: '计算投资的总收益率与年化收益率' },
+              { name: '折扣投资计算器', file: 'calculators/discount_investment_calculator.html', desc: '计算折价买入的投资成本与收益' },
+              { name: '杠杆 ETF 波动率损耗模拟器', file: 'calculators/leveraged_etf_volatility_simulator.html', desc: '模拟 QLD/TQQQ 在波动环境下的净值损耗与衰减' }
+            ]
+          },
+          {
+            title: '综合与人生规划',
+            icon: '🏡',
+            borderColor: 'border-amber-400',
+            items: [
+              { name: '房产租售比与收益率计算器', file: 'calculators/rent_sale_ratio_calculator.html', desc: '含按揭的房产租售比、IRR/NPV 投资分析' },
+              { name: '人生倒计时 & FIRE 规划', file: 'calculators/life_countdown_fire.html', desc: '可视化人生剩余时间与 FIRE 财务自由规划' }
+            ]
+          }
+        ],
+
+        categoryIcons: {},
+
+        articleItems: [],
+
+        externalLinks: [
+          { name: 'QQQ/QLD 回测工具', url: 'https://clec-strategy-backtest.vercel.app' },
+          { name: 'Investing.com 香港 - 股市報價 & 財經新聞', url: 'https://hk.investing.com' },
+          { name: '雪球 - 聪明的投资者都在这里', url: 'https://xueqiu.com' }
+        ]
+      },
+
+      async created() {
+        await this.loadArticles();
+        this.refreshTree();
+      },
+
+      methods: {
+        // 从外部 JSON 加载文章列表
+        async loadArticles() {
+          try {
+            var res = await fetch('knowledge/articles.json');
+            var data = await res.json();
+            this.categoryIcons = data.icons || {};
+            this.articleItems = (data.articles || []).map(function(item) {
+              return {
+                name: item.name,
+                file: item.path === '#' ? '#' : 'knowledge/viewer.html?file=' + item.path,
+                desc: item.desc || '',
+                status: item.status || ''
+              };
+            });
+          } catch (e) {
+            console.error('加载文章列表失败:', e);
+          }
+        },
+
+        // 动态校验文章是否属于公开配置类别
+        isPublicItem(file) {
+          return this.publicCategories.some(cat => file.includes(`${cat}/`));
+        },
+
+        // 构建文章目录树（根据 showPrivate 状态决定过滤策略）
+        buildArticleTree() {
+          const rootMap = {};
+
+          // 未解锁时，按 publicCategories 动态过滤公开文章
+          const filteredItems = this.showPrivate 
+            ? this.articleItems 
+            : this.articleItems.filter(item => this.isPublicItem(item.file));
+
+          filteredItems.forEach(item => {
+            let relativePath = item.file;
+            if (relativePath.includes('file=')) {
+              relativePath = decodeURIComponent(relativePath.split('file=')[1]);
+            }
+
+            const parts = relativePath.split('/').filter(p => p && p !== '#');
+            
+            if (parts.length <= 1) {
+              if (!rootMap['其他未分类']) {
+                rootMap['其他未分类'] = { name: '其他未分类', childrenMap: {}, items: [] };
+              }
+              rootMap['其他未分类'].items.push(item);
+              return;
+            }
+
+            const dirs = parts.slice(0, parts.length - 1);
+
+            let currentMap = rootMap;
+            dirs.forEach((dir, idx) => {
+              if (!currentMap[dir]) {
+                currentMap[dir] = {
+                  name: dir,
+                  childrenMap: {},
+                  items: []
+                };
+              }
+              if (idx === dirs.length - 1) {
+                currentMap[dir].items.push(item);
+              }
+              currentMap = currentMap[dir].childrenMap;
+            });
+          });
+
+          const formatNode = (nodeObj, depth = 1) => {
+            const childrenKeys = Object.keys(nodeObj.childrenMap);
+            const subFolders = childrenKeys.map(key => formatNode(nodeObj.childrenMap[key], depth + 1));
+            
+            const directCount = nodeObj.items ? nodeObj.items.length : 0;
+            const subCount = subFolders.reduce((sum, child) => sum + child.totalCount, 0);
+
+            return {
+              name: nodeObj.name,
+              isOpen: false, // 默认全部收起
+              children: subFolders,
+              items: nodeObj.items || [],
+              totalCount: directCount + subCount,
+              depth: depth
+            };
+          };
+
+          return Object.keys(rootMap).map(key => formatNode(rootMap[key], 1));
+        },
+
+        // 重新计算并更新树数据
+        refreshTree() {
+          this.articleTree = this.buildArticleTree();
+        },
+
+        // 隐蔽暗门：连续快速点击页脚 5 次切换私有文章显示
+        handleSecretClick() {
+          this.clickCount++;
+          clearTimeout(this.clickTimer);
+
+          if (this.clickCount >= 5) {
+            this.showPrivate = !this.showPrivate;
+            this.refreshTree();
+            this.clickCount = 0;
+          } else {
+            this.clickTimer = setTimeout(() => {
+              this.clickCount = 0;
+            }, 1000);
+          }
+        },
+
+        // 递归展开/收起所有节点
+        toggleAll(isOpen) {
+          const setOpenState = (nodes) => {
+            nodes.forEach(node => {
+              node.isOpen = isOpen;
+              if (node.children && node.children.length > 0) {
+                setOpenState(node.children);
+              }
+            });
+          };
+          setOpenState(this.articleTree);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

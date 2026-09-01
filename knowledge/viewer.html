@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文章详情</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css" />
+  <style>
+    .article-content h1 { font-size: 1.75rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; }
+    .article-content h2 { font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; }
+    .article-content h3 { font-size: 1.25rem; font-weight: 600; color: #1e40af; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .article-content h4 { font-size: 1.1rem; font-weight: 600; color: #374151; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .article-content p { color: #4b5563; line-height: 1.8; margin-bottom: 0.75rem; }
+    .article-content ul { margin-left: 1.5rem; margin-bottom: 1rem; list-style-type: disc; }
+    .article-content ol { margin-left: 1.5rem; margin-bottom: 1rem; list-style-type: decimal; }
+    .article-content li { color: #4b5563; line-height: 1.8; margin-bottom: 0.4rem; }
+    .article-content strong { color: #1e293b; font-weight: 600; }
+    .article-content code { background: #eff6ff; padding: 2px 6px; border-radius: 3px; font-family: Consolas, "Courier New", monospace; font-size: 0.9rem; color: #1d4ed8; }
+    .article-content hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+    .article-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+    .article-content th { background: #eff6ff; color: #1e40af; font-weight: 600; text-align: left; padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; }
+    .article-content td { color: #4b5563; padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; vertical-align: top; }
+    .article-content tr:nth-child(even) td { background: #f9fafb; }
+    .article-content blockquote { border-left: 4px solid #3b82f6; padding: 0.5rem 1rem; color: #475569; background: #eff6ff; margin-bottom: 1rem; border-radius: 0 4px 4px 0; }
+    
+    /* 目录样式美化 */
+    .toc-link { 
+      display: block; 
+      padding: 5px 8px; 
+      color: #4b5563; 
+      text-decoration: none; 
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      transition: all 0.15s ease-in-out; 
+    }
+    .toc-link:hover { 
+      color: #2563eb; 
+      background-color: #eff6ff;
+    }
+    .toc-link.h2 {
+      font-weight: 600;
+      color: #374151;
+      margin-top: 4px;
+    }
+    .toc-link.h3 { 
+      padding-left: 1.25rem; 
+      font-size: 0.8rem;
+      color: #6b7280;
+      border-left: 2px solid #f3f4f6;
+      border-radius: 0 6px 6px 0;
+      margin-left: 6px;
+    }
+    .toc-link.h3:hover {
+      border-left-color: #3b82f6;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    
+    <!-- 主体内容区域 -->
+    <div class="flex-1 min-w-0">
+      <!-- 顶部操作栏：返回首页 + 目录开关 -->
+      <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+        <a href="../index.html" class="text-blue-600 hover:underline text-sm flex items-center gap-1">
+          ← 返回首页
+        </a>
+        <button 
+          @click="showTOC = !showTOC" 
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all border shadow-sm"
+          :class="showTOC ? 'bg-blue-50 border-blue-200 text-blue-600 font-medium' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+          </svg>
+          <span>{{ showTOC ? '收起目录' : '文章目录' }}</span>
+        </button>
+      </div>
+
+      <!-- 文章渲染区（移除顶部的额外标题区，直接开始渲染） -->
+      <div class="article-content max-w-3xl mt-6" v-html="renderedContent"></div>
+    </div>
+
+    <!-- 侧边栏目录 -->
+    <nav v-show="showTOC" class="w-64 flex-shrink-0">
+      <div class="sticky top-8 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between pb-2 mb-3 border-b border-gray-100">
+          <h3 class="text-sm font-bold text-gray-700 flex items-center gap-1.5 !m-0 !text-gray-700">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+            </svg>
+            目录导航
+          </h3>
+          <button @click="showTOC = false" class="text-gray-400 hover:text-gray-600 text-xs px-1">
+            ✕
+          </button>
+        </div>
+        <ul class="space-y-1 text-sm max-h-[calc(100vh-10rem)] overflow-y-auto pr-1" id="toc"></ul>
+      </div>
+    </nav>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          title: '加载中...',
+          renderedContent: '',
+          showTOC: false
+        };
+      },
+      mounted: function() {
+        var params = new URLSearchParams(window.location.search);
+        var file = params.get('file');
+        if (!file) {
+          this.title = '未指定文件路径';
+          this.renderedContent = '<p class="text-gray-500">请在 URL 中添加参数，例如：<code>?file=path/to/article.md</code></p>';
+          return;
+        }
+
+        var vm = this;
+        fetch(file)
+          .then(function(res) {
+            if (!res.ok) {
+              throw new Error('网络请求失败 (HTTP ' + res.status + ')');
+            }
+            return res.text();
+          })
+          .then(function(md) {
+            var lines = md.split('\n');
+
+            // 提取第一行的 # 标题更新浏览器标签页 title
+            for (var i = 0; i < lines.length; i++) {
+              var m = lines[i].match(/^#\s+(.+)/);
+              if (m) {
+                vm.title = m[1].replace(/\*\*/g, '').trim();
+                document.title = vm.title;
+                break;
+              }
+            }
+
+            // 使用无损方式解析 Markdown + KaTeX，防止下划线 _ 被 marked 解析破坏
+            vm.renderedContent = vm.parseMarkdownWithMath(md);
+
+            // 重写图片相对路径：基于 .md 文件所在目录
+            var fileDir = file.substring(0, file.lastIndexOf('/'));
+            vm.renderedContent = vm.renderedContent.replace(
+              /<img\s+src="(?!https?:\/\/|\/|data:)([^"]+)"/g,
+              function(match, src) {
+                return '<img src="' + fileDir + '/' + src + '"';
+              }
+            );
+
+            // 等待 DOM 更新后构建 TOC
+            vm.$nextTick(function() {
+              vm.buildTOC();
+            });
+          })
+          .catch(function(err) {
+            console.error(err);
+            this.title = '加载失败';
+            vm.renderedContent = '<p class="text-red-500 font-semibold">无法读取文件，请确认：</p>' +
+              '<ul class="list-disc ml-5 text-sm text-red-500 mt-2 space-y-1">' +
+              '<li>文件路径是否正确：<code>' + file + '</code></li>' +
+              '<li>是否通过 HTTP 服务器打开（本地请使用 Live Server 或 localhost，不要直接双击打开 html 文件）</li>' +
+              '</ul>';
+          });
+      },
+      methods: {
+        // 核心修正：数学公式保护与渲染管道
+        parseMarkdownWithMath: function(mdText) {
+          var mathBlocks = [];
+
+          // 1. 提炼并保护块级公式 $$ ... $$
+          var protectedMd = mdText.replace(/\$\$([\s\S]+?)\$\$/g, function(match, math) {
+            mathBlocks.push({ type: 'block', math: math.trim() });
+            return 'MATHBLOCKPLACEHOLDER' + (mathBlocks.length - 1) + 'ENDMATH';
+          });
+
+          // 2. 提炼并保护行内公式 $ ... $
+          protectedMd = protectedMd.replace(/(^|[^\\])\$([^\$\n]+?)\$/g, function(match, prefix, math) {
+            mathBlocks.push({ type: 'inline', math: math.trim() });
+            return prefix + 'MATHINLINEPLACEHOLDER' + (mathBlocks.length - 1) + 'ENDMATH';
+          });
+
+          // 3. 安全交给 marked 渲染 HTML
+          var html = marked.parse(protectedMd);
+
+          // 4. 将占位符替换为由 KaTeX 原生渲染好的 HTML 节点，彻底杜绝转义破坏
+          html = html.replace(/MATHBLOCKPLACEHOLDER(\d+)ENDMATH/g, function(match, id) {
+            try {
+              return katex.renderToString(mathBlocks[id].math, { displayMode: true, throwOnError: false });
+            } catch (e) {
+              return match;
+            }
+          });
+
+          html = html.replace(/MATHINLINEPLACEHOLDER(\d+)ENDMATH/g, function(match, id) {
+            try {
+              return katex.renderToString(mathBlocks[id].math, { displayMode: false, throwOnError: false });
+            } catch (e) {
+              return match;
+            }
+          });
+
+          return html;
+        },
+        buildTOC: function() {
+          var headings = this.$el.querySelectorAll('.article-content h1, .article-content h2, .article-content h3');
+          var toc = document.getElementById('toc');
+          if (!toc) return;
+          toc.innerHTML = '';
+          
+          headings.forEach(function(h, i) {
+            h.id = 'toc-' + i;
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.href = '#toc-' + i;
+            
+            a.textContent = h.textContent;
+            
+            var isH3 = h.tagName === 'H3';
+            a.className = 'toc-link' + (isH3 ? ' h3' : ' h2');
+            
+            a.onclick = function(e) {
+              e.preventDefault();
+              h.scrollIntoView({ behavior: 'smooth' });
+            };
+            li.appendChild(a);
+            toc.appendChild(li);
+          });
+        }
+      }
+    });
+  </script>
+</body>
+</html>

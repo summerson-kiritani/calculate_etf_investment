@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>人生倒计时 & FIRE 深度规划</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <!-- Tailwind CSS v3 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入农历日历转换插件 -->
+  <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.js"></script>
+  <style>
+    .month-box {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      transition: all 0.15s ease;
+    }
+    .month-box:hover {
+      transform: scale(1.4);
+      z-index: 20;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .current-month {
+      animation: pulse-ring 1.8s infinite;
+    }
+    /* 隐藏滚动条 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen py-6">
+  <div id="app" class="max-w-5xl mx-auto px-4">
+    <!-- 头部说明 -->
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">人生倒计时 & FIRE 深度规划</h1>
+        <p class="text-xs text-gray-500 mt-1">可视化生命余量与健康质量，结合未来生命科学科技加速预测</p>
+      </div>
+    </div>
+
+    <!-- 输入与快捷预设卡片 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">出生日期</label>
+          <input type="date" v-model="birthDate" @change="onBirthDateOrRegionChange"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        
+        <!-- 地区选择 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">选择地区</label>
+          <select v-model="selectedRegion" @change="onBirthDateOrRegionChange"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="cn">中国大陆</option>
+            <option value="us">美国</option>
+            <option value="hk">中国香港</option>
+            <option value="sg">新加坡</option>
+            <option value="tw">台湾地区</option>
+          </select>
+        </div>
+
+        <!-- 性别预设 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">性别预设</label>
+          <div class="flex gap-2">
+            <button @click="setGenderPreset('male')" :class="gender === 'male' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">
+              男
+            </button>
+            <button @click="setGenderPreset('female')" :class="gender === 'female' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'"
+              class="flex-1 py-2 text-xs font-medium rounded-lg transition-colors">
+              女
+            </button>
+          </div>
+        </div>
+
+        <!-- 生命科学/医疗技术发展加成预期 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">
+            医疗科技加成预期
+          </label>
+          <select v-model="techDividendLevel" @change="applyRegionPreset"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="0">无加成 (传统静态)</option>
+            <option value="1">标准加成 (常规医学进步)</option>
+            <option value="1.5">乐观加成 (AI/基因疗法爆发)</option>
+            <option value="2">激进加成 (器官再生与抗衰)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">FIRE 目标年龄</label>
+          <input type="number" v-model.number="fireAge" min="1" max="100"
+            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">最终预期寿命（岁）</label>
+          <input type="number" v-model.number="lifeExpectancy" min="1" max="120"
+            class="w-full px-3 py-2 text-sm bg-blue-50 border border-blue-300 text-blue-900 font-bold rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+      </div>
+
+      <!-- 科学发展加成说明条 -->
+      <div class="mt-3 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 flex flex-wrap justify-between items-center gap-2">
+        <div>
+          🧬 <strong>寿命预测计算公式：</strong> 
+          {{ currentRegionStats.name }}静态基准 ({{ gender === 'male' ? currentRegionStats.male : currentRegionStats.female }}岁) 
+          + {{ generationName }}世代生命科学红利 ({{ baseGenerationBonus }}岁 × {{ techDividendLevel }}倍) 
+          = <strong>{{ calculatedExpectancy }} 岁</strong>
+        </div>
+        <button @click="applyRegionPreset" class="text-[11px] underline text-blue-600 hover:text-blue-800">重置为公式推算值</button>
+      </div>
+    </div>
+
+    <!-- 实时秒级倒计时组件 -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-0 py-6">
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+        <div class="text-xs text-gray-500">今年剩余</div>
+        <div class="text-2xl font-bold text-blue-600 mt-1">{{ yearRemainingDays }} 天</div>
+        <div class="text-[10px] text-gray-400 mt-0.5 font-mono">{{ yearRemainingHMS }}</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
+        <div class="text-xs text-gray-500">本月剩余</div>
+        <div class="text-2xl font-bold text-purple-600 mt-1">{{ monthRemainingDays }} 天</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
+        <div class="text-xs text-gray-500">本周剩余</div>
+        <div class="text-2xl font-bold text-green-600 mt-1">{{ weekRemainingDays }} 天</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-500">
+        <div class="text-xs text-gray-500">今天剩余</div>
+        <div class="text-2xl font-bold text-red-600 mt-1 font-mono tabular-nums">{{ todayRemaining }}</div>
+        <div class="text-[10px] text-gray-400 mt-0.5">时:分:秒</div>
+      </div>
+    </div>
+
+    <!-- FIRE 阶段卡片 -->
+    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 rounded-xl shadow-md p-6 mb-6 text-white">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="bg-white text-teal-800 text-xs font-bold px-3 py-1 rounded-full uppercase shadow-sm">
+              FIRE 目标: {{ safeFireAge }} 岁
+            </span>
+            <span class="text-xs text-teal-100 font-medium">（预计 {{ fireDateStr }} 达成）</span>
+          </div>
+          <div class="mt-3">
+            <template v-if="!isFireReached">
+              <span class="text-xs text-white opacity-90 block mb-1 font-medium">距离摆脱打工、实现自由还有</span>
+              <div class="text-4xl md:text-5xl font-extrabold tracking-tight">
+                {{ daysToFire.toLocaleString() }} <span class="text-base font-normal text-teal-100">天</span>
+                <span class="text-xl font-light text-teal-200">（约 {{ fireYearsLeft }} 年）</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="text-2xl font-bold">🎉 恭喜！你已进入 FIRE 自由人生阶段！</div>
+              <p class="text-xs mt-1 opacity-90">已自由度过 {{ Math.abs(daysToFire).toLocaleString() }} 天</p>
+            </template>
+          </div>
+        </div>
+
+        <div class="rounded-xl p-4 w-full md:w-64 flex-shrink-0 bg-black/20 border border-white/20">
+          <div class="flex justify-between text-xs mb-1.5 opacity-90 font-medium">
+            <span>打工积累进度 (从18岁计)</span>
+            <span class="font-bold text-amber-300">{{ fireProgress.toFixed(1) }}%</span>
+          </div>
+          <div class="w-full bg-black/40 rounded-full h-3 overflow-hidden p-0.5 border border-white/10">
+            <div class="bg-amber-400 h-full rounded-full transition-all duration-1000 shadow" :style="{ width: fireProgress + '%' }"></div>
+          </div>
+          <div class="mt-3 text-xs opacity-90 flex justify-between items-center">
+            <span>剩余打工月数：<strong class="text-amber-300 text-sm font-bold">{{ monthsToFire > 0 ? monthsToFire : 0 }}</strong> 个月</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 重要倒数日 / 目标卡片 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+            <span>📌</span> 重要倒数日 & 目标提醒
+          </h3>
+          <p class="text-xs text-gray-500 mt-0.5">支持设置单次、每周（例会/提醒）、每月（发薪/还贷）、每年（纪念日）倒数日</p>
+        </div>
+        <!-- 排序 & 导入导出按钮组 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+            <span>🔀 排序:</span>
+            <select v-model="sortType" @change="saveSortType" class="bg-transparent font-medium text-gray-700 outline-none cursor-pointer">
+              <option value="dateAsc">目标日期：从近到远</option>
+              <option value="dateDesc">目标日期：从远到近</option>
+              <option value="remainingAsc">剩余天数：从少到多</option>
+              <option value="default">默认（添加顺序）</option>
+            </select>
+          </div>
+
+          <button @click="exportEvents" title="导出倒数日数据为 JSON 文件"
+            class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
+            📤 导出
+          </button>
+          <button @click="triggerImport" title="从 JSON 文件导入倒数日"
+            class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors flex items-center gap-1">
+            📥 导入
+          </button>
+          <input type="file" ref="fileInput" accept="application/json,.json" @change="handleFileUpload" class="hidden" />
+        </div>
+      </div>
+
+      <!-- 添加倒数日表单 -->
+      <div class="flex flex-col gap-2.5 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+        <div class="flex flex-col sm:flex-row gap-2 items-center">
+          <input type="text" v-model="newEventTitle" placeholder="事件名称 (如：发薪日、周五复盘、考研、纪念日)" @keyup.enter="addEvent"
+            class="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-auto" />
+
+          <!-- 重复周期选择 -->
+          <select v-model="newEventRepeatType"
+            class="px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium w-full sm:w-auto">
+            <option value="none">单次事件</option>
+            <option value="weekly">每周重复</option>
+            <option value="monthly">每月重复</option>
+            <option value="yearly">每年重复</option>
+          </select>
+
+          <!-- 动态日期/周期选择栏 -->
+          <!-- 1. 每周重复：选择星期 -->
+          <template v-if="newEventRepeatType === 'weekly'">
+            <select v-model.number="newEventWeekDay"
+              class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium w-full sm:w-auto">
+              <option v-for="(name, idx) in weekDayOptions" :key="idx" :value="idx + 1">每周 {{ name }}</option>
+            </select>
+          </template>
+
+          <!-- 2. 每月重复：选择每月的日期 -->
+          <template v-else-if="newEventRepeatType === 'monthly'">
+            <select v-model.number="newEventMonthDay"
+              class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium w-full sm:w-auto">
+              <option v-for="d in 31" :key="d" :value="d">每月 {{ d }} 号</option>
+            </select>
+          </template>
+
+          <!-- 3. 单次 或 每年：公历日期 -->
+          <template v-else-if="newEventCalendarType === 'solar'">
+            <input type="date" v-model="newEventDate" @keyup.enter="addEvent"
+              class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-auto" />
+          </template>
+
+          <!-- 4. 单次 或 每年：农历月日选择 -->
+          <template v-else>
+            <div class="flex items-center gap-1.5 w-full sm:w-auto">
+              <select v-model.number="newEventLunarMonth"
+                class="px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium">
+                <option v-for="(name, idx) in lunarMonthNames" :key="idx" :value="idx + 1">{{ name }}</option>
+              </select>
+              <select v-model.number="newEventLunarDay"
+                class="px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-medium">
+                <option v-for="(name, idx) in lunarDayNames" :key="idx" :value="idx + 1">{{ name }}</option>
+              </select>
+            </div>
+          </template>
+
+          <button @click="addEvent"
+            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm w-full sm:w-auto">
+            + 添加节点
+          </button>
+        </div>
+
+        <!-- 选项设置与公农历转换助手 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 px-1 pt-1">
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- 仅在单次或每年重复时显示历法选择 -->
+            <div v-if="newEventRepeatType === 'none' || newEventRepeatType === 'yearly'" class="flex items-center gap-1.5">
+              <span class="text-gray-500 font-medium">历法:</span>
+              <label class="flex items-center gap-1 cursor-pointer select-none">
+                <input type="radio" value="solar" v-model="newEventCalendarType" class="text-blue-600"> 公历
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer select-none">
+                <input type="radio" value="lunar" v-model="newEventCalendarType" class="text-blue-600"> 农历
+              </label>
+            </div>
+            <label class="flex items-center gap-1.5 cursor-pointer select-none border-l border-gray-200 pl-3">
+              <input type="checkbox" v-model="newEventShowWorkdays" class="w-3.5 h-3.5 text-amber-600 rounded focus:ring-amber-500">
+              <span class="font-medium text-gray-700">💼 显示工作日倒数</span>
+            </label>
+          </div>
+
+          <!-- 农历快捷转换小工具 -->
+          <div v-if="(newEventRepeatType === 'none' || newEventRepeatType === 'yearly') && newEventCalendarType === 'lunar'" 
+               class="flex items-center gap-1.5 text-[11px] text-gray-500 bg-amber-50/80 px-2.5 py-1 rounded-md border border-amber-200/60">
+            <span>💡 选公历推算对应农历：</span>
+            <input type="date" @change="onSolarPickerForLunarChange" class="bg-white border border-gray-300 rounded px-1.5 py-0.5 text-xs text-gray-700 outline-none cursor-pointer" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 倒数日卡片列表 -->
+      <div v-if="sortedEvents.length === 0" class="text-center py-6 text-xs text-gray-400 border border-dashed border-gray-200 rounded-lg">
+        暂无自定义倒数日，请在上方填写名称与日期，或使用右上角【导入 JSON】
+      </div>
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div v-for="item in sortedEvents" :key="item.id" class="relative p-3.5 bg-gray-50/80 rounded-xl border border-gray-200 flex flex-col justify-between hover:border-gray-300 transition-all">
+          <button @click="removeEvent(item.id)" title="删除" class="absolute top-2 right-2 text-gray-300 hover:text-red-500 text-xs p-1 transition-colors">
+            ✕
+          </button>
+          <div>
+            <div class="flex items-center gap-1 pr-5 flex-wrap">
+              <div class="text-xs font-semibold text-gray-700 truncate" :title="item.title">{{ item.title }}</div>
+              <!-- 周期及属性标签 -->
+              <span v-if="item.repeatType === 'weekly'" class="text-[9px] px-1 py-0.2 bg-purple-100 text-purple-700 rounded flex-shrink-0 font-medium">每周{{ weekDayOptions[item.weekDay - 1] }}</span>
+              <span v-else-if="item.repeatType === 'monthly'" class="text-[9px] px-1 py-0.2 bg-indigo-100 text-indigo-700 rounded flex-shrink-0 font-medium">每月{{ item.monthDay }}日</span>
+              <span v-else-if="item.repeatType === 'yearly' || item.isAnnual" class="text-[9px] px-1 py-0.2 bg-blue-100 text-blue-600 rounded flex-shrink-0 font-medium">每年</span>
+              <span v-if="item.calendarType === 'lunar' && (item.repeatType === 'yearly' || item.repeatType === 'none' || !item.repeatType)" class="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-700 rounded flex-shrink-0 font-medium">农历</span>
+              <span v-if="item.showWorkdays || item.onlyWorkdays" class="text-[9px] px-1 py-0.2 bg-emerald-100 text-emerald-700 rounded flex-shrink-0 font-medium">含工作日</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1 font-mono leading-tight">
+              <span>{{ getFormattedSettingText(item) }}</span>
+              <span class="block text-[9px] text-gray-400/80 mt-0.5">
+                (下期公历: {{ getFormattedTargetDateStr(item) }})
+              </span>
+            </div>
+          </div>
+
+          <!-- 数值展示：主自然日倒数 + 额外工作日扣除倒数 -->
+          <div class="mt-3 flex flex-col items-end">
+            <div class="flex items-baseline justify-between w-full">
+              <template v-if="getDaysDiff(item) > 0">
+                <span class="text-[11px] text-blue-600 font-medium">还有</span>
+                <span class="text-xl font-extrabold text-blue-600 font-mono">
+                  {{ getDaysDiff(item) }} 
+                  <span class="text-xs font-normal text-gray-500">天</span>
+                </span>
+              </template>
+              <template v-else-if="getDaysDiff(item) === 0">
+                <span class="text-xs text-emerald-600 font-bold">🎉 就是今天</span>
+                <span class="text-xl font-extrabold text-emerald-600 font-mono">
+                  0 <span class="text-xs font-normal text-gray-500">天</span>
+                </span>
+              </template>
+              <template v-else>
+                <span class="text-[11px] text-gray-500 font-medium">已过去</span>
+                <span class="text-xl font-extrabold text-gray-600 font-mono">
+                  {{ Math.abs(getDaysDiff(item)) }} 
+                  <span class="text-xs font-normal text-gray-500">天</span>
+                </span>
+              </template>
+            </div>
+
+            <!-- 次级工作日倒数显示 -->
+            <div v-if="(item.showWorkdays || item.onlyWorkdays) && getDaysDiff(item) > 0" 
+                 class="text-[10px] text-amber-700 font-medium font-mono mt-1 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/60 w-full text-right">
+              💼 扣除节假日: 约 <strong class="text-xs text-amber-800 font-bold">{{ getWorkdaysDiff(item) }}</strong> 工作日
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 生命健康质量概览 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+      <h3 class="text-sm font-bold text-gray-800 mb-3">生命健康质量概览 (基于预测寿命 {{ safeLifeExpectancy }} 岁)</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center mb-4">
+        <div class="p-3 bg-gray-50 rounded-lg">
+          <div class="text-xs text-gray-500">当前年龄</div>
+          <div class="text-xl font-bold text-gray-800 mt-0.5">{{ currentAge.toFixed(1) }} 岁</div>
+        </div>
+        <div class="p-3 bg-emerald-50 rounded-lg">
+          <div class="text-xs text-emerald-600">距离衰弱期 (65岁)</div>
+          <div class="text-xl font-bold text-emerald-700 mt-0.5">{{ yearsToFrail > 0 ? yearsToFrail.toFixed(1) + ' 年' : '已进入' }}</div>
+        </div>
+        <div class="p-3 bg-yellow-50 rounded-lg">
+          <div class="text-xs text-yellow-600">距离失能期 (75岁)</div>
+          <div class="text-xl font-bold text-yellow-700 mt-0.5">{{ yearsToDisabled > 0 ? yearsToDisabled.toFixed(1) + ' 年' : '已进入' }}</div>
+        </div>
+        <div class="p-3 bg-rose-50 rounded-lg">
+          <div class="text-xs text-rose-600">余生总剩余</div>
+          <div class="text-xl font-bold text-rose-700 mt-0.5">{{ (daysRemaining / 365.25).toFixed(1) }} 年</div>
+        </div>
+      </div>
+
+      <!-- 综合进度条 -->
+      <div class="space-y-2 text-xs">
+        <div>
+          <div class="flex justify-between text-gray-600 mb-1">
+            <span>总寿命使用进度</span>
+            <span class="font-semibold">{{ lifeProgress.toFixed(1) }}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div class="bg-blue-600 h-full transition-all duration-1000" :style="{ width: lifeProgress + '%' }"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 人生月份画卷矩阵 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-gray-800">人生月份画卷 (每行 12 个月 = 1 年)</h3>
+          <p class="text-xs text-gray-500 mt-0.5">直观感受时间流逝：灰色代表过去，亮色代表未来不同生命质量阶段</p>
+        </div>
+      </div>
+
+      <!-- 图例说明 -->
+      <div class="flex flex-wrap gap-3 text-xs mb-5 p-3 bg-gray-50 rounded-lg border border-gray-100 text-gray-600">
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-blue-400 rounded-xs"></span> 成长学业(0-18岁)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-amber-500 rounded-xs"></span> 打工奋斗(18-FIRE)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-emerald-500 rounded-xs"></span> FIRE黄金自由期</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-400 rounded-xs"></span> 晚年衰弱期(65-74岁)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-rose-400 rounded-xs"></span> 晚年失能期(75岁+)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-3 bg-gray-300 rounded-xs"></span> 已过时间</div>
+      </div>
+
+      <!-- 年代矩阵 -->
+      <div class="space-y-5">
+        <div v-for="decade in lifeDecades" :key="decade.decadeStart" class="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50/50">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
+            <span class="text-xs font-bold text-gray-700">
+              {{ decade.decadeStart }}s <span class="font-normal text-gray-500">({{ decade.decadeStart }} - {{ decade.decadeEnd }} 岁)</span>
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded font-medium" :class="decade.stageBadgeClass">
+              {{ decade.stageName }}
+            </span>
+          </div>
+
+          <!-- 月份表头 -->
+          <div class="flex items-center gap-2 mb-1">
+            <div class="w-12 flex-shrink-0"></div>
+            <div class="grid grid-cols-12 gap-1 flex-grow text-center text-gray-400 text-[9px] font-mono">
+              <span v-for="m in 12" :key="m">{{ m }}月</span>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div v-for="year in decade.years" :key="year.age" class="flex items-center gap-2">
+              <div class="w-12 flex-shrink-0 text-right text-xs font-mono" :class="year.age === safeFireAge ? 'text-emerald-600 font-bold' : 'text-gray-400'">
+                {{ year.age }}岁
+              </div>
+              <div class="grid grid-cols-12 gap-1 flex-grow">
+                <div v-for="month in year.months" :key="month.globalMonthIndex"
+                  class="month-box cursor-pointer relative flex items-center justify-center text-[9px] font-mono transition-all"
+                  :title="month.tooltip"
+                  :class="[
+                    month.isCurrent ? 'bg-red-500 ring-2 ring-red-400 z-10 current-month text-white' : (
+                      month.isPast ? 'bg-gray-300 opacity-50 text-gray-600' : month.stageColorClass + ' text-white'
+                    ),
+                    month.isFireMonth ? 'ring-2 ring-emerald-400' : ''
+                  ]">
+                  <span v-if="month.isFireMonth" class="text-[8px]">🔥</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          birthDate: '2000-01-01',
+          selectedRegion: 'cn',
+          gender: 'male',
+          techDividendLevel: '1',
+          fireAge: 50,
+          lifeExpectancy: 81,
+          now: new Date(),
+          todayDate: new Date(),
+          timer: null,
+          newEventTitle: '',
+          newEventDate: '',
+          newEventRepeatType: 'none', // 'none' | 'weekly' | 'monthly' | 'yearly'
+          newEventWeekDay: 5,         // 默认周五 (1-7 代表 周一 至 周日)
+          newEventMonthDay: 10,       // 默认 10 号 (发薪/交租)
+          newEventLunarMonth: 4,
+          newEventLunarDay: 16,
+          newEventIsAnnual: false,
+          newEventShowWorkdays: false,
+          newEventCalendarType: 'solar',
+          sortType: 'dateAsc',
+          events: [],
+          weekDayOptions: ['一', '二', '三', '四', '五', '六', '日'],
+          lunarMonthNames: ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '腊月'],
+          lunarDayNames: [
+            '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
+            '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
+            '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'
+          ],
+          regionData: {
+            cn: { name: '中国大陆', male: 76, female: 81 },
+            us: { name: '美国', male: 76, female: 81 },
+            hk: { name: '中国香港', male: 83, female: 88 },
+            sg: { name: '新加坡', male: 82, female: 86 },
+            tw: { name: '台湾地区', male: 77, female: 84 }
+          }
+        };
+      },
+      watch: {
+        birthDate: function() { this.saveConfig(); },
+        selectedRegion: function() { this.saveConfig(); },
+        gender: function() { this.saveConfig(); },
+        techDividendLevel: function() { this.saveConfig(); },
+        fireAge: function() { this.saveConfig(); },
+        lifeExpectancy: function() { this.saveConfig(); }
+      },
+      computed: {
+        currentRegionStats: function() {
+          return this.regionData[this.selectedRegion] || this.regionData.cn;
+        },
+        birthYear: function() {
+          return this.birthDateObj.getFullYear();
+        },
+        baseGenerationBonus: function() {
+          var year = this.birthYear;
+          if (year < 1960) return 0;
+          if (year < 1980) return 2;
+          if (year < 2000) return 5;
+          if (year < 2020) return 8;
+          return 12;
+        },
+        generationName: function() {
+          var year = this.birthYear;
+          if (year < 1960) return '60前';
+          if (year < 1980) return '60-70后';
+          if (year < 2000) return '80-90后';
+          if (year < 2020) return '00-10后';
+          return '20后';
+        },
+        calculatedExpectancy: function() {
+          var base = this.gender === 'male' ? this.currentRegionStats.male : this.currentRegionStats.female;
+          var bonus = Math.round(this.baseGenerationBonus * parseFloat(this.techDividendLevel));
+          return base + bonus;
+        },
+        safeFireAge: function() { return Number(this.fireAge) || 50; },
+        safeLifeExpectancy: function() { return Number(this.lifeExpectancy) || 80; },
+        birthDateObj: function() {
+          if (!this.birthDate) return new Date('2000-01-01');
+          var d = new Date(this.birthDate + 'T00:00:00');
+          return isNaN(d.getTime()) ? new Date('2000-01-01') : d;
+        },
+        endDay: function() {
+          var b = new Date(this.birthDateObj);
+          b.setFullYear(b.getFullYear() + this.safeLifeExpectancy);
+          return b;
+        },
+        currentAge: function() {
+          return this.daysLived / 365.25;
+        },
+        daysLived: function() {
+          var diff = this.todayDate - this.birthDateObj;
+          return diff > 0 ? Math.floor(diff / 86400000) : 0;
+        },
+        daysRemaining: function() {
+          var d = Math.floor((this.endDay - this.todayDate) / 86400000);
+          return d > 0 ? d : 0;
+        },
+        lifeProgress: function() {
+          var total = this.daysLived + this.daysRemaining;
+          return total > 0 ? (this.daysLived / total) * 100 : 0;
+        },
+        yearsToFrail: function() {
+          return 65 - this.currentAge;
+        },
+        yearsToDisabled: function() {
+          return 75 - this.currentAge;
+        },
+
+        /* FIRE 计算 */
+        fireDateObj: function() {
+          var d = new Date(this.birthDateObj);
+          d.setFullYear(d.getFullYear() + this.safeFireAge);
+          return d;
+        },
+        fireDateStr: function() {
+          var d = this.fireDateObj;
+          return d.getFullYear() + '-' + this.pad(d.getMonth() + 1) + '-' + this.pad(d.getDate());
+        },
+        daysToFire: function() {
+          return Math.ceil((this.fireDateObj - this.todayDate) / 86400000);
+        },
+        isFireReached: function() { return this.daysToFire <= 0; },
+        fireYearsLeft: function() { return (this.daysToFire / 365.25).toFixed(1); },
+        monthsToFire: function() { return Math.ceil(this.daysToFire / 30.44); },
+        fireProgress: function() {
+          var workStartAge = 18;
+          var currentAge = this.currentAge;
+          if (currentAge < workStartAge) return 0;
+          var totalWorkYears = this.safeFireAge - workStartAge;
+          if (totalWorkYears <= 0) return 100;
+          var workedYears = currentAge - workStartAge;
+          return Math.min(100, Math.max(0, (workedYears / totalWorkYears) * 100));
+        },
+
+        /* 倒数日动态排序计算 */
+        sortedEvents: function() {
+          var self = this;
+          var list = this.events.slice();
+
+          if (this.sortType === 'dateAsc') {
+            return list.sort(function(a, b) {
+              return self.getTargetDate(a) - self.getTargetDate(b);
+            });
+          } else if (this.sortType === 'dateDesc') {
+            return list.sort(function(a, b) {
+              return self.getTargetDate(b) - self.getTargetDate(a);
+            });
+          } else if (this.sortType === 'remainingAsc') {
+            return list.sort(function(a, b) {
+              return self.getDaysDiff(a) - self.getDaysDiff(b);
+            });
+          }
+          return list;
+        },
+
+        /* 月份矩阵 */
+        lifeDecades: function() {
+          var decades = [];
+          var currentGlobalMonth = (this.todayDate.getFullYear() - this.birthDateObj.getFullYear()) * 12 + this.todayDate.getMonth();
+          var fireGlobalMonth = this.safeFireAge * 12 + this.birthDateObj.getMonth();
+
+          for (var decadeStart = 0; decadeStart < this.safeLifeExpectancy; decadeStart += 10) {
+            var decadeEnd = Math.min(decadeStart + 9, this.safeLifeExpectancy - 1);
+            var years = [];
+
+            for (var age = decadeStart; age <= decadeEnd; age++) {
+              var months = [];
+              for (var m = 0; m < 12; m++) {
+                var globalMonthIndex = age * 12 + m;
+                var isPast = globalMonthIndex < currentGlobalMonth;
+                var isCurrent = globalMonthIndex === currentGlobalMonth;
+                var isFireMonth = globalMonthIndex === fireGlobalMonth;
+
+                var stageColorClass = 'bg-blue-400';
+                var stageName = '成长学业';
+
+                if (age < 18) {
+                  stageColorClass = 'bg-blue-400';
+                  stageName = '成长学业';
+                } else if (age < this.safeFireAge) {
+                  stageColorClass = 'bg-amber-500';
+                  stageName = '打工奋斗';
+                } else if (age < 65) {
+                  stageColorClass = 'bg-emerald-500';
+                  stageName = 'FIRE黄金自由期';
+                } else if (age < 75) {
+                  stageColorClass = 'bg-yellow-400';
+                  stageName = '晚年衰弱期';
+                } else {
+                  stageColorClass = 'bg-rose-400';
+                  stageName = '晚年失能期';
+                }
+
+                months.push({
+                  monthNum: m + 1,
+                  globalMonthIndex: globalMonthIndex,
+                  isPast: isPast,
+                  isCurrent: isCurrent,
+                  isFireMonth: isFireMonth,
+                  stageColorClass: stageColorClass,
+                  tooltip: age + '岁 ' + (m + 1) + '月（' + stageName + (isFireMonth ? ' - FIRE节点！' : '') + '）'
+                });
+              }
+
+              years.push({
+                age: age,
+                calYear: this.birthDateObj.getFullYear() + age,
+                months: months
+              });
+            }
+
+            var decadeStageName = '成长学业期';
+            var stageBadgeClass = 'bg-blue-100 text-blue-700';
+            var midAge = decadeStart + 5;
+            if (midAge >= 18 && midAge < this.safeFireAge) {
+              decadeStageName = '打工奋斗期';
+              stageBadgeClass = 'bg-amber-100 text-amber-700';
+            } else if (midAge >= this.safeFireAge && midAge < 65) {
+              decadeStageName = 'FIRE黄金自由期';
+              stageBadgeClass = 'bg-emerald-100 text-emerald-700';
+            } else if (midAge >= 65 && midAge < 75) {
+              decadeStageName = '晚年衰弱期';
+              stageBadgeClass = 'bg-yellow-100 text-yellow-700';
+            } else if (midAge >= 75) {
+              decadeStageName = '晚年失能期';
+              stageBadgeClass = 'bg-rose-100 text-rose-700';
+            }
+
+            decades.push({
+              decadeStart: decadeStart,
+              decadeEnd: decadeEnd,
+              years: years,
+              stageName: decadeStageName,
+              stageBadgeClass: stageBadgeClass
+            });
+          }
+
+          return decades;
+        },
+
+        /* 秒级倒计时 */
+        yearRemainingDays: function() {
+          var end = new Date(this.now.getFullYear(), 11, 31, 23, 59, 59);
+          return Math.ceil((end - this.now) / 86400000);
+        },
+        yearRemainingHMS: function() {
+          var end = new Date(this.now.getFullYear(), 11, 31, 23, 59, 59);
+          var diff = end - this.now;
+          var h = Math.floor(diff / 3600000) % 24;
+          var m = Math.floor(diff / 60000) % 60;
+          var s = Math.floor(diff / 1000) % 60;
+          return this.pad(h) + ':' + this.pad(m) + ':' + this.pad(s);
+        },
+        monthRemainingDays: function() {
+          var end = new Date(this.now.getFullYear(), this.now.getMonth() + 1, 0, 23, 59, 59);
+          return Math.ceil((end - this.now) / 86400000);
+        },
+        weekRemainingDays: function() {
+          var day = this.now.getDay();
+          day = day === 0 ? 7 : day;
+          return 7 - day + 1;
+        },
+        todayRemaining: function() {
+          var end = new Date(this.now);
+          end.setHours(23, 59, 59, 999);
+          var diff = end - this.now;
+          var h = Math.floor(diff / 3600000);
+          var m = Math.floor(diff / 60000) % 60;
+          var s = Math.floor(diff / 1000) % 60;
+          return this.pad(h) + ':' + this.pad(m) + ':' + this.pad(s);
+        }
+      },
+      methods: {
+        pad: function(n) { return n < 10 ? '0' + n : String(n); },
+        applyRegionPreset: function() {
+          this.lifeExpectancy = this.calculatedExpectancy;
+          this.saveConfig();
+        },
+        onBirthDateOrRegionChange: function() {
+          this.applyRegionPreset();
+        },
+        setGenderPreset: function(g) {
+          this.gender = g;
+          this.applyRegionPreset();
+        },
+
+        /* 读取/保存固定配置项（持久化） */
+        loadConfig: function() {
+          try {
+            var savedConfig = localStorage.getItem('life_countdown_config');
+            if (savedConfig) {
+              var config = JSON.parse(savedConfig);
+              if (config.birthDate) this.birthDate = config.birthDate;
+              if (config.selectedRegion) this.selectedRegion = config.selectedRegion;
+              if (config.gender) this.gender = config.gender;
+              if (config.techDividendLevel !== undefined) this.techDividendLevel = config.techDividendLevel;
+              if (config.fireAge !== undefined) this.fireAge = config.fireAge;
+              if (config.lifeExpectancy !== undefined) this.lifeExpectancy = config.lifeExpectancy;
+            }
+          } catch(e) {}
+        },
+        saveConfig: function() {
+          try {
+            var config = {
+              birthDate: this.birthDate,
+              selectedRegion: this.selectedRegion,
+              gender: this.gender,
+              techDividendLevel: this.techDividendLevel,
+              fireAge: this.fireAge,
+              lifeExpectancy: this.lifeExpectancy
+            };
+            localStorage.setItem('life_countdown_config', JSON.stringify(config));
+          } catch(e) {}
+        },
+
+        /* 公历反查农历月日组件辅助处理 */
+        onSolarPickerForLunarChange: function(e) {
+          var val = e.target.value;
+          if (!val) return;
+          try {
+            var parts = val.split('-');
+            var solarDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            if (typeof Lunar !== 'undefined') {
+              var lunar = Lunar.fromDate(solarDate);
+              if (lunar) {
+                this.newEventLunarMonth = lunar.getMonth();
+                this.newEventLunarDay = lunar.getDay();
+              }
+            }
+          } catch(err) {}
+        },
+
+        getLunarMD: function(item) {
+          if (!item) return { month: 1, day: 1 };
+          if (item.lunarMonth && item.lunarDay) {
+            return { month: parseInt(item.lunarMonth, 10), day: parseInt(item.lunarDay, 10) };
+          }
+          if (item.date) {
+            var parts = item.date.split('-');
+            if (parts.length === 3) {
+              var y = parseInt(parts[0], 10);
+              var m = parseInt(parts[1], 10);
+              var d = parseInt(parts[2], 10);
+              if (typeof Lunar !== 'undefined') {
+                try {
+                  var solarDate = new Date(y, m - 1, d);
+                  var lunar = Lunar.fromDate(solarDate);
+                  if (lunar) {
+                    return { month: lunar.getMonth(), day: lunar.getDay() };
+                  }
+                } catch(e) {}
+              }
+              return { month: m, day: d };
+            } else if (parts.length === 2) {
+              return { month: parseInt(parts[0], 10), day: parseInt(parts[1], 10) };
+            }
+          }
+          return { month: 1, day: 1 };
+        },
+
+        getFormattedLunarText: function(item) {
+          var md = this.getLunarMD(item);
+          var mStr = this.lunarMonthNames[md.month - 1] || (md.month + '月');
+          var dStr = this.lunarDayNames[md.day - 1] || (md.day + '日');
+          return mStr + dStr;
+        },
+
+        getFormattedSettingText: function(item) {
+          var repeatType = item.repeatType || (item.isAnnual ? 'yearly' : 'none');
+          if (repeatType === 'weekly') {
+            return '设定: 每周' + (this.weekDayOptions[item.weekDay - 1] || '一');
+          } else if (repeatType === 'monthly') {
+            return '设定: 每月' + item.monthDay + '号';
+          } else if (repeatType === 'yearly') {
+            if (item.calendarType === 'lunar') {
+              return '设定: 每年农历 ' + this.getFormattedLunarText(item);
+            }
+            return '设定: 每年 ' + (item.date ? item.date.slice(5) : '');
+          } else {
+            if (item.calendarType === 'lunar') {
+              return '设定: 农历 ' + this.getFormattedLunarText(item);
+            }
+            return '设定: ' + (item.date || '');
+          }
+        },
+
+        safeLunarToSolar: function(lunarYear, month, day) {
+          if (typeof Lunar === 'undefined') return null;
+          for (var d = day; d >= 1; d--) {
+            try {
+              var lunar = Lunar.fromYmd(lunarYear, month, d);
+              if (lunar) {
+                var solar = lunar.getSolar();
+                return new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay());
+              }
+            } catch(e) {}
+          }
+          return null;
+        },
+
+        /* 根据重复周期核心计算逻辑（每周、每月、每年、单次） */
+        getTargetDate: function(item) {
+          if (!item) return new Date();
+          var today = new Date(this.now.getFullYear(), this.now.getMonth(), this.now.getDate());
+          var repeatType = item.repeatType || (item.isAnnual ? 'yearly' : 'none');
+
+          // 1. 每周重复逻辑
+          if (repeatType === 'weekly') {
+            var targetDow = item.weekDay % 7; // 转换 1-7 (周一到周日) 至 JS 0-6 格式 (0为周日)
+            var curDow = today.getDay();
+            var diff = (targetDow - curDow + 7) % 7;
+            var targetWeekly = new Date(today);
+            targetWeekly.setDate(today.getDate() + diff);
+            return targetWeekly;
+          }
+
+          // 2. 每月重复逻辑 (如发薪日)
+          if (repeatType === 'monthly') {
+            var targetDay = item.monthDay || 1;
+            var curY = today.getFullYear();
+            var curM = today.getMonth();
+            
+            // 考虑当前月份天数，避免小月超出（如2月没有30号则对齐到2月最后一天）
+            var maxDaysCurM = new Date(curY, curM + 1, 0).getDate();
+            var actualDayCurM = Math.min(targetDay, maxDaysCurM);
+            var targetCurM = new Date(curY, curM, actualDayCurM);
+
+            if (targetCurM >= today) {
+              return targetCurM;
+            } else {
+              var nextY = curM === 11 ? curY + 1 : curY;
+              var nextM = (curM + 1) % 12;
+              var maxDaysNextM = new Date(nextY, nextM + 1, 0).getDate();
+              var actualDayNextM = Math.min(targetDay, maxDaysNextM);
+              return new Date(nextY, nextM, actualDayNextM);
+            }
+          }
+
+          // 3. 每年重复 / 单次逻辑 (含农历)
+          if (item.calendarType === 'lunar') {
+            var md = this.getLunarMD(item);
+            var month = md.month;
+            var day = md.day;
+
+            if (typeof Lunar !== 'undefined') {
+              try {
+                var curLunarYear = Lunar.fromDate(today).getYear();
+                if (repeatType !== 'yearly') {
+                  var year = item.date ? parseInt(item.date.split('-')[0], 10) : curLunarYear;
+                  var targetSolar = this.safeLunarToSolar(year, month, day);
+                  return targetSolar || new Date();
+                } else {
+                  var targetThisYear = this.safeLunarToSolar(curLunarYear, month, day);
+                  if (targetThisYear && targetThisYear >= today) {
+                    return targetThisYear;
+                  } else {
+                    var targetNextYear = this.safeLunarToSolar(curLunarYear + 1, month, day);
+                    return targetNextYear || new Date();
+                  }
+                }
+              } catch(e) {}
+            }
+          }
+
+          // 公历单次或每年逻辑
+          var dateStr = item.date || '';
+          var parts = dateStr.split('-');
+          if (parts.length < 3) return new Date();
+
+          var origYear = parseInt(parts[0], 10);
+          var m = parseInt(parts[1], 10);
+          var d = parseInt(parts[2], 10);
+
+          if (repeatType !== 'yearly') {
+            return new Date(origYear, m - 1, d);
+          } else {
+            var currentYear = today.getFullYear();
+            var targetSolar = new Date(currentYear, m - 1, d);
+            if (targetSolar < today) {
+              targetSolar.setFullYear(currentYear + 1);
+            }
+            return targetSolar;
+          }
+        },
+
+        /* 计算包含的工作日天数 (剔除双周末及节假日) */
+        calculateWorkdays: function(startDate, endDate) {
+          if (endDate <= startDate) return 0;
+          var count = 0;
+          var cur = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          cur.setDate(cur.getDate() + 1);
+          var target = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+          while (cur <= target) {
+            var y = cur.getFullYear();
+            var m = cur.getMonth() + 1;
+            var d = cur.getDate();
+            var dayOfWeek = cur.getDay();
+
+            if (typeof HolidayUtil !== 'undefined') {
+              var h = HolidayUtil.getHoliday(y, m, d);
+              if (h) {
+                if (h.isWork()) count++;
+              } else {
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+              }
+            } else {
+              if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+            }
+            cur.setDate(cur.getDate() + 1);
+          }
+          return count;
+        },
+
+        /* 获取自然日倒数总天数 */
+        getDaysDiff: function(item) {
+          var targetDate = this.getTargetDate(item);
+          var today = new Date(this.now.getFullYear(), this.now.getMonth(), this.now.getDate());
+          var diffTime = targetDate - today;
+          return Math.ceil(diffTime / 86400000);
+        },
+
+        /* 获取纯工作日倒数天数 */
+        getWorkdaysDiff: function(item) {
+          var targetDate = this.getTargetDate(item);
+          var today = new Date(this.now.getFullYear(), this.now.getMonth(), this.now.getDate());
+          if (targetDate <= today) return 0;
+          return this.calculateWorkdays(today, targetDate);
+        },
+
+        getFormattedTargetDateStr: function(item) {
+          var target = this.getTargetDate(item);
+          if (!target) return item.date;
+          var y = target.getFullYear();
+          var m = this.pad(target.getMonth() + 1);
+          var d = this.pad(target.getDate());
+          return y + '-' + m + '-' + d;
+        },
+
+        loadEvents: function() {
+          try {
+            var savedSort = localStorage.getItem('life_countdown_sort');
+            if (savedSort) this.sortType = savedSort;
+
+            var saved = localStorage.getItem('life_countdown_events');
+            if (saved) {
+              var rawList = JSON.parse(saved);
+              // 兼容升级旧数据结构
+              this.events = rawList.map(function(item) {
+                if (!item.repeatType) {
+                  item.repeatType = item.isAnnual ? 'yearly' : 'none';
+                }
+                return item;
+              });
+            } else {
+              var nextYearStr = (new Date().getFullYear() + 1) + '-01-01';
+              this.events = [
+                { id: Date.now(), title: '每月发薪日', repeatType: 'monthly', monthDay: 10, calendarType: 'solar', showWorkdays: false },
+                { id: Date.now() + 1, title: '元旦新年', date: nextYearStr, repeatType: 'yearly', isAnnual: true, calendarType: 'solar', showWorkdays: false }
+              ];
+            }
+          } catch(e) {
+            this.events = [];
+          }
+        },
+        saveEvents: function() {
+          try {
+            localStorage.setItem('life_countdown_events', JSON.stringify(this.events));
+          } catch(e) {}
+        },
+        saveSortType: function() {
+          try {
+            localStorage.setItem('life_countdown_sort', this.sortType);
+          } catch(e) {}
+        },
+
+        addEvent: function() {
+          if (!this.newEventTitle.trim()) {
+            alert('请填写事件名称');
+            return;
+          }
+
+          var newEvent = {
+            id: Date.now(),
+            title: this.newEventTitle.trim(),
+            repeatType: this.newEventRepeatType,
+            calendarType: this.newEventCalendarType || 'solar',
+            isAnnual: this.newEventRepeatType === 'yearly',
+            showWorkdays: !!this.newEventShowWorkdays,
+            onlyWorkdays: !!this.newEventShowWorkdays
+          };
+
+          if (this.newEventRepeatType === 'weekly') {
+            newEvent.weekDay = this.newEventWeekDay || 1;
+          } else if (this.newEventRepeatType === 'monthly') {
+            newEvent.monthDay = this.newEventMonthDay || 1;
+          } else if (this.newEventCalendarType === 'lunar') {
+            newEvent.lunarMonth = this.newEventLunarMonth || 1;
+            newEvent.lunarDay = this.newEventLunarDay || 1;
+            newEvent.date = this.pad(newEvent.lunarMonth) + '-' + this.pad(newEvent.lunarDay);
+          } else {
+            if (!this.newEventDate) {
+              alert('请选择公历日期');
+              return;
+            }
+            newEvent.date = this.newEventDate;
+          }
+
+          this.events.push(newEvent);
+          this.newEventTitle = '';
+          this.newEventDate = '';
+          this.newEventRepeatType = 'none';
+          this.newEventCalendarType = 'solar';
+          this.newEventShowWorkdays = false;
+          this.saveEvents();
+        },
+
+        removeEvent: function(id) {
+          this.events = this.events.filter(function(item) { return item.id !== id; });
+          this.saveEvents();
+        },
+
+        exportEvents: function() {
+          if (!this.events || this.events.length === 0) {
+            alert('当前没有可导出的倒数日数据');
+            return;
+          }
+          var dataStr = JSON.stringify(this.events, null, 2);
+          var blob = new Blob([dataStr], { type: 'application/json' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          var dateStr = new Date().toISOString().slice(0, 10);
+          a.download = 'life_countdown_backup_' + dateStr + '.json';
+          a.click();
+          URL.revokeObjectURL(url);
+        },
+        triggerImport: function() {
+          this.$refs.fileInput.click();
+        },
+        handleFileUpload: function(e) {
+          var file = e.target.files[0];
+          if (!file) return;
+
+          var reader = new FileReader();
+          var self = this;
+          reader.onload = function(evt) {
+            try {
+              var imported = JSON.parse(evt.target.result);
+              if (Array.isArray(imported)) {
+                self.events = imported.map(function(item, idx) {
+                  return {
+                    id: item.id || (Date.now() + idx),
+                    title: String(item.title || '倒数日'),
+                    date: String(item.date || ''),
+                    repeatType: item.repeatType || (item.isAnnual ? 'yearly' : 'none'),
+                    weekDay: item.weekDay,
+                    monthDay: item.monthDay,
+                    lunarMonth: item.lunarMonth,
+                    lunarDay: item.lunarDay,
+                    isAnnual: !!item.isAnnual,
+                    calendarType: item.calendarType || 'solar',
+                    showWorkdays: typeof item.showWorkdays !== 'undefined' ? !!item.showWorkdays : !!item.onlyWorkdays,
+                    onlyWorkdays: typeof item.showWorkdays !== 'undefined' ? !!item.showWorkdays : !!item.onlyWorkdays
+                  };
+                });
+                self.saveEvents();
+                alert('成功导入 ' + self.events.length + ' 条倒数日数据！');
+              } else {
+                alert('导入失败：JSON 根节点必须是数组格式');
+              }
+            } catch (err) {
+              alert('读取或解析 JSON 文件失败');
+            }
+            e.target.value = '';
+          };
+          reader.readAsText(file);
+        }
+      },
+      mounted: function() {
+        this.loadConfig();
+        if (!localStorage.getItem('life_countdown_config')) {
+          this.applyRegionPreset();
+        }
+        this.loadEvents();
+        
+        var self = this;
+        this.timer = setInterval(function() {
+          self.now = new Date();
+        }, 1000);
+      },
+      beforeDestroy: function() {
+        if (this.timer) clearInterval(this.timer);
+      }
+    });
+  </script>
+</body>
+</html>

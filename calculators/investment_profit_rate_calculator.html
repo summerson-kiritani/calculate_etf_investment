@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>收益率计算器</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">收益率计算器</h1>
+    <p class="text-gray-500 mt-1">计算买入卖出的总收益率及年化收益率，支持涨跌幅计算</p>
+
+    <!-- 表单 -->
+    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
+      <!-- 模式切换 Tab -->
+      <div class="flex gap-2 mb-4">
+        <button type="button" @click="mode='price'; calculated=false" :class="mode==='price' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'" class="px-4 py-2 rounded font-semibold text-sm">买入卖出价</button>
+        <button type="button" @click="mode='change'; calculated=false" :class="mode==='change' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'" class="px-4 py-2 rounded font-semibold text-sm">买入涨跌幅</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">买入价格</label>
+          <input type="number" v-model.number="buyPrice" min="0.0001" step="0.0001" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div v-if="mode==='price'">
+          <label class="block text-sm font-semibold text-gray-700">卖出价格</label>
+          <input type="number" v-model.number="sellPrice" min="0.0001" step="0.0001" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div v-if="mode==='change'">
+          <label class="block text-sm font-semibold text-gray-700">涨跌幅（%）<span class="text-xs text-gray-400 font-normal ml-1">正数上涨，负数下跌</span></label>
+          <input type="number" v-model.number="changePercent" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        
+        <!-- 修改部分：将份额拆分为 手数 和 每手股数 -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">买入数量（手）</label>
+          <input type="number" v-model.number="lots" min="0.01" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">每手股数</label>
+          <input type="number" v-model.number="sharesPerLot" min="1" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">预估持有时间（月）</label>
+          <input type="number" v-model.number="holdMonths" min="1" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-4">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">计算收益率</button>
+        <span v-if="calculated" class="text-sm text-gray-500">当前总股数：{{ totalShares }} 股</span>
+      </div>
+    </form>
+
+    <!-- 摘要卡片 -->
+    <div v-if="calculated" class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">收益金额</div>
+        <div class="text-xl font-bold" :class="profitAmount >= 0 ? 'text-red-500' : 'text-green-500'">{{ fmtMoney(profitAmount) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">总收益率</div>
+        <div class="text-xl font-bold" :class="profitRate >= 0 ? 'text-red-500' : 'text-green-500'">{{ (profitRate * 100).toFixed(2) }}%</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">日收益率</div>
+        <div class="text-xl font-bold">{{ (dailyReturn * 100).toFixed(4) }}%</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">月收益率</div>
+        <div class="text-xl font-bold">{{ (monthlyReturn * 100).toFixed(3) }}%</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">年化收益率</div>
+        <div class="text-xl font-bold">{{ (annualReturn * 100).toFixed(2) }}%</div>
+      </div>
+    </div>
+
+    <!-- 公式说明 -->
+    <div v-if="calculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
+
+      <template v-if="mode==='change'">
+        <h4 class="font-semibold text-gray-800">卖出价推导</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>卖出价 = 买入价 × (1 + 涨跌幅%)</code></p>
+          <p><code>= {{ buyPrice.toFixed(2) }} × (1 + {{ changePercent.toFixed(2) }}%) = {{ effectiveSellPrice.toFixed(2) }}</code></p>
+        </div>
+      </template>
+
+      <!-- 公式中的份额替换为总股数 -->
+      <h4 class="font-semibold text-gray-800" :class="mode==='change' ? 'mt-4' : ''">总收益率</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>总收益率 = (卖出价 - 买入价) × 总股数 / (买入价 × 总股数)</code></p>
+        <p><code>= ({{ effectiveSellPrice.toFixed(2) }} - {{ buyPrice.toFixed(2) }}) × {{ totalShares }} / ({{ buyPrice.toFixed(2) }} × {{ totalShares }}) = {{ (profitRate * 100).toFixed(2) }}%</code></p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">月化收益率</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>月化收益率 = (1 + 总收益率)^(1/持有月数) - 1</code></p>
+        <p><code>= (1 + {{ (profitRate * 100).toFixed(2) }}%)^(1/{{ holdMonths }}) - 1 = {{ (monthlyReturn * 100).toFixed(3) }}%</code></p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">日化收益率</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>日化收益率 = (1 + 月化收益率)^(1/30) - 1</code></p>
+        <p><code>= (1 + {{ (monthlyReturn * 100).toFixed(3) }}%)^(1/30) - 1 = {{ (dailyReturn * 100).toFixed(4) }}%</code></p>
+      </div>
+
+      <h4 class="font-semibold text-gray-800 mt-4">年化收益率</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>年化收益率 = (1 + 月化收益率)^12 - 1</code></p>
+        <p><code>= (1 + {{ (monthlyReturn * 100).toFixed(3) }}%)^12 - 1 = {{ (annualReturn * 100).toFixed(2) }}%</code></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          mode: 'price',
+          buyPrice: 50,
+          sellPrice: 100,
+          changePercent: 50,
+          // 修改为 lots 和 sharesPerLot，并增加 totalShares
+          lots: 10,
+          sharesPerLot: 100,
+          totalShares: 1000,
+          holdMonths: 12,
+          calculated: false,
+          profitAmount: 0,
+          profitRate: 0,
+          dailyReturn: 0,
+          monthlyReturn: 0,
+          annualReturn: 0,
+          effectiveSellPrice: 0
+        };
+      },
+      methods: {
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
+        },
+        calculate: function() {
+          if (this.buyPrice <= 0 || this.lots <= 0 || this.sharesPerLot <= 0 || this.holdMonths <= 0) {
+            alert('买入价、数量、每手股数和持有时间必须为正数');
+            return;
+          }
+          if (this.mode === 'change') {
+            this.effectiveSellPrice = this.buyPrice * (1 + this.changePercent / 100);
+          } else {
+            if (this.sellPrice <= 0) { alert('卖出价格必须为正数'); return; }
+            this.effectiveSellPrice = this.sellPrice;
+          }
+
+          // 计算总股数
+          this.totalShares = this.lots * this.sharesPerLot;
+
+          // 计算收益
+          this.profitAmount = (this.effectiveSellPrice - this.buyPrice) * this.totalShares;
+          this.profitRate = this.profitAmount / (this.buyPrice * this.totalShares);
+          this.monthlyReturn = Math.pow(1 + this.profitRate, 1 / this.holdMonths) - 1;
+          this.dailyReturn = Math.pow(1 + this.monthlyReturn, 1 / 30) - 1;
+          this.annualReturn = Math.pow(1 + this.monthlyReturn, 12) - 1;
+          this.calculated = true;
+        }
+      },
+      mounted: function() {
+        this.calculate();
+      }
+    });
+  </script>
+</body>
+</html>

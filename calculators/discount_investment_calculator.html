@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>折扣计算器</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+    <!-- 顶部导航 -->
+    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+
+    <!-- 标题 -->
+    <h1 class="text-2xl font-bold mt-4">折扣计算器</h1>
+    <p class="text-gray-500 mt-1">双模式：折扣率算折后价 / 折后价算折扣率</p>
+
+    <!-- 表单 -->
+    <form @submit.prevent="calculate" class="bg-white rounded-lg shadow p-6 mt-6">
+      <!-- 模式切换 -->
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">计算模式</label>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" value="price" v-model="mode" />
+            <span class="text-sm">输入折后价算折扣率</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" value="rate" v-model="mode" />
+            <span class="text-sm">输入折扣率算折后价</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 输入参数 -->
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">商品原价（元）</label>
+          <input type="number" v-model.number="originalPrice" min="0.01" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div v-if="mode === 'rate'">
+          <label class="block text-sm font-semibold text-gray-700">折扣率（%）</label>
+          <input type="number" v-model.number="discountRate" min="0" max="100" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div v-else>
+          <label class="block text-sm font-semibold text-gray-700">折后价格（元）</label>
+          <input type="number" v-model.number="discountedPriceInput" min="0" :max="originalPrice" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">计算</button>
+      </div>
+    </form>
+
+    <!-- 摘要卡片 -->
+    <div v-if="calculated" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">商品原价</div>
+        <div class="text-xl font-bold">{{ fmtMoney(originalPrice) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">折后价格</div>
+        <div class="text-xl font-bold">{{ fmtMoney(discountedPrice) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">节省金额</div>
+        <div class="text-xl font-bold text-red-500">{{ fmtMoney(savedAmount) }}</div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="text-sm text-gray-500">投资收益率</div>
+        <div class="text-xl font-bold">{{ investmentReturn.toFixed(2) }}%</div>
+      </div>
+    </div>
+
+    <!-- 公式说明 -->
+    <div v-if="calculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-500 mb-6 text-center">计算公式说明</h3>
+
+      <template v-if="mode === 'rate'">
+        <h4 class="font-semibold text-gray-800">折后价格</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>折后价格 = 原价 × (折扣率 ÷ 100)</code></p>
+          <p><code>= {{ originalPrice.toFixed(2) }} × {{ (discountRate / 100).toFixed(4) }} = {{ discountedPrice.toFixed(2) }} 元</code></p>
+        </div>
+
+        <h4 class="font-semibold text-gray-800 mt-4">节省金额</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>节省金额 = 原价 - 折后价格 = {{ savedAmount.toFixed(2) }} 元</code></p>
+        </div>
+      </template>
+
+      <template v-else>
+        <h4 class="font-semibold text-gray-800">折扣率</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>折扣率 = (折后价格 ÷ 原价) × 100%</code></p>
+          <p><code>= ({{ discountedPrice.toFixed(2) }} ÷ {{ originalPrice.toFixed(2) }}) × 100% = {{ discountRate.toFixed(2) }}%</code></p>
+        </div>
+
+        <h4 class="font-semibold text-gray-800 mt-4">节省金额</h4>
+        <div class="mt-1 ml-4 space-y-1">
+          <p><code>节省金额 = 原价 - 折后价格 = {{ savedAmount.toFixed(2) }} 元</code></p>
+        </div>
+      </template>
+
+      <h4 class="font-semibold text-gray-800 mt-4">投资收益率</h4>
+      <div class="mt-1 ml-4 space-y-1">
+        <p><code>投资收益率 = (原价 - 折后价) ÷ 折后价 × 100%</code></p>
+        <p><code>= ({{ originalPrice.toFixed(2) }} - {{ discountedPrice.toFixed(2) }}) ÷ {{ discountedPrice.toFixed(2) }} × 100% = {{ investmentReturn.toFixed(2) }}%</code></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          mode: 'price',
+          originalPrice: 100,
+          discountRate: 90,
+          discountedPrice: 0,
+          discountedPriceInput: 90,
+          savedAmount: 0,
+          investmentReturn: 0,
+          calculated: false
+        };
+      },
+      methods: {
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
+        },
+        calculate: function() {
+          if (this.originalPrice <= 0) { alert('请输入有效的商品原价'); return; }
+          if (this.mode === 'rate') {
+            if (this.discountRate < 0) this.discountRate = 0;
+            if (this.discountRate > 100) this.discountRate = 100;
+            this.discountedPrice = this.originalPrice * (this.discountRate / 100);
+            this.savedAmount = this.originalPrice - this.discountedPrice;
+          } else {
+            if (this.discountedPriceInput < 0) this.discountedPriceInput = 0;
+            if (this.discountedPriceInput > this.originalPrice) this.discountedPriceInput = this.originalPrice;
+            this.discountedPrice = this.discountedPriceInput;
+            this.savedAmount = this.originalPrice - this.discountedPrice;
+            this.discountRate = (this.discountedPrice / this.originalPrice) * 100;
+          }
+          this.investmentReturn = this.discountedPrice > 0
+            ? ((this.originalPrice - this.discountedPrice) / this.discountedPrice) * 100
+            : 0;
+          this.calculated = true;
+        }
+      },
+      mounted: function() {
+        this.calculate();
+      }
+    });
+  </script>
+</body>
+</html>

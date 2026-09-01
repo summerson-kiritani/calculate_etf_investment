@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CLEC 资产再平衡计算器</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    .formula-section code {
+      background: #eff6ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      color: #1d4ed8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+    <a href="../index.html" class="text-blue-600 hover:text-blue-800 text-sm">&larr; 返回首页</a>
+    <h1 class="text-2xl font-bold mt-4">CLEC 资产再平衡计算器</h1>
+    <p class="text-gray-500 mt-1">支持机械再平衡、聪明再平衡、弹性再平衡及 Beta 阈值再平衡</p>
+
+    <!-- 策略选择器 -->
+    <div class="bg-white rounded-lg shadow p-6 mt-6">
+      <label class="block text-sm font-semibold text-gray-700 mb-3">选择再平衡策略</label>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button type="button" @click="selectStrategy('smart')"
+          :class="strategy === 'smart' ? 'bg-blue-600 text-white font-bold border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'"
+          class="py-2.5 px-3 border rounded-lg text-sm text-center transition relative">
+          聪明再平衡
+          <span class="block text-xs font-normal opacity-80">(CELC 推荐)</span>
+        </button>
+        <button type="button" @click="selectStrategy('mechanical')"
+          :class="strategy === 'mechanical' ? 'bg-blue-600 text-white font-bold border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'"
+          class="py-2.5 px-3 border rounded-lg text-sm text-center transition">
+          机械再平衡
+          <span class="block text-xs font-normal opacity-80">(固定目标比例)</span>
+        </button>
+        <button type="button" @click="selectStrategy('flexible')"
+          :class="strategy === 'flexible' ? 'bg-blue-600 text-white font-bold border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'"
+          class="py-2.5 px-3 border rounded-lg text-sm text-center transition">
+          弹性再平衡
+          <span class="block text-xs font-normal opacity-80">(PonPon 变体)</span>
+        </button>
+        <button type="button" @click="selectStrategy('beta')"
+          :class="strategy === 'beta' ? 'bg-blue-600 text-white font-bold border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'"
+          class="py-2.5 px-3 border rounded-lg text-sm text-center transition">
+          Beta 阈值再平衡
+          <span class="block text-xs font-normal opacity-80">(克里斯 变体)</span>
+        </button>
+      </div>
+
+      <!-- 策略简介提示 -->
+      <div class="mt-4 p-3 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
+        <span v-if="strategy === 'smart'">💡 <b>聪明再平衡</b>：QQQ 作为唯一方向盘且保持不动；仅在 QLD 与 MMF 之间调配。上涨年卖出 QLD 获利的 30%~50% 锁定利润，下跌年抽固定 2%（初始总资产）补仓 QLD。</span>
+        <span v-if="strategy === 'mechanical'">💡 <b>机械再平衡</b>：每年固定一天，不考虑涨跌趋势，强行重置资产比例回预设比例（如 7/3 或 4/3/3）。</span>
+        <span v-if="strategy === 'flexible'">💡 <b>弹性再平衡</b>：依据“现金/MMF 是否满足 15 年开销”动态分流。保守型在下跌年卖 QQQ 保护现金；积极型在上涨年卖 QLD 买入 QQQ 加速复利。</span>
+        <span v-if="strategy === 'beta'">💡 <b>Beta 阈值再平衡</b>：按组合实质 Beta 判定。设 $\pm 5\%$ 盘整死区，若偏离阈值才触发调仓，避免频繁操作。</span>
+      </div>
+    </div>
+
+    <!-- 添加资产表单 -->
+    <form @submit.prevent="addCurrentAsset" class="bg-white rounded-lg shadow p-6 mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">录入当前持仓市值</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">选择资产类别</label>
+          <select v-model="currentAssetKey" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option disabled value="">请选择资产</option>
+            <option v-for="(asset, key) in availableAssets" :key="key" :value="key">{{ asset.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">当前市值（元）</label>
+          <input type="number" v-model.number="currentAssetValue" min="0" step="1" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-4">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded font-semibold hover:bg-blue-600">添加 / 更新资产</button>
+        <span class="text-xs text-gray-400">请依次添加所有当前持仓</span>
+      </div>
+    </form>
+
+    <!-- 当前资产卡片列表 -->
+    <div v-if="currentAssets.length" class="mt-6 space-y-3">
+      <div v-for="(item, index) in currentAssets" :key="item.key" class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="flex justify-between items-center">
+          <h4 class="font-semibold text-gray-800">{{ availableAssets[item.key].name }}</h4>
+          <button @click="removeCurrentAsset(index)" class="text-red-400 hover:text-red-600 text-sm">删除</button>
+        </div>
+        <div class="mt-2 text-sm flex justify-between">
+          <div>
+            <span class="text-gray-500">当前市值：</span>
+            <span class="font-semibold">{{ fmtMoney(item.value) }}</span>
+          </div>
+          <div>
+            <span class="text-gray-500">权重比例：</span>
+            <span class="font-semibold">{{ ((item.value / currentTotalValue) * 100).toFixed(2) }}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500 flex justify-between items-center">
+        <div>
+          <div class="text-sm text-gray-500">当前总资产</div>
+          <div class="text-xl font-bold">{{ fmtMoney(currentTotalValue) }}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm text-gray-500">实时组合 Beta</div>
+          <div class="text-xl font-bold text-blue-600">{{ currentPortfolioBeta.toFixed(3) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 策略参数设置 -->
+    <form v-if="currentAssets.length" @submit.prevent="calculateRebalance" class="bg-white rounded-lg shadow p-6 mt-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">再平衡参数设置</h3>
+
+      <!-- 1. 机械再平衡参数 -->
+      <div v-if="strategy === 'mechanical'" class="space-y-3">
+        <div v-for="(asset, key) in availableAssets" :key="key">
+          <label class="block text-sm font-semibold text-gray-700">{{ asset.name }} 目标比例 (%)</label>
+          <input type="number" v-model.number="targetPercents[key]" min="0" max="100" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <p class="text-xs text-gray-400 mt-1">请确保所有资产目标配置比例总和为 100%</p>
+      </div>
+
+      <!-- 2. 聪明再平衡参数 -->
+      <div v-if="strategy === 'smart'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">初始建仓总资产（元）</label>
+          <input type="number" v-model.number="initialTotalValue" min="0" step="1000" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <span class="text-xs text-gray-400">用于计算下跌年固定的 2% 补仓金额</span>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">QLD 年初期初市值（元）</label>
+          <input type="number" v-model.number="qldStartValue" min="0" step="1000" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <span class="text-xs text-gray-400">用于计算当年度 QLD 净获利</span>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">QQQ 当年走势判定</label>
+          <select v-model="qqqPerformance" @change="onParamChange"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option value="up">上涨年（年底股价 &gt; 年初股价）</option>
+            <option value="down">下跌年（年底股价 &lt; 年初股价）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">上涨锁利比例</label>
+          <select v-model.number="lockProfitPercent" @change="onParamChange"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option :value="30">30% （推荐：长效回报更高）</option>
+            <option :value="50">50% （保守：组合波动率恒定）</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 3. 弹性再平衡参数 -->
+      <div v-if="strategy === 'flexible'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">初始建仓总资产（元）</label>
+          <input type="number" v-model.number="initialTotalValue" min="0" step="1000" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">QLD 年初期初市值（元）</label>
+          <input type="number" v-model.number="qldStartValue" min="0" step="1000" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">MMF/现金储备状态</label>
+          <select v-model="mmfReserveStatus" @change="onParamChange"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option value="conservative">MMF &lt; 15年开销（保守型：下跌卖 QQQ 保护现金）</option>
+            <option value="aggressive">MMF &ge; 15年开销（积极型：上涨卖 QLD 买 QQQ 加速）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">QQQ 当年走势判定</label>
+          <select v-model="qqqPerformance" @change="onParamChange"
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none">
+            <option value="up">上涨年</option>
+            <option value="down">下跌年</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 4. Beta 阈值再平衡参数 -->
+      <div v-if="strategy === 'beta'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">初始建仓总资产（元）</label>
+          <input type="number" v-model.number="initialTotalValue" min="0" step="1000" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">QLD 年初期初市值（元）</label>
+          <input type="number" v-model.number="qldStartValue" min="0" step="1000" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">目标组合 Beta 值</label>
+          <input type="number" v-model.number="targetBeta" min="0.1" max="2.0" step="0.05" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <span class="text-xs text-gray-400">例如 4/3/3 配置的目标 Beta 为 1.0</span>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700">死区阈值 (&plusmn;)</label>
+          <input type="number" v-model.number="betaThreshold" min="0.01" max="0.2" step="0.01" required
+            class="w-full px-3 py-2 mt-1 border border-gray-300 rounded focus:border-blue-400 focus:ring-1 focus:ring-blue-200 outline-none" />
+          <span class="text-xs text-gray-400">例如 0.05 表示区间 [0.95, 1.05] 不触发再平衡</span>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center gap-4">
+        <button type="submit" class="w-full bg-blue-500 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-600 transition shadow">
+          计算再平衡资金分配
+        </button>
+      </div>
+    </form>
+
+    <!-- 再平衡结果卡片 -->
+    <div v-if="rebalanceCalculated" class="mt-6 space-y-3">
+      <h3 class="text-lg font-semibold text-gray-800 mb-1">再平衡执行方案</h3>
+
+      <!-- 策略计算决策说明提示 -->
+      <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-900 p-4 rounded shadow-sm text-sm">
+        <div class="font-bold mb-1">执行逻辑说明：</div>
+        <div>{{ calcNote }}</div>
+      </div>
+
+      <div v-for="item in rebalanceResults" :key="item.key"
+        class="bg-white rounded-lg shadow p-4 border-l-4"
+        :class="item.adjustment > 0 ? 'border-green-400' : item.adjustment < 0 ? 'border-red-400' : 'border-gray-300'">
+        <div class="flex justify-between items-center">
+          <h4 class="font-semibold text-gray-800">{{ item.name }}</h4>
+          <span class="px-2.5 py-0.5 rounded text-xs font-semibold"
+            :class="item.adjustment > 0 ? 'bg-green-100 text-green-700' : item.adjustment < 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'">
+            {{ item.adjustment > 0 ? '买入' : item.adjustment < 0 ? '卖出' : '保持不动' }}
+          </span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-sm">
+          <div><span class="text-gray-500">当前市值：</span><br><span class="font-semibold">{{ fmtMoney(item.currentValue) }}</span></div>
+          <div><span class="text-gray-500">调整后比例：</span><br><span class="font-semibold">{{ item.targetPercent.toFixed(2) }}%</span></div>
+          <div><span class="text-gray-500">目标金额：</span><br><span class="font-semibold">{{ fmtMoney(item.targetAmount) }}</span></div>
+          <div>
+            <span class="text-gray-500">调整金额：</span><br>
+            <span class="font-bold" :class="item.adjustment > 0 ? 'text-green-600' : item.adjustment < 0 ? 'text-red-600' : 'text-gray-600'">
+              {{ item.adjustment > 0 ? '+' : '' }}{{ fmtMoney(item.adjustment) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="grid grid-cols-3 gap-4 text-center text-sm">
+          <div><span class="text-gray-500">总资产</span><div class="font-bold text-lg">{{ fmtMoney(currentTotalValue) }}</div></div>
+          <div><span class="text-gray-500">需买入合计</span><div class="font-bold text-lg text-green-600">{{ fmtMoney(totalBuy) }}</div></div>
+          <div><span class="text-gray-500">需卖出合计</span><div class="font-bold text-lg text-red-600">{{ fmtMoney(totalSell) }}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 公式说明与策略细则 -->
+    <div v-if="rebalanceCalculated" class="bg-white rounded-lg shadow p-6 mt-6 text-sm text-gray-600 leading-relaxed formula-section">
+      <h3 class="text-lg font-semibold text-blue-600 mb-4 text-center">策略计算公式说明</h3>
+
+      <div v-if="strategy === 'smart'">
+        <h4 class="font-semibold text-gray-800">聪明再平衡 (Smart Rebalancing) 核心规则</h4>
+        <div class="mt-2 ml-4 space-y-2 text-xs md:text-sm">
+          <p>• <b>方向盘铁律</b>：只看 QQQ 的当年度走势，且 QQQ 持仓<b>永远不动</b>。</p>
+          <p>• <b>上涨年算式</b>：<code>锁利金额 = (QLD 期末市值 - QLD 期初市值) &times; 锁利比例 (30%或50%)</code>，卖出 QLD 补入 MMF。</p>
+          <p>• <b>下跌年算式</b>：<code>补仓金额 = 初始建仓总资产 &times; 2%</code>，卖出 MMF 补仓 QLD。</p>
+        </div>
+      </div>
+
+      <div v-if="strategy === 'mechanical'">
+        <h4 class="font-semibold text-gray-800">机械再平衡 (Mechanical Rebalancing) 核心规则</h4>
+        <div class="mt-2 ml-4 space-y-2 text-xs md:text-sm">
+          <p>• <code>目标金额 = 总资产 &times; 目标比例 / 100</code></p>
+          <p>• <code>调整金额 = 目标金额 - 当前市值</code> （正数买入，负数卖出）</p>
+        </div>
+      </div>
+
+      <div v-if="strategy === 'flexible'">
+        <h4 class="font-semibold text-gray-800">弹性再平衡 (Flexible Rebalancing) 核心规则</h4>
+        <div class="mt-2 ml-4 space-y-2 text-xs md:text-sm">
+          <p>• <b>保守型 (MMF &lt; 15年开销)</b>：上涨年卖 QLD 获利 30% 补 MMF；下跌年卖 <code>QQQ 初始总资产 &times; 2%</code> 补 QLD，绝对保护 MMF 现金安全。</p>
+          <p>• <b>积极型 (MMF &ge; 15年开销)</b>：上涨年卖 QLD 获利 30% 买原型 QQQ 滚入复利引擎；下跌年卖 MMF 补 QLD。</p>
+        </div>
+      </div>
+
+      <div v-if="strategy === 'beta'">
+        <h4 class="font-semibold text-gray-800">Beta 阈值再平衡 (Beta Threshold Rebalancing) 核心规则</h4>
+        <div class="mt-2 ml-4 space-y-2 text-xs md:text-sm">
+          <p>• <code>Portfolio Beta = (W_QQQ &times; 1.0) + (W_QLD &times; 2.0) + (W_MMF &times; 0.0)</code></p>
+          <p>• <b>超配区 (Beta &gt; 1.05)</b>：视同上涨年，触发 QLD 锁利 30% 转入 MMF。</p>
+          <p>• <b>低配区 (Beta &lt; 0.95)</b>：视同下跌年，触发 MMF 抽固定 2% 补仓 QLD。</p>
+          <p>• <b>盘整死区 (0.95 &le; Beta &le; 1.05)</b>：不作任何操作，零交易摩擦。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          strategy: 'smart', // 'smart', 'mechanical', 'flexible', 'beta'
+          availableAssets: {
+            QQQ: { name: 'QQQ (1x 纳斯达克100 ETF)', beta: 1.0 },
+            QLD: { name: 'QLD (2x 杠杆纳指 ETF)', beta: 2.0 },
+            CASH: { name: '货币市场基金（MMF / 现金）', beta: 0.0 }
+          },
+          currentAssetKey: '',
+          currentAssetValue: null,
+          // 默认持仓：QQQ 40万，QLD 30万，现金 30万
+          currentAssets: [
+            { key: 'QQQ', value: 400000 },
+            { key: 'QLD', value: 300000 },
+            { key: 'CASH', value: 300000 }
+          ],
+          targetPercents: { QQQ: 40, QLD: 30, CASH: 30 },
+          initialTotalValue: 1000000,
+          // 修正重点：将默认 QLD 年初市值设为 200,000，当前市值 300,000，即可算出 10 万获利，锁利 3 万
+          qldStartValue: 200000,
+          qqqPerformance: 'up',
+          lockProfitPercent: 30,
+          mmfReserveStatus: 'conservative',
+          targetBeta: 1.0,
+          betaThreshold: 0.05,
+          
+          rebalanceResults: [],
+          rebalanceCalculated: false,
+          calcNote: ''
+        };
+      },
+      computed: {
+        currentTotalValue: function() {
+          return this.currentAssets.reduce(function(acc, a) { return acc + a.value; }, 0);
+        },
+        currentPortfolioBeta: function() {
+          var total = this.currentTotalValue;
+          if (!total) return 0;
+          var self = this;
+          var weightedBeta = this.currentAssets.reduce(function(acc, a) {
+            var assetBeta = self.availableAssets[a.key] ? self.availableAssets[a.key].beta : 1.0;
+            return acc + (a.value / total) * assetBeta;
+          }, 0);
+          return weightedBeta;
+        },
+        totalBuy: function() {
+          return this.rebalanceResults.filter(function(r) { return r.adjustment > 0; }).reduce(function(acc, r) { return acc + r.adjustment; }, 0);
+        },
+        totalSell: function() {
+          return this.rebalanceResults.filter(function(r) { return r.adjustment < 0; }).reduce(function(acc, r) { return acc + Math.abs(r.adjustment); }, 0);
+        }
+      },
+      methods: {
+        fmtMoney: function(num) {
+          if (typeof num !== 'number' || isNaN(num)) return '0.00';
+          var abs = Math.abs(num);
+          if (abs >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+          if (abs >= 10000) return (num / 10000).toFixed(2) + '万';
+          return num.toFixed(2);
+        },
+        selectStrategy: function(strat) {
+          this.strategy = strat;
+          if (this.rebalanceCalculated) {
+            this.calculateRebalance();
+          }
+        },
+        onParamChange: function() {
+          if (this.rebalanceCalculated) {
+            this.calculateRebalance();
+          }
+        },
+        addCurrentAsset: function() {
+          if (!this.currentAssetKey) { alert('请选择资产类别'); return; }
+          if (this.currentAssetValue === null || this.currentAssetValue < 0) { alert('请输入有效的资产市值'); return; }
+          var idx = -1;
+          for (var i = 0; i < this.currentAssets.length; i++) {
+            if (this.currentAssets[i].key === this.currentAssetKey) { idx = i; break; }
+          }
+          if (idx !== -1) {
+            this.$set(this.currentAssets, idx, _.extend({}, this.currentAssets[idx], { value: this.currentAssetValue }));
+          } else {
+            this.currentAssets.push({ key: this.currentAssetKey, value: this.currentAssetValue });
+          }
+          this.currentAssetKey = '';
+          this.currentAssetValue = null;
+          if (this.rebalanceCalculated) {
+            this.calculateRebalance();
+          }
+        },
+        removeCurrentAsset: function(index) {
+          this.currentAssets.splice(index, 1);
+          if (this.rebalanceCalculated) {
+            this.calculateRebalance();
+          }
+        },
+        calculateRebalance: function() {
+          if (this.currentAssets.length === 0) { alert('请先添加当前资产数据'); return; }
+          
+          var totalValue = this.currentTotalValue;
+          var self = this;
+          var results = [];
+
+          var getValue = function(k) {
+            var item = self.currentAssets.find(function(a) { return a.key === k; });
+            return item ? item.value : 0;
+          };
+
+          var qqqVal = getValue('QQQ');
+          var qldVal = getValue('QLD');
+          var cashVal = getValue('CASH');
+
+          // 1. 机械再平衡
+          if (this.strategy === 'mechanical') {
+            var sumPercent = Object.values(this.targetPercents).reduce(function(a, b) { return a + b; }, 0);
+            if (Math.abs(sumPercent - 100) > 0.01) { alert('目标配置比例总和必须为100%'); return; }
+
+            Object.keys(this.availableAssets).forEach(function(key) {
+              var currentValue = getValue(key);
+              var targetPercent = self.targetPercents[key] || 0;
+              var targetAmount = totalValue * (targetPercent / 100);
+              var adjustment = targetAmount - currentValue;
+              results.push({
+                key: key,
+                name: self.availableAssets[key].name,
+                currentValue: currentValue,
+                targetPercent: targetPercent,
+                targetAmount: targetAmount,
+                adjustment: adjustment
+              });
+            });
+            this.calcNote = '按预设百分比目标强行重置（重置后组合 Beta: ' + this.currentPortfolioBeta.toFixed(3) + '）。';
+          }
+          // 2. 聪明再平衡
+          else if (this.strategy === 'smart') {
+            var qldProfit = Math.max(0, qldVal - this.qldStartValue);
+            var initTotal = this.initialTotalValue || totalValue;
+            var qldAdj = 0, cashAdj = 0, qqqAdj = 0;
+
+            if (this.qqqPerformance === 'up') {
+              var lockRatio = this.lockProfitPercent / 100;
+              var lockAmount = qldProfit * lockRatio;
+              qldAdj = -lockAmount;
+              cashAdj = lockAmount;
+              this.calcNote = 'QQQ 当年上涨：锁利 QLD 净获利 (' + self.fmtMoney(qldProfit) + ') 的 ' + this.lockProfitPercent + '%，即卖出 QLD ' + self.fmtMoney(lockAmount) + ' 转入 MMF/现金。';
+            } else {
+              var buyAmount = initTotal * 0.02;
+              qldAdj = buyAmount;
+              cashAdj = -buyAmount;
+              this.calcNote = 'QQQ 当年下跌：按固定锚定初始总资产 2% (' + self.fmtMoney(buyAmount) + ')，卖出 MMF 低位买入 QLD 补仓。';
+            }
+
+            var adjs = { QQQ: qqqAdj, QLD: qldAdj, CASH: cashAdj };
+            Object.keys(this.availableAssets).forEach(function(key) {
+              var currentValue = getValue(key);
+              var adj = adjs[key] || 0;
+              var targetAmount = currentValue + adj;
+              var targetPercent = totalValue > 0 ? (targetAmount / totalValue) * 100 : 0;
+              results.push({
+                key: key,
+                name: self.availableAssets[key].name,
+                currentValue: currentValue,
+                targetPercent: targetPercent,
+                targetAmount: targetAmount,
+                adjustment: adj
+              });
+            });
+          }
+          // 3. 弹性再平衡
+          else if (this.strategy === 'flexible') {
+            var qldProfit = Math.max(0, qldVal - this.qldStartValue);
+            var initTotal = this.initialTotalValue || totalValue;
+            var qldAdj = 0, cashAdj = 0, qqqAdj = 0;
+
+            if (this.mmfReserveStatus === 'conservative') {
+              if (this.qqqPerformance === 'up') {
+                var lockAmount = qldProfit * (this.lockProfitPercent / 100);
+                qldAdj = -lockAmount;
+                cashAdj = lockAmount;
+                this.calcNote = '弹性保守型（上涨）：卖出 QLD 获利 30% (' + self.fmtMoney(lockAmount) + ') 转入 MMF，充实现金防线。';
+              } else {
+                var buyAmount = initTotal * 0.02;
+                qldAdj = buyAmount;
+                qqqAdj = -buyAmount;
+                this.calcNote = '弹性保守型（下跌）：卖出 QQQ 初始总资产 2% (' + self.fmtMoney(buyAmount) + ') 补 QLD，保护 MMF 现金安全。';
+              }
+            } else {
+              if (this.qqqPerformance === 'up') {
+                var lockAmount = qldProfit * (this.lockProfitPercent / 100);
+                qldAdj = -lockAmount;
+                qqqAdj = lockAmount;
+                this.calcNote = '弹性积极型（上涨）：现金充足，卖出 QLD 获利 30% (' + self.fmtMoney(lockAmount) + ') 转买原型 QQQ 加速复利。';
+              } else {
+                var buyAmount = initTotal * 0.02;
+                qldAdj = buyAmount;
+                cashAdj = -buyAmount;
+                this.calcNote = '弹性积极型（下跌）：卖出 MMF 初始总资产 2% (' + self.fmtMoney(buyAmount) + ') 买入 QLD 低位补仓。';
+              }
+            }
+
+            var adjs = { QQQ: qqqAdj, QLD: qldAdj, CASH: cashAdj };
+            Object.keys(this.availableAssets).forEach(function(key) {
+              var currentValue = getValue(key);
+              var adj = adjs[key] || 0;
+              var targetAmount = currentValue + adj;
+              var targetPercent = totalValue > 0 ? (targetAmount / totalValue) * 100 : 0;
+              results.push({
+                key: key,
+                name: self.availableAssets[key].name,
+                currentValue: currentValue,
+                targetPercent: targetPercent,
+                targetAmount: targetAmount,
+                adjustment: adj
+              });
+            });
+          }
+          // 4. Beta 阈值再平衡
+          else if (this.strategy === 'beta') {
+            var curBeta = this.currentPortfolioBeta;
+            var targetB = this.targetBeta || 1.0;
+            var thres = this.betaThreshold || 0.05;
+            var upperB = targetB + thres;
+            var lowerB = targetB - thres;
+
+            var qldAdj = 0, cashAdj = 0, qqqAdj = 0;
+
+            if (curBeta > upperB) {
+              var qldProfit = Math.max(0, qldVal - this.qldStartValue);
+              var lockAmount = qldProfit * (this.lockProfitPercent / 100);
+              qldAdj = -lockAmount;
+              cashAdj = lockAmount;
+              this.calcNote = '组合 Beta (' + curBeta.toFixed(3) + ') > 上限 (' + upperB.toFixed(2) + ')：进入超配区，卖出 QLD 获利 ' + self.fmtMoney(lockAmount) + ' 转入 MMF 锁利。';
+            } else if (curBeta < lowerB) {
+              var initTotal = this.initialTotalValue || totalValue;
+              var buyAmount = initTotal * 0.02;
+              qldAdj = buyAmount;
+              cashAdj = -buyAmount;
+              this.calcNote = '组合 Beta (' + curBeta.toFixed(3) + ') < 下限 (' + lowerB.toFixed(2) + ')：进入低配区，动用 MMF 初始总资产 2% (' + self.fmtMoney(buyAmount) + ') 补仓 QLD。';
+            } else {
+              this.calcNote = '组合 Beta (' + curBeta.toFixed(3) + ') 处于死区 [' + lowerB.toFixed(2) + ', ' + upperB.toFixed(2) + '] 内：不作任何操作，任由资产自然漂移。';
+            }
+
+            var adjs = { QQQ: qqqAdj, QLD: qldAdj, CASH: cashAdj };
+            Object.keys(this.availableAssets).forEach(function(key) {
+              var currentValue = getValue(key);
+              var adj = adjs[key] || 0;
+              var targetAmount = currentValue + adj;
+              var targetPercent = totalValue > 0 ? (targetAmount / totalValue) * 100 : 0;
+              results.push({
+                key: key,
+                name: self.availableAssets[key].name,
+                currentValue: currentValue,
+                targetPercent: targetPercent,
+                targetAmount: targetAmount,
+                adjustment: adj
+              });
+            });
+          }
+
+          this.rebalanceResults = results;
+          this.rebalanceCalculated = true;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
