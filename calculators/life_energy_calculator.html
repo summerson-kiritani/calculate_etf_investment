@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>生命能量转换器 - 真实时薪与多方案对比</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <!-- Tailwind CSS v3 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 隐藏滚动条 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="transition-colors duration-200">
+  <div id="app" :class="isDark ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-800'" class="min-h-screen py-8 transition-colors duration-200">
+    <div class="max-w-4xl mx-auto px-4">
+
+      <!-- 头部与深色模式切换 -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">工作价值与生命能量转换器</h1>
+          <p class="text-xs mt-1" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+            算清真实时薪，横向对比多个工作 Offer，看透每一笔消费背后的生命付出。
+          </p>
+        </div>
+        <button @click="toggleDarkMode" 
+          :class="isDark ? 'bg-gray-800 text-yellow-400 border-gray-700' : 'bg-white text-gray-700 border-gray-200 shadow-sm'"
+          class="px-3 py-1.5 text-xs font-medium border rounded-lg transition-all flex items-center gap-1.5">
+          <span>{{ isDark ? '☀️ 切换浅色' : '🌙 切换深色' }}</span>
+        </button>
+      </div>
+
+      <!-- 提示条 -->
+      <div class="mb-6 p-3.5 rounded-xl border text-xs"
+        :class="isDark ? 'bg-amber-950/40 border-amber-800/50 text-amber-200' : 'bg-amber-50 border-amber-200/80 text-amber-900'">
+        💡 《要钱还是要生活》核心理念：钱是你用生命能量（时间+健康）换来的[cite: 2]。将隐性工作成本与时间纳入计算，看清你的真实劳动价值[cite: 2]。所有数据已自动缓存于当前浏览器。
+      </div>
+
+      <!-- 第一部分：输入参数与核心计算卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+
+        <!-- 左侧：工作时间与财务参数输入 -->
+        <div class="md:col-span-5 p-5 rounded-2xl border shadow-sm flex flex-col justify-between"
+          :class="isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200'">
+          <div>
+            <h3 class="text-sm font-bold flex items-center gap-1.5 mb-4">
+              ⏱️ 工作时间与隐性成本参数
+            </h3>
+
+            <div class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-medium mb-1" :class="isDark ? 'text-gray-300' : 'text-gray-600'">到手月薪 (元)</label>
+                <input type="number" v-model.number="monthlySalary" 
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="w-full px-3 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-semibold" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium mb-1" :class="isDark ? 'text-gray-300' : 'text-gray-600'">一年发薪月数</label>
+                <input type="number" v-model.number="monthsPerYear" 
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="w-full px-3 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium mb-1" :class="isDark ? 'text-gray-300' : 'text-gray-600'">每月为工作花的钱 (交通/治装/解压消费)</label>
+                <input type="number" v-model.number="monthlyWorkCost" 
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="w-full px-3 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium mb-1" :class="isDark ? 'text-gray-300' : 'text-gray-600'">每天常规在公司小时 (含午休)</label>
+                <input type="number" v-model.number="dailyOfficeHours" 
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="w-full px-3 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium mb-1" :class="isDark ? 'text-gray-300' : 'text-gray-600'">单程通勤分钟</label>
+                <input type="number" v-model.number="oneWayCommuteMinutes" 
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="w-full px-3 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium mb-1" :class="isDark ? 'text-gray-300' : 'text-gray-600'">每周额外加班小时</label>
+                <input type="number" v-model.number="weeklyOvertimeHours" 
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="w-full px-3 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+              </div>
+            </div>
+
+            <!-- 保存当前参数为对比方案 -->
+            <div class="mt-4 pt-4 border-t" :class="isDark ? 'border-gray-700' : 'border-gray-200'">
+              <label class="block text-xs font-semibold mb-1.5" :class="isDark ? 'text-emerald-400' : 'text-emerald-700'">
+                💾 将当前参数存为对比方案
+              </label>
+              <div class="flex gap-2">
+                <input type="text" v-model="newSchemeName" placeholder="方案名称 (如: 现职/Offer A)" 
+                  @keyup.enter="saveCurrentScheme"
+                  :class="isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'"
+                  class="flex-1 px-3 py-1.5 text-xs rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500" />
+                <button @click="saveCurrentScheme" 
+                  class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm whitespace-nowrap">
+                  保存方案
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：对比与详细计算过程 -->
+        <div class="md:col-span-7 flex flex-col gap-5">
+
+          <!-- 名义与真实时薪对比卡片 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- 名义时薪 -->
+            <div class="p-5 rounded-2xl border shadow-sm transition-all"
+              :class="isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200'">
+              <div class="text-xs font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-500'">名义时薪</div>
+              <div class="text-3xl font-extrabold mt-2 font-mono" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
+                ¥{{ nominalHourlyWage.toFixed(2) }}<span class="text-xs font-normal">/时</span>
+              </div>
+              <div class="text-[11px] mt-2 font-mono" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+                到手月薪 ÷ 21.75 ÷ 8
+              </div>
+            </div>
+
+            <!-- 真实时薪 -->
+            <div class="p-5 rounded-2xl border shadow-sm transition-all border-l-4 border-l-emerald-500"
+              :class="isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200'">
+              <div class="text-xs font-medium" :class="isDark ? 'text-emerald-400' : 'text-emerald-700'">真实生命时薪</div>
+              <div class="text-3xl font-extrabold mt-2 font-mono text-emerald-600">
+                ¥{{ realHourlyWage.toFixed(2) }}<span class="text-xs font-normal text-emerald-600/70">/时</span>
+              </div>
+              <div class="text-[11px] mt-2 font-semibold text-rose-500">
+                真实缩水 {{ shrinkPercentage.toFixed(1) }}%
+              </div>
+            </div>
+          </div>
+
+          <!-- 计算过程卡片 -->
+          <div class="p-5 rounded-2xl border shadow-sm flex-1"
+            :class="isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200'">
+            <h3 class="text-sm font-bold mb-4 flex items-center justify-between">
+              <span>🧮 当前参数计算过程</span>
+            </h3>
+
+            <div class="space-y-2.5 text-xs font-mono">
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">名义时薪</span>
+                <span class="font-bold">¥{{ monthlySalary }} ÷ 21.75 ÷ 8 = ¥{{ nominalHourlyWage.toFixed(2) }}</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">年到手收入</span>
+                <span class="font-bold">¥{{ monthlySalary }} × {{ monthsPerYear }} = ¥{{ annualIncome.toLocaleString() }}</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">年工作成本</span>
+                <span class="font-bold">¥{{ monthlyWorkCost }} × 12 = ¥{{ annualWorkCost.toLocaleString() }}</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">月在场时间</span>
+                <span class="font-bold">{{ dailyOfficeHours }} × 21.75 = {{ monthlyOfficeHours.toFixed(2) }} 小时</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">月通勤时间</span>
+                <span class="font-bold">{{ oneWayCommuteMinutes }} × 2 × 21.75 ÷ 60 = {{ monthlyCommuteHours.toFixed(1) }} 小时</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">月加班时间</span>
+                <span class="font-bold">{{ weeklyOvertimeHours }} × 52 ÷ 12 = {{ monthlyOvertimeHours.toFixed(1) }} 小时</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-2 border-b" :class="isDark ? 'border-gray-700/60' : 'border-gray-100'">
+                <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">年总投入时间</span>
+                <span class="font-bold">三项月时间之和 × 12 = {{ annualTotalHours.toFixed(1) }} 小时</span>
+              </div>
+
+              <div class="flex justify-between items-center pt-1 text-sm">
+                <span class="font-bold" :class="isDark ? 'text-emerald-400' : 'text-emerald-700'">真实生命时薪</span>
+                <span class="font-bold text-emerald-600">
+                  (¥{{ annualIncome.toLocaleString() }} - ¥{{ annualWorkCost.toLocaleString() }}) ÷ {{ annualTotalHours.toFixed(1) }} = ¥{{ realHourlyWage.toFixed(2) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 第二部分：多工作/方案横向对比区 -->
+      <div class="p-5 rounded-2xl border shadow-sm mb-6"
+        :class="isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200'">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold flex items-center gap-2">
+              <span>💼 多工作 / 方案对比看板</span>
+            </h3>
+            <p class="text-xs mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+              对比不同 Job Offer 或工作模式的真实生命价值，高亮标识最高真实时薪方案。
+            </p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b" :class="isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'">
+                <th class="py-2.5 px-3 font-semibold">方案名称</th>
+                <th class="py-2.5 px-3 font-semibold text-right">月薪 (元)</th>
+                <th class="py-2.5 px-3 font-semibold text-right">年净收益 (元)</th>
+                <th class="py-2.5 px-3 font-semibold text-right">年总时间 (小时)</th>
+                <th class="py-2.5 px-3 font-semibold text-right">名义时薪</th>
+                <th class="py-2.5 px-3 font-semibold text-right">真实生命时薪</th>
+                <th class="py-2.5 px-3 font-semibold text-right">较名义缩水</th>
+                <th class="py-2.5 px-3 font-semibold text-center w-28">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y font-mono" :class="isDark ? 'divide-gray-700/60' : 'divide-gray-100'">
+              <tr v-for="(scheme, index) in comparisonSchemes" :key="scheme.id"
+                :class="bestSchemeId === scheme.id ? (isDark ? 'bg-emerald-950/40 border-l-4 border-l-emerald-500' : 'bg-emerald-50/70 border-l-4 border-l-emerald-500') : 'hover:bg-gray-500/5'">
+                <!-- 方案名称 -->
+                <td class="py-3 px-3 font-sans font-semibold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
+                  <div class="flex items-center gap-1.5">
+                    <span>{{ scheme.name }}</span>
+                    <span v-if="bestSchemeId === scheme.id" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-600 text-white font-normal">最高性价比</span>
+                  </div>
+                </td>
+                <!-- 月薪 -->
+                <td class="py-3 px-3 text-right">¥{{ scheme.monthlySalary }}</td>
+                <!-- 年净收益 -->
+                <td class="py-3 px-3 text-right">¥{{ getSchemeMetrics(scheme).annualNet.toLocaleString() }}</td>
+                <!-- 年总时间 -->
+                <td class="py-3 px-3 text-right">{{ getSchemeMetrics(scheme).annualHours.toFixed(1) }}h</td>
+                <!-- 名义时薪 -->
+                <td class="py-3 px-3 text-right text-gray-500">¥{{ getSchemeMetrics(scheme).nominal.toFixed(2) }}</td>
+                <!-- 真实时薪 -->
+                <td class="py-3 px-3 text-right font-extrabold text-sm text-emerald-600">
+                  ¥{{ getSchemeMetrics(scheme).realWage.toFixed(2) }}
+                </td>
+                <!-- 缩水比例 -->
+                <td class="py-3 px-3 text-right text-rose-500 font-semibold">
+                  -{{ getSchemeMetrics(scheme).shrink.toFixed(1) }}%
+                </td>
+                <!-- 操作按纽 -->
+                <td class="py-3 px-3 text-center font-sans space-x-1">
+                  <button @click="loadScheme(scheme)" class="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors">
+                    加载
+                  </button>
+                  <button @click="deleteScheme(index)" class="px-2 py-1 text-[11px] rounded bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-colors">
+                    删除
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="comparisonSchemes.length === 0">
+                <td colspan="8" class="py-6 text-center text-gray-400 font-sans">
+                  暂无对比方案，请在左上角填写参数后点击“保存方案”添加~
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 第三部分：日常消费换算成生命小时 (可动态新增与删除) -->
+      <div class="p-5 rounded-2xl border shadow-sm mb-6"
+        :class="isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200'">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-base font-bold flex items-center gap-2">
+              <span>🛒 日常消费换算成生命小时</span>
+            </h3>
+            <p class="text-xs mt-1" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+              当前计算基准：真实生命时薪 <span class="font-bold text-emerald-600 font-mono">¥{{ realHourlyWage.toFixed(2) }} / 小时</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- 添加消费项目表单 -->
+        <div class="flex flex-wrap items-center gap-3 p-3.5 rounded-xl border mb-5"
+          :class="isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-gray-50 border-gray-200'">
+          <div class="flex-1 min-w-[140px]">
+            <input type="text" v-model="newItemName" placeholder="消费项目名称 (如: 外食/租金)" 
+              @keyup.enter="addExpenseItem"
+              :class="isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'"
+              class="w-full px-3 py-2 text-xs rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div class="w-32 min-w-[100px]">
+            <input type="number" v-model.number="newItemAmount" placeholder="金额 (元)" 
+              @keyup.enter="addExpenseItem"
+              :class="isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'"
+              class="w-full px-3 py-2 text-xs rounded-lg border outline-none focus:ring-2 focus:ring-emerald-500 font-mono" />
+          </div>
+          <button @click="addExpenseItem" 
+            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm">
+            ➕ 添加项目
+          </button>
+        </div>
+
+        <!-- 消费项目表格 -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b" :class="isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'">
+                <th class="py-2.5 px-3 font-semibold">花费</th>
+                <th class="py-2.5 px-3 font-semibold text-right">金额 (元)</th>
+                <th class="py-2.5 px-3 font-semibold text-right">花费的生命 (小时)</th>
+                <th class="py-2.5 px-3 font-semibold text-center w-16">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y font-mono" :class="isDark ? 'divide-gray-700/60' : 'divide-gray-100'">
+              <tr v-for="(item, index) in expenseItems" :key="item.id || index"
+                class="hover:bg-gray-500/5 transition-colors">
+                <td class="py-2.5 px-3 font-sans font-medium" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
+                  {{ item.name }}
+                </td>
+                <td class="py-2.5 px-3 text-right">
+                  ¥{{ Number(item.amount).toFixed(2) }}
+                </td>
+                <td class="py-2.5 px-3 text-right font-bold text-emerald-600">
+                  {{ calculateLifeHours(item.amount) }} 小时
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                  <button @click="removeExpenseItem(index)" 
+                    class="text-gray-400 hover:text-rose-500 transition-colors p-1" title="删除">
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="expenseItems.length === 0">
+                <td colspan="4" class="py-6 text-center text-gray-400 font-sans">
+                  暂无消费项目，请在上方添加~
+                </td>
+              </tr>
+            </tbody>
+            <!-- 加总汇总行 -->
+            <tfoot v-if="expenseItems.length > 0" class="border-t-2" :class="isDark ? 'border-gray-700' : 'border-gray-200'">
+              <tr class="font-bold text-xs" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
+                <td class="py-3 px-3 font-sans">加总 / 合计</td>
+                <td class="py-3 px-3 text-right font-mono">¥{{ totalExpenseAmount.toFixed(2) }}</td>
+                <td class="py-3 px-3 text-right font-mono text-emerald-600 text-sm">
+                  {{ totalExpenseLifeHours }} 小时
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- 换算的意义解读 -->
+        <div class="mt-6 p-4 rounded-xl border leading-relaxed text-xs space-y-2"
+          :class="isDark ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200/90' : 'bg-emerald-50/60 border-emerald-100 text-emerald-900'">
+          <div class="font-bold text-sm text-emerald-700 flex items-center gap-1.5 mb-1">
+            🌱 换算的意义与深远影响：
+          </div>
+          <p>
+            • <b>打破金钱幻觉</b>：把「房租 3000 元」替换成「<b>一个月的住处 = 我需要付出 XX 小时的净生命</b>」。
+          </p>
+          <p>
+            • <b>审视非必要消费</b>：当你想购买一件 300 元非必要衣物时，换算成「<b>付出 X 小时的生命，换一件我没那么需要的东西</b>」。
+          </p>
+          <p>
+            • <b>重塑价值视角</b>：用这个视角审视每一项支出，会让你本能地重新掂量它的分量——<b>这是钱与生命能量的转换关系，也是全书一切精明决策与 FIRE 的基石[cite: 2]。</b>
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Vue 2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return {
+          isDark: false,
+          monthlySalary: 13800,
+          monthsPerYear: 13,
+          monthlyWorkCost: 850,
+          dailyOfficeHours: 9,
+          oneWayCommuteMinutes: 48,
+          weeklyOvertimeHours: 6,
+
+          // 保存对比方案输入框
+          newSchemeName: '',
+
+          // 对比方案列表 (预设样例数据)
+          comparisonSchemes: [
+            {
+              id: 1,
+              name: '现职 (高强度)',
+              monthlySalary: 13800,
+              monthsPerYear: 13,
+              monthlyWorkCost: 850,
+              dailyOfficeHours: 9,
+              oneWayCommuteMinutes: 48,
+              weeklyOvertimeHours: 6
+            },
+            {
+              id: 2,
+              name: '远程/WFH Offer (无通勤)',
+              monthlySalary: 11000,
+              monthsPerYear: 12,
+              monthlyWorkCost: 150,
+              dailyOfficeHours: 8,
+              oneWayCommuteMinutes: 0,
+              weeklyOvertimeHours: 0
+            }
+          ],
+
+          // 消费项目表单输入
+          newItemName: '',
+          newItemAmount: null,
+
+          // 默认消费项目表
+          expenseItems: [
+            { id: 1, name: '租金', amount: 310 },
+            { id: 2, name: '水电费', amount: 27 },
+            { id: 3, name: '汽油', amount: 37.88 },
+            { id: 4, name: '公益捐款', amount: 16 },
+            { id: 5, name: '居家娱乐', amount: 50 },
+            { id: 6, name: '外食', amount: 6.03 },
+            { id: 7, name: '衣物-必要', amount: 10.74 },
+            { id: 8, name: '衣物-非必要', amount: 25.45 },
+            { id: 9, name: '杂支', amount: 13 }
+          ]
+        };
+      },
+      computed: {
+        // 名义时薪 = 月薪 / 21.75 / 8
+        nominalHourlyWage: function() {
+          if (!this.monthlySalary) return 0;
+          return this.monthlySalary / 21.75 / 8;
+        },
+        // 年到手总收入
+        annualIncome: function() {
+          return (this.monthlySalary || 0) * (this.monthsPerYear || 12);
+        },
+        // 年工作隐性成本
+        annualWorkCost: function() {
+          return (this.monthlyWorkCost || 0) * 12;
+        },
+        // 月在场时间
+        monthlyOfficeHours: function() {
+          return (this.dailyOfficeHours || 0) * 21.75;
+        },
+        // 月通勤时间 = 单程 * 2 * 21.75 / 60
+        monthlyCommuteHours: function() {
+          return ((this.oneWayCommuteMinutes || 0) * 2 * 21.75) / 60;
+        },
+        // 月加班时间 = 周加班 * 52 / 12
+        monthlyOvertimeHours: function() {
+          return ((this.weeklyOvertimeHours || 0) * 52) / 12;
+        },
+        // 年总投入时间
+        annualTotalHours: function() {
+          return (this.monthlyOfficeHours + this.monthlyCommuteHours + this.monthlyOvertimeHours) * 12;
+        },
+        // 真实生命时薪
+        realHourlyWage: function() {
+          if (!this.annualTotalHours) return 0;
+          var netIncome = this.annualIncome - this.annualWorkCost;
+          return netIncome / this.annualTotalHours;
+        },
+        // 缩水比例
+        shrinkPercentage: function() {
+          if (!this.nominalHourlyWage) return 0;
+          var diff = this.nominalHourlyWage - this.realHourlyWage;
+          return (diff / this.nominalHourlyWage) * 100;
+        },
+        // 计算最佳（最高真实时薪）方案 ID
+        bestSchemeId: function() {
+          if (!this.comparisonSchemes || this.comparisonSchemes.length === 0) return null;
+          var self = this;
+          var bestId = null;
+          var maxWage = -1;
+          this.comparisonSchemes.forEach(function(scheme) {
+            var metrics = self.getSchemeMetrics(scheme);
+            if (metrics.realWage > maxWage) {
+              maxWage = metrics.realWage;
+              bestId = scheme.id;
+            }
+          });
+          return bestId;
+        },
+        // 消费总金额加总
+        totalExpenseAmount: function() {
+          return this.expenseItems.reduce(function(sum, item) {
+            return sum + (Number(item.amount) || 0);
+          }, 0);
+        },
+        // 消费总生命小时数加总
+        totalExpenseLifeHours: function() {
+          if (!this.realHourlyWage) return '0.0';
+          return (this.totalExpenseAmount / this.realHourlyWage).toFixed(1);
+        }
+      },
+      watch: {
+        // 监听表单输入变化，实时触发缓存更新
+        monthlySalary: function() { this.saveConfig(); },
+        monthsPerYear: function() { this.saveConfig(); },
+        monthlyWorkCost: function() { this.saveConfig(); },
+        dailyOfficeHours: function() { this.saveConfig(); },
+        oneWayCommuteMinutes: function() { this.saveConfig(); },
+        weeklyOvertimeHours: function() { this.saveConfig(); },
+        isDark: function() { this.saveConfig(); },
+        // 深度监听数组变动
+        comparisonSchemes: {
+          handler: function() { this.saveConfig(); },
+          deep: true
+        },
+        expenseItems: {
+          handler: function() { this.saveConfig(); },
+          deep: true
+        }
+      },
+      methods: {
+        toggleDarkMode: function() {
+          this.isDark = !this.isDark;
+        },
+        // 内部通用的方案指标计算逻辑
+        getSchemeMetrics: function(s) {
+          var nominal = (s.monthlySalary || 0) / 21.75 / 8;
+          var annualNet = ((s.monthlySalary || 0) * (s.monthsPerYear || 12)) - ((s.monthlyWorkCost || 0) * 12);
+          
+          var mOffice = (s.dailyOfficeHours || 0) * 21.75;
+          var mCommute = ((s.oneWayCommuteMinutes || 0) * 2 * 21.75) / 60;
+          var mOvertime = ((s.weeklyOvertimeHours || 0) * 52) / 12;
+          var annualHours = (mOffice + mCommute + mOvertime) * 12;
+
+          var realWage = annualHours > 0 ? annualNet / annualHours : 0;
+          var shrink = nominal > 0 ? ((nominal - realWage) / nominal) * 100 : 0;
+
+          return {
+            nominal: nominal,
+            annualNet: annualNet,
+            annualHours: annualHours,
+            realWage: realWage,
+            shrink: shrink
+          };
+        },
+        // 保存当前输入的参数为对比方案
+        saveCurrentScheme: function() {
+          var name = this.newSchemeName.trim() || ('方案 ' + (this.comparisonSchemes.length + 1));
+          this.comparisonSchemes.push({
+            id: Date.now(),
+            name: name,
+            monthlySalary: this.monthlySalary,
+            monthsPerYear: this.monthsPerYear,
+            monthlyWorkCost: this.monthlyWorkCost,
+            dailyOfficeHours: this.dailyOfficeHours,
+            oneWayCommuteMinutes: this.oneWayCommuteMinutes,
+            weeklyOvertimeHours: this.weeklyOvertimeHours
+          });
+          this.newSchemeName = '';
+        },
+        // 加载选中的对比方案到左侧输入框
+        loadScheme: function(scheme) {
+          this.monthlySalary = scheme.monthlySalary;
+          this.monthsPerYear = scheme.monthsPerYear;
+          this.monthlyWorkCost = scheme.monthlyWorkCost;
+          this.dailyOfficeHours = scheme.dailyOfficeHours;
+          this.oneWayCommuteMinutes = scheme.oneWayCommuteMinutes;
+          this.weeklyOvertimeHours = scheme.weeklyOvertimeHours;
+        },
+        // 删除对比方案
+        deleteScheme: function(index) {
+          this.comparisonSchemes.splice(index, 1);
+        },
+        // 根据当前真实时薪计算消费生命小时数
+        calculateLifeHours: function(amount) {
+          if (!this.realHourlyWage || !amount) return '0.0';
+          return (amount / this.realHourlyWage).toFixed(1);
+        },
+        // 添加消费项目
+        addExpenseItem: function() {
+          if (!this.newItemName || this.newItemAmount === null || this.newItemAmount === undefined || this.newItemAmount === '') {
+            alert('请填写项目名称和金额！');
+            return;
+          }
+          this.expenseItems.push({
+            id: Date.now(),
+            name: this.newItemName.trim(),
+            amount: Number(this.newItemAmount)
+          });
+          this.newItemName = '';
+          this.newItemAmount = null;
+        },
+        // 删除消费项目
+        removeExpenseItem: function(index) {
+          this.expenseItems.splice(index, 1);
+        },
+        // 从 localStorage 读取持久化配置
+        loadConfig: function() {
+          try {
+            var saved = localStorage.getItem('life_energy_calc_config_v3');
+            if (saved) {
+              var config = JSON.parse(saved);
+              if (config.monthlySalary !== undefined) this.monthlySalary = config.monthlySalary;
+              if (config.monthsPerYear !== undefined) this.monthsPerYear = config.monthsPerYear;
+              if (config.monthlyWorkCost !== undefined) this.monthlyWorkCost = config.monthlyWorkCost;
+              if (config.dailyOfficeHours !== undefined) this.dailyOfficeHours = config.dailyOfficeHours;
+              if (config.oneWayCommuteMinutes !== undefined) this.oneWayCommuteMinutes = config.oneWayCommuteMinutes;
+              if (config.weeklyOvertimeHours !== undefined) this.weeklyOvertimeHours = config.weeklyOvertimeHours;
+              if (config.isDark !== undefined) this.isDark = config.isDark;
+              if (Array.isArray(config.comparisonSchemes)) this.comparisonSchemes = config.comparisonSchemes;
+              if (Array.isArray(config.expenseItems)) this.expenseItems = config.expenseItems;
+            }
+          } catch(e) {
+            console.error('读取缓存失败', e);
+          }
+        },
+        // 保存配置到 localStorage
+        saveConfig: function() {
+          try {
+            var config = {
+              monthlySalary: this.monthlySalary,
+              monthsPerYear: this.monthsPerYear,
+              monthlyWorkCost: this.monthlyWorkCost,
+              dailyOfficeHours: this.dailyOfficeHours,
+              oneWayCommuteMinutes: this.oneWayCommuteMinutes,
+              weeklyOvertimeHours: this.weeklyOvertimeHours,
+              isDark: this.isDark,
+              comparisonSchemes: this.comparisonSchemes,
+              expenseItems: this.expenseItems
+            };
+            localStorage.setItem('life_energy_calc_config_v3', JSON.stringify(config));
+          } catch(e) {
+            console.error('保存缓存失败', e);
+          }
+        }
+      },
+      mounted: function() {
+        this.loadConfig();
+      }
+    });
+  </script>
+</body>
+</html>
